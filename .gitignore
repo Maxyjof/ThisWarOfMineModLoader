@@ -40,6 +40,11 @@ compressed/
 *.idb
 *.dmp
 
+# Blender working files and generated model previews
+*.blend
+*.blend[0-9]
+*.blend@
+
 # Runtime state / local credentials
 logs/
 *.log
