@@ -7,6 +7,8 @@ from lupa.lua51 import LuaRuntime
 
 #使用Lua5.1执行实际运行库覆盖入口、依赖失败、事件与包装链
 runtime = LuaRuntime()
+messages = []
+runtime.globals().print = messages.append
 runtime.execute("assert = function() return nil end")
 runtime.execute(pathlib.Path("ThisWarOfMineModLoader/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
 runtime.execute(r'''
@@ -67,12 +69,16 @@ assert(dynamic == 1)
 TWOMLoader.emit("dynamic")
 assert(dynamic == 12)
 ''')
+assert any("expected entry failure" in message for message in messages)
+assert any("expected callback failure" in message for message in messages)
+assert any("invalid event subscription" in message for message in messages)
 print("通过：Lua5.1入口隔离、依赖失败、事件参数、订阅快照和函数包装")
 
 #额外验证由C#工具生成的完整入口源码实际可以执行
 bundle = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/tests/bundle.lua")
 if bundle.exists():
     compiled = LuaRuntime()
+    compiled.globals().print = messages.append
     compiled.execute("gLua = {ResetReplication = function() end, ExecuteFile = function() end}")
     compiled.execute(bundle.read_text(encoding="utf-8"))
     assert compiled.globals().TWOMLoader.loaded["twom.hello"]

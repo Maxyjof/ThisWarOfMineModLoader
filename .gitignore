@@ -11,6 +11,12 @@ coverage/
 *.coverage
 *.coveragexml
 
+# Python validation tools
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
 # Native build output
 build/
 out/
