@@ -1,0 +1,49 @@
+# .NET / Rider / Visual Studio
+**/bin/
+**/obj/
+.idea/
+.vs/
+*.user
+*.suo
+*.sln.DotSettings.user
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Native build output
+build/
+out/
+artifacts/
+publish/
+*.pdb
+*.ilk
+*.pch
+*.obj
+
+# Local game installations and reverse-engineering workspace
+local/
+game/
+game-files/
+decompressed/
+compressed/
+*.dat
+*.exe
+*.dll
+*.i64
+*.idb
+*.dmp
+
+# Runtime state / local credentials
+logs/
+*.log
+*.tmp
+.env
+.env.*
+!.env.example
+**/loader.local.json
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
