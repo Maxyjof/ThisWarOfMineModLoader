@@ -68,6 +68,12 @@ dotnet publish ThisWarOfMineModLoader.Cli -c Release -o artifacts/tool
 
 `TWOMLoader.emit(name, ...)` 广播自定义事件，`loader.ready` 在所有模组尝试加载后触发。静态依赖通过但依赖入口运行失败时，依赖方也会跳过。事件回调异常不影响其他订阅，参数尾部的 `nil` 保留，回调内新增订阅从下一次广播开始生效。
 
+0.2版新增 `modules` 和 `settings` 清单字段。`modules` 将内部模块名映射到模组内 Lua 文件，`context.require(name)` 注入上下文、缓存模块并检测循环；模块文件通过 `local context = ...` 取得上下文。`settings` 支持字符串、有限数字、布尔值和嵌套对象，由 `context.config` 读取，修改后需重新构建部署包。
+
+`context.services.provide(name, service)` 提供本模组服务，`context.services.get(providerId, name)` 获取服务。使用其他模组服务必须在清单中声明依赖，且提供方入口必须成功；入口失败会清理该模组提供的服务。这些接口不是不可信代码沙箱。
+
+小型和中型实装测试包位于 `playtests/mods`，与普通欢迎示例分开。测试包包括真实游戏接口桥、搜刮提速、移动体力、角色状态、生存营地、活动记录、快捷键及两种故意失败探针。基线包只包含观察功能，组合包用于验证模组实际效果及彼此组合，故意失败探针的错误日志属于预期结果。
+
 `diary-observer` 演示包装本机 `Events.lua` 中的 `logEvent` 并发出 `game.diary` 事件。这只覆盖经过该 Lua 函数的记录，不代表完整的原生日记事件总线。当前没有自动昼夜、角色、物品或场景事件接口。
 
 项目只提交自有代码、文档和示例，不提交游戏二进制或解包资源。将本机游戏、实验数据放入忽略的 `local/`。

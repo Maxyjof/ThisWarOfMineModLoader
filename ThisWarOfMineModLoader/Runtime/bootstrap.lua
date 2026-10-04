@@ -2,7 +2,8 @@
 local compile = loadstring or load
 local loaded = {}
 local listeners = {}
-local api = { version = "0.1.0", loaded = loaded }
+local services = {}
+local api = { version = "0.2.0", loaded = loaded }
 TWOMLoader = api
 
 --<summary>
@@ -51,12 +52,61 @@ end
 --<summary>
 --创建模组上下文及失败时的订阅和函数包装清理操作
 --</summary>
-local function context_for(id)
+local function context_for(id, dependencies, options)
     --记录模组拥有的注册项以便入口失败后撤销
     local context = { id = id, api_version = api.version }
+    context.config = options.config or {}
+    local module_cache = {}
+    local module_loading = {}
+    local module_sources = options.modules or {}
+    local allowed_services = { [id] = true }
+    for _, dependency in ipairs(dependencies) do allowed_services[dependency] = true end
+    services[id] = {}
     local owned_listeners = {}
     local owned_wrappers = {}
     context.log = function(message) log(id, message) end
+
+    --<summary>
+    --加载并缓存当前模组显式声明的内部模块
+    --</summary>
+    context.require = function(name)
+        --检测模块循环并区分尚未加载和已缓存的返回值
+        if module_cache[name] ~= nil then return module_cache[name] end
+        require_condition(not module_loading[name], "cyclic module: " .. tostring(name))
+        require_condition(type(module_sources[name]) == "string", "unknown module: " .. tostring(name))
+        local chunk, err = compile(module_sources[name], "@twom/mods/" .. id .. "/" .. name)
+        require_condition(chunk, err)
+        module_loading[name] = true
+        local ok, value = pcall(chunk, context)
+        module_loading[name] = nil
+        require_condition(ok, value)
+        if value == nil then value = true end
+        module_cache[name] = value
+        return value
+    end
+
+    context.services = {}
+    --<summary>
+    --为已声明依赖的其他模组提供命名服务
+    --</summary>
+    context.services.provide = function(name, service)
+        --同一模组不能重复提供同名服务失败入口的服务会清理
+        require_condition(type(name) == "string" and name ~= "" and service ~= nil, "invalid service")
+        require_condition(services[id][name] == nil, "duplicate service: " .. name)
+        services[id][name] = service
+    end
+
+    --<summary>
+    --只获取自身或清单已声明依赖模组的服务
+    --</summary>
+    context.services.get = function(provider, name)
+        --依赖入口必须成功执行才能向其他模组暴露服务
+        require_condition(allowed_services[provider], "undeclared service dependency: " .. tostring(provider))
+        require_condition(provider == id or loaded[provider], "service provider not loaded")
+        local service = services[provider] and services[provider][name]
+        require_condition(service ~= nil, "missing service: " .. tostring(name))
+        return service
+    end
     context.events = {}
     context.events.on = function(name, callback)
         --返回取消函数并用独立标记控制订阅是否生效
@@ -85,6 +135,7 @@ local function context_for(id)
         --保留其他模组包装和订阅只禁用当前入口新增的注册项
         for _, item in ipairs(owned_listeners) do item.active = false end
         for _, item in ipairs(owned_wrappers) do item.active = false end
+        services[id] = nil
     end
     return context, rollback
 end
@@ -109,13 +160,13 @@ end
 --<summary>
 --加载单个模组并跳过运行时加载失败的依赖
 --</summary>
-function api.load_mod(id, source, dependencies)
+function api.load_mod(id, source, dependencies, options)
     --静态依赖检查通过后仍需确认依赖入口实际成功执行
     for _, dependency in ipairs(dependencies) do
         if not loaded[dependency] then log(id, "skipped: dependency failed: " .. dependency); return false end
     end
     --编译入口并要求返回带on_load方法的模组表
-    local context, rollback = context_for(id)
+    local context, rollback = context_for(id, dependencies, options or {})
     local ok = guarded(id, function()
         local chunk, err = compile(source, "@twom/mods/" .. id)
         require_condition(chunk, err)

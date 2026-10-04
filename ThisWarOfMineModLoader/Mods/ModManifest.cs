@@ -18,6 +18,8 @@ public sealed record ModManifest
     public bool Enabled { get; init; } = true;
     public Dictionary<string, string> Dependencies { get; init; } = new(StringComparer.Ordinal);
     public string[] Conflicts { get; init; } = [];
+    public Dictionary<string, string> Modules { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, JsonElement> Settings { get; init; } = new(StringComparer.Ordinal);
 
     public static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -36,7 +38,11 @@ public sealed record ModManifest
         ValidateId(Id);
         if (string.IsNullOrWhiteSpace(Name)) throw new InvalidDataException("模组名称不能为空。");
         _ = ModVersion.Parse(Version);
-        if (Dependencies is null || Conflicts is null) throw new InvalidDataException("依赖和冲突不能为 null。");
+        if (Dependencies is null || Conflicts is null || Modules is null || Settings is null)
+            throw new InvalidDataException("依赖、冲突、模块和配置不能为null");
+        //模块名仅作为模组内部键使用实际文件路径仍单独检查
+        foreach (var name in Modules.Keys)
+            if (!Regex.IsMatch(name, "^[a-z][a-z0-9._-]*$")) throw new InvalidDataException($"模块名无效：{name}");
         //逐项校验依赖与冲突并拒绝自身依赖
         foreach (var (id, minimum) in Dependencies)
         {

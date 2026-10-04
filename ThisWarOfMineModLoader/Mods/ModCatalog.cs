@@ -27,6 +27,9 @@ public static class ModCatalog
             manifest.Validate();
             //禁用模组不需要有效入口但仍需可解析的清单
             var entry = manifest.Enabled ? ResolveEntry(directory, manifest.Entry) : "";
+            //启用模组的每个显式模块都必须属于同一个模组目录
+            if (manifest.Enabled)
+                foreach (var path in manifest.Modules.Values) _ = ResolveEntry(directory, path);
             result.Add(new(directory, manifest, entry));
         }
         return result;

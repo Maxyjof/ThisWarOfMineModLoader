@@ -1,0 +1,7 @@
+{
+  "id": "twom.play.stamina",
+  "name": "节省移动体力",
+  "version": "0.1.0",
+  "dependencies": {"twom.play.bridge": "0.2.0"},
+  "settings": {"consumption_factor": 0.5}
+}

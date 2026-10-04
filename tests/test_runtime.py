@@ -68,6 +68,35 @@ TWOMLoader.emit("dynamic")
 assert(dynamic == 1)
 TWOMLoader.emit("dynamic")
 assert(dynamic == 12)
+
+--验证内部模块仅执行一次并将配置注入模组上下文
+module_runs = 0
+assert(TWOMLoader.load_mod("modular", [[return {on_load = function(c)
+    local a = c.require("helper")
+    local b = c.require("helper")
+    if a ~= b or a.value ~= 7 then error("module cache/config mismatch") end
+    c.services.provide("calculator", a)
+end}]], {}, {config = {value = 7}, modules = {
+    helper = "local c = ...; module_runs = module_runs + 1; return {value = c.config.value}"
+}}))
+assert(module_runs == 1)
+assert(TWOMLoader.load_mod("consumer", [[return {on_load = function(c)
+    if c.services.get("modular", "calculator").value ~= 7 then error("missing service") end
+end}]], {"modular"}))
+assert(not TWOMLoader.load_mod("undeclared", [[return {on_load = function(c)
+    c.services.get("modular", "calculator")
+end}]], {}))
+
+--验证循环内部模块和失败服务提供者的隔离
+assert(not TWOMLoader.load_mod("module.cycle", [[return {on_load = function(c) c.require("a") end}]], {}, {modules = {
+    a = "local c = ...; return c.require('b')", b = "local c = ...; return c.require('a')"
+}}))
+assert(not TWOMLoader.load_mod("service.failure", [[return {on_load = function(c)
+    c.services.provide("bad", {}); error("expected service failure")
+end}]], {}))
+assert(not TWOMLoader.load_mod("service.dependent", [[return {on_load = function(c)
+    error("must not execute")
+end}]], {"service.failure"}))
 ''')
 assert any("expected entry failure" in message for message in messages)
 assert any("expected callback failure" in message for message in messages)

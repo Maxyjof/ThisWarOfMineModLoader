@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using ThisWarOfMineModLoader.Mods;
 
 namespace ThisWarOfMineModLoader.Runtime;
@@ -35,7 +36,17 @@ public static class LuaBundle
             var source = Utf8.GetString(File.ReadAllBytes(ModCatalog.ResolveEntry(mod.Directory, mod.Manifest.Entry))).TrimStart('\ufeff');
             text.Append("TWOMLoader.load_mod(").Append(Quote(mod.Manifest.Id)).Append(", ").Append(Quote(source)).Append(", {");
             text.AppendJoin(", ", mod.Manifest.Dependencies.Keys.Order(StringComparer.Ordinal).Select(Quote));
-            text.Append("})\n");
+            text.Append("}, {modules = {");
+            foreach (var (name, path) in mod.Manifest.Modules.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                //模块源码随入口一起打包运行时不依赖原始开发目录
+                var module = Utf8.GetString(File.ReadAllBytes(ModCatalog.ResolveEntry(mod.Directory, path))).TrimStart('\ufeff');
+                text.Append('[').Append(Quote(name)).Append("] = ").Append(Quote(module)).Append(',');
+            }
+            text.Append("}, config = {");
+            foreach (var (name, value) in mod.Manifest.Settings.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+                text.Append('[').Append(Quote(name)).Append("] = ").Append(EncodeSetting(value)).Append(',');
+            text.Append("}})\n");
         }
         //所有模组尝试加载后广播就绪事件
         text.Append("TWOMLoader.emit('loader.ready')\n");
@@ -51,5 +62,25 @@ public static class LuaBundle
         var text = new StringBuilder("\"");
         foreach (var b in Utf8.GetBytes(value)) text.Append('\\').Append(b.ToString("D3", System.Globalization.CultureInfo.InvariantCulture));
         return text.Append('"').ToString();
+    }
+
+    /// <summary>
+    /// 将有限数值、布尔值、字符串和嵌套对象配置转换为Lua字面量
+    /// </summary>
+    public static string EncodeSetting(JsonElement value)
+    {
+        //配置不接受数组和null避免Lua表的空洞及长度语义产生歧义
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.String: return Quote(value.GetString()!);
+            case JsonValueKind.True: return "true";
+            case JsonValueKind.False: return "false";
+            case JsonValueKind.Number:
+                if (!value.TryGetDouble(out var number) || !double.IsFinite(number)) throw new InvalidDataException("配置数字必须是有限数值");
+                return value.GetRawText();
+            case JsonValueKind.Object:
+                return "{" + string.Join(",", value.EnumerateObject().Select(property => "[" + Quote(property.Name) + "]=" + EncodeSetting(property.Value))) + "}";
+            default: throw new InvalidDataException("配置只支持字符串、有限数值、布尔值及嵌套对象");
+        }
     }
 }

@@ -1,0 +1,6 @@
+{
+  "id": "twom.play.console",
+  "name": "现场状态快捷键",
+  "version": "0.1.0",
+  "dependencies": {"twom.play.bridge": "0.2.0", "twom.play.chronicle": "0.2.0"}
+}

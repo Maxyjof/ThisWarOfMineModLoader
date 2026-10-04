@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using System.Text.Json;
 using ThisWarOfMineModLoader.Archives;
 using ThisWarOfMineModLoader.Deployment;
 using ThisWarOfMineModLoader.Mods;
@@ -52,6 +53,22 @@ internal static class Program
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
         Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 2));
+        Test("中型模组模块禁止目录逃逸", () => InWorkspace(root =>
+        {
+            //入口合法而内部模块非法时必须在扫描阶段拒绝整个模组
+            var folder = Path.Combine(root, "mod"); Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "main.lua"), "return {}");
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"mod\",\"name\":\"测试\",\"version\":\"1.0.0\",\"modules\":{\"escape\":\"../outside.lua\"}}");
+            Reject<InvalidDataException>(() => ModCatalog.Discover(root));
+        }));
+        Test("配置拒绝非有限数值和Lua数组歧义", () =>
+        {
+            //配置值必须能够在Lua5.1中表达为有限且明确的字面量
+            using var huge = JsonDocument.Parse("1e400");
+            Reject<InvalidDataException>(() => LuaBundle.EncodeSetting(huge.RootElement));
+            using var array = JsonDocument.Parse("[1,null,2]");
+            Reject<InvalidDataException>(() => LuaBundle.EncodeSetting(array.RootElement));
+        });
         Test("Main资源哈希与实测值一致", () => Assert(ResourceHash.Compute("/Scripts/Main.lua") == MainHash));
 
         //使用合成容器验证格式损坏、资源替换与长度限制
@@ -153,6 +170,12 @@ internal static class Program
             var output = Path.Combine(Repository, "artifacts", "tests"); Directory.CreateDirectory(output);
             File.WriteAllBytes(Path.Combine(output, "bundle.lua"), LuaBundle.Compile(Encoding.UTF8.GetBytes("original_ran = true; return 'done'"), plan));
             Reject<InvalidDataException>(() => LuaBundle.Compile([0x1b, 0x4c], plan));
+            //额外导出实际多模组包供独立解释器执行每个内部模块
+            var playtestMods = ModCatalog.Discover(Path.Combine(Repository, "playtests", "mods"));
+            Assert(playtestMods.Count == 9);
+            var playtestPlan = LoadPlanner.Create(playtestMods);
+            Assert(playtestPlan.IsValid);
+            File.WriteAllBytes(Path.Combine(output, "playtest-bundle.lua"), LuaBundle.Compile(Encoding.UTF8.GetBytes("return true"), playtestPlan));
         });
 
         //逐项记录结果任何失败都返回非零退出码

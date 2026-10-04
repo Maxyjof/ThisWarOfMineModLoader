@@ -1,0 +1,8 @@
+{
+  "id": "twom.play.survival-camp",
+  "name": "生存营地辅助包",
+  "version": "0.2.0",
+  "dependencies": {"twom.play.bridge": "0.2.0"},
+  "modules": {"nutrition": "modules/nutrition.lua", "supplies": "modules/supplies.lua", "recovery": "modules/recovery.lua"},
+  "settings": {"hunger_factor": 0.5, "starter_food": 2, "daily_tired_relief": 10}
+}

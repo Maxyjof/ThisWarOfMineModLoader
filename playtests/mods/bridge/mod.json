@@ -1,0 +1,8 @@
+{
+  "id": "twom.play.bridge",
+  "name": "游戏事件与测试记录桥",
+  "version": "0.2.0",
+  "entry": "main.lua",
+  "modules": {"telemetry": "modules/telemetry.lua", "scenes": "modules/scenes.lua", "actions": "modules/actions.lua"},
+  "settings": {"run_id": "combined", "event_limit": 1000}
+}
