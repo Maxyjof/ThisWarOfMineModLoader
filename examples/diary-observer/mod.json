@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.diary-observer",
+  "name": "游戏日记事件观察示例",
+  "version": "0.1.0",
+  "author": "ThisWarOfMineModLoader",
+  "description": "包装本机版本已有的logEvent函数演示接入游戏Lua逻辑",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {},
+  "conflicts": []
+}

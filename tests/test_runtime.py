@@ -1,0 +1,81 @@
+import pathlib
+import sys
+
+#允许使用本机忽略目录中的测试依赖持续集成直接安装依赖即可
+sys.path.insert(0, str(pathlib.Path("local/tools").resolve()))
+from lupa.lua51 import LuaRuntime
+
+#使用Lua5.1执行实际运行库覆盖入口、依赖失败、事件与包装链
+runtime = LuaRuntime()
+runtime.execute("assert = function() return nil end")
+runtime.execute(pathlib.Path("ThisWarOfMineModLoader/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
+runtime.execute(r'''
+--测试断言独立于被游戏覆盖的全局assert
+local assert = function(value, message)
+    if not value then error(message or "test assertion failed") end
+    return value
+end
+
+--测试事件异常隔离、取消订阅和尾部nil参数
+count = 0
+assert(TWOMLoader.load_mod("events", [[return {on_load = function(c)
+    c.events.on("sample", function() error("expected callback failure") end)
+    c.events.on("sample", function(...) assert(select("#", ...) == 3); count = count + 1 end)
+    local cancel = c.events.on("sample", function() count = count + 100 end)
+    cancel()
+end}]], {}))
+TWOMLoader.emit("sample", 1, nil, nil)
+assert(count == 1)
+
+--测试包装顺序、多返回值和失败入口的包装撤销
+target = {value = function(x) return x, nil, "tail" end}
+assert(TWOMLoader.load_mod("wrap.a", [[return {on_load = function(c)
+    c.wrap(target, "value", function(previous, x) return previous(x + 2) end)
+end}]], {}))
+assert(TWOMLoader.load_mod("wrap.b", [[return {on_load = function(c)
+    c.wrap(target, "value", function(previous, x) return previous(x * 3) end)
+end}]], {"wrap.a"}))
+assert(not TWOMLoader.load_mod("broken", [[return {on_load = function(c)
+    c.wrap(target, "value", function(previous, x) return previous(x + 100) end)
+    c.events.on("after.failure", function() error("must not run") end)
+    error("expected entry failure")
+end}]], {}))
+local first, middle, last = target.value(4)
+assert(first == 14 and middle == nil and last == "tail")
+assert(not TWOMLoader.loaded.broken)
+TWOMLoader.emit("after.failure")
+
+--测试依赖入口失败时依赖方不执行与错误入口协议
+assert(not TWOMLoader.load_mod("dependent", [[error("must not execute")]], {"broken"}))
+assert(not TWOMLoader.loaded.dependent)
+assert(not TWOMLoader.load_mod("syntax", "this is not lua", {}))
+assert(not TWOMLoader.load_mod("protocol", "return 123", {}))
+assert(not TWOMLoader.load_mod("invalid.subscription", [[return {on_load = function(c)
+    c.events.on("event", nil)
+end}]], {}))
+
+--测试事件回调内新增订阅不会进入当前广播快照
+dynamic = 0
+assert(TWOMLoader.load_mod("dynamic", [[return {on_load = function(c)
+    c.events.on("dynamic", function()
+        dynamic = dynamic + 1
+        c.events.on("dynamic", function() dynamic = dynamic + 10 end)
+    end)
+end}]], {}))
+TWOMLoader.emit("dynamic")
+assert(dynamic == 1)
+TWOMLoader.emit("dynamic")
+assert(dynamic == 12)
+''')
+print("通过：Lua5.1入口隔离、依赖失败、事件参数、订阅快照和函数包装")
+
+#额外验证由C#工具生成的完整入口源码实际可以执行
+bundle = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/tests/bundle.lua")
+if bundle.exists():
+    compiled = LuaRuntime()
+    compiled.execute("gLua = {ResetReplication = function() end, ExecuteFile = function() end}")
+    compiled.execute(bundle.read_text(encoding="utf-8"))
+    assert compiled.globals().TWOMLoader.loaded["twom.hello"]
+    print("通过：C#生成入口在Lua5.1中加载示例模组")
+else:
+    raise FileNotFoundError("请先运行C#测试生成完整Lua入口")

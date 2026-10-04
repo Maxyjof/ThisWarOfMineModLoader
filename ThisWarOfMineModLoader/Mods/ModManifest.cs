@@ -3,6 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace ThisWarOfMineModLoader.Mods;
 
+/// <summary>
+/// 描述Lua模组身份、入口以及依赖关系
+/// </summary>
 public sealed record ModManifest
 {
     public int SchemaVersion { get; init; } = 1;
@@ -23,13 +26,18 @@ public sealed record ModManifest
         UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
     };
 
+    /// <summary>
+    /// 校验清单版本、身份字段及依赖声明
+    /// </summary>
     public void Validate()
     {
+        //校验规范版本与必填字段
         if (SchemaVersion != 1) throw new InvalidDataException("不支持的模组清单版本。");
         ValidateId(Id);
         if (string.IsNullOrWhiteSpace(Name)) throw new InvalidDataException("模组名称不能为空。");
         _ = ModVersion.Parse(Version);
         if (Dependencies is null || Conflicts is null) throw new InvalidDataException("依赖和冲突不能为 null。");
+        //逐项校验依赖与冲突并拒绝自身依赖
         foreach (var (id, minimum) in Dependencies)
         {
             ValidateId(id);
@@ -39,18 +47,28 @@ public sealed record ModManifest
         foreach (var id in Conflicts) ValidateId(id);
     }
 
+    /// <summary>
+    /// 校验模组ID是否符合小写稳定标识规范
+    /// </summary>
     private static void ValidateId(string? id)
     {
+        //限定可用字符并拒绝空标识或连续分隔符
         if (id is null || !Regex.IsMatch(id, "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"))
             throw new InvalidDataException($"无效的模组 ID：{id}。使用小写字母、数字和 . _ -。");
     }
 }
 
-// v1 只接受稳定的三段数字版本，避免声称支持未实现的 SemVer 范围。
+/// <summary>
+/// 表示v1规范支持的三段稳定版本号
+/// </summary>
 public readonly record struct ModVersion(int Major, int Minor, int Patch) : IComparable<ModVersion>
 {
+    /// <summary>
+    /// 解析三段非负整数版本并拒绝前导零或预发布后缀
+    /// </summary>
     public static ModVersion Parse(string value)
     {
+        //先校验语法再处理整数溢出
         if (value is null || !Regex.IsMatch(value, "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"))
             throw new InvalidDataException($"版本必须是 major.minor.patch：{value}");
         var parts = value.Split('.');
@@ -59,12 +77,19 @@ public readonly record struct ModVersion(int Major, int Minor, int Patch) : ICom
         return new(major, minor, patch);
     }
 
+    /// <summary>
+    /// 按主版本、次版本和补丁版本依次比较
+    /// </summary>
     public int CompareTo(ModVersion other)
     {
+        //只在更高位版本相等时比较下一位
         var result = Major.CompareTo(other.Major);
         if (result == 0) result = Minor.CompareTo(other.Minor);
         return result == 0 ? Patch.CompareTo(other.Patch) : result;
     }
 }
 
+/// <summary>
+/// 保存已发现模组的目录、清单及入口路径
+/// </summary>
 public sealed record DiscoveredMod(string Directory, ModManifest Manifest, string EntryPath);
