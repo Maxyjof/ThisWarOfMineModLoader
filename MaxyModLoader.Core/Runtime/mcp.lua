@@ -66,7 +66,7 @@ end
 --<summary>
 --按有界深度遍历实际界面层级并返回稳定的路径
 --</summary>
-function module.ui_tree()
+function module.ui_tree(include_hidden)
     local result = module.array()
     local screen = module.screen()
     if not screen then return {available = false, elements = result} end
@@ -75,8 +75,8 @@ function module.ui_tree()
     --只遍历实际可见的分支避免隐藏页面耗尽节点上限
     --</summary>
     local function visit(element, path, depth)
-        if depth > 24 or #result >= 1000 then return end
-        if depth > 0 and not element:IsVisible() then return end
+        if depth > 24 or #result >= (include_hidden and 4000 or 1000) then return end
+        if depth > 0 and not include_hidden and not element:IsVisible() then return end
         local name = element:GetName() or ""
         local current = path .. "/" .. name
         table.insert(result, {name = name, path = current, visible = element:IsVisible(),
@@ -169,9 +169,19 @@ function module.dispatch(command, argument)
     if command == "game_state" then return module.state() end
     if command == "mods_list" then return {mods = MaxyModLoader.mods} end
     if command == "ui_tree" then return module.ui_tree() end
+    if command == 'ui_catalog' then return module.ui_tree(true) end
+    if command == 'ui_adjust' then
+        if not MaxyModLoader.manager then error('管理界面尚未安装') end
+        return MaxyModLoader.manager.adjust(argument)
+    end
+    if command == 'mod_scroll' then
+        if not MaxyModLoader.manager then error('管理界面尚未安装') end
+        return MaxyModLoader.manager.scroll(argument)
+    end
     if command == "mod_manager" then
         if not MaxyModLoader.manager then return {available = false} end
-        MaxyModLoader.manager.tick()
+        --状态查询只核验界面所有权避免同一帧再次应用真实滚轮输入
+        MaxyModLoader.manager.attach()
         return MaxyModLoader.manager.state()
     end
     if command == "inspect_type" then return module.inspect(argument) end
@@ -266,6 +276,9 @@ function module.poll()
 end
 --内置桥在所有正常帧和暂停帧工作不会作为第三方模组占用目录
 api.mcp = module
+--<summary>
+--内置控制桥启用期间保持后台主线程命令处理
+--</summary>
 LuaGameDelegate.CanSleep = function() return false end
 for _, name in ipairs({'OnTick', 'OnPauseTick'}) do
     local previous = LuaGameDelegate[name]

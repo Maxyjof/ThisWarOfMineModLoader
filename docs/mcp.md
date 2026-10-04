@@ -34,8 +34,11 @@ MCP客户端启动配置使用实际的绝对路径：
 | --- | --- | --- |
 | `game_state` | 无 | 读取天数、暂停和真实角色参数 |
 | `mods_list` | 无 | 完整模组介绍与实际加载状态 |
-| `mod_manager` | 无 | 独立管理面板可见性、选择和分页 |
+| `mod_manager` | 无 | 独立管理面板可见性、选择、两侧实际偏移与滚轮记录 |
+| `mod_scroll` | `target`字符串，例如`list\|10`或`detail\|20` | 定位自有列表条目或介绍行，返回有效偏移与内容边界 |
 | `ui_tree` | 无 | 读取可见原生界面树与完整元素路径 |
+| `ui_catalog` | 无 | 有界读取可见及隐藏控件用于本机原版配方诊断 |
+| `ui_adjust` | `edit`字符串，例如`MML_DETAIL_LINE_1\|color\|1,1,1,1` | 临时调整加载器自有控件的颜色、位置、大小或缩放 |
 | `ui_click` | `name`字符串 | 触发当前可见且启用的原生界面元素 |
 | `ui_hit_test` | `point`字符串，例如`0.75,0.60` | 读取屏幕归一化坐标处的原生命中控件与父链 |
 | `ui_click_point` | 同上 | 经过原生命中再点击，不移动真实鼠标 |
@@ -45,7 +48,7 @@ MCP客户端启动配置使用实际的绝对路径：
 | `inspect_type` | `name`字符串 | 列出公开Lua类型的方法名称 |
 | `game_screenshot` | 无 | 捕获游戏窗口并返回PNG图像内容 |
 
-名称重复时`ui_click`拒绝调用，改用`ui_tree`提供的完整路径。调试新增控件时应使用`ui_hit_test`和`ui_click_point`检查实际命中，而不能只调用名字对应的处理函数。`mod_manager`返回当前鼠标命中及最近按下或释放边沿。MCP模拟点击与真实鼠标点击分别验证，工具返回成功只表示已触发请求，场景切换、动画和渲染完成需要后续状态读取与截图确认。
+名称重复时`ui_click`拒绝调用，改用`ui_tree`提供的完整路径。调试新增控件时应使用`ui_hit_test`和`ui_click_point`检查实际命中，而不能只调用名字对应的处理函数。`mod_manager`返回当前鼠标命中、最近按下或释放边沿及滚轮输入。列表和介绍各自保存偏移，更换所选模组时只将介绍恢复到顶部。`mod_scroll`与真实滚轮共用边界和内容定位逻辑，用于检查原生裁剪与滑块位置，不发送系统滚轮事件。MCP模拟点击与真实鼠标点击分别验证，工具返回成功只表示已触发请求，场景切换、动画和渲染完成需要后续状态读取与截图确认。
 
 截图仅定位指定安装目录的唯一游戏进程，在独立辅助进程中捕获，避免后台窗口绘制卡住MCP服务。捕获失败或黑帧会明确报错，不能把工具返回的文字状态当作截图验证。PNG保存到游戏目录`MaxyModLoader/mcp/screenshots`，MCP响应同时提供`image/png`图像内容。系统接口依据：[PrintWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-printwindow)、[GetDIBits](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getdibits)。
 
@@ -67,4 +70,6 @@ dotnet run --project MaxyModLoader.Cli -c Release -- screenshot "<游戏安装�
 
 ## 验证
 
-`tests/test_mcp.py`使用统一CLI的真实MCP服务进程与临时文件端验证握手、十二项工具发现、参数错误隔离及中文参数往返。这些协议测试不代表游戏效果验证。真实游戏验证与截图检查单独记录在`docs/validation.md`。
+`tests/test_mcp.py`使用统一CLI的真实MCP服务进程与临时文件端验证握手、十五项工具发现、参数错误隔离及中文参数往返。`tests/test_manager.py`另外验证自有控件调整的参数及所有权边界。这些协议测试不代表游戏效果验证。真实游戏验证与截图检查单独记录在`docs/validation.md`。
+
+`ui_adjust`仅作用于加载器拥有的`MML_`及`BUTTON_MAXY_MODS`控件，不允许修改原版控件、执行代码或调用地址。支持`position`、`size`、`scale`、`color`及自有图片的默认`channel`，拒绝空分量、非有限数字和越界数值。更改只在当前会话保留，正式布局需要修改运行库并重新部署。最小化时截图工具明确报错，不能将标题条当作游戏画面。

@@ -25,6 +25,8 @@ public static class GameScreenshot
             string.Equals(process.MainModule?.FileName, expected, StringComparison.OrdinalIgnoreCase) && process.MainWindowHandle != 0).ToArray();
         if (candidates.Length != 1) throw new IOException("未找到唯一的目标游戏窗口");
         var window = candidates[0].MainWindowHandle;
+        //最小化窗口只能返回标题条不能作为游戏画面验证
+        if (IsIconic(window)) throw new IOException("游戏窗口已最小化请恢复显示后再截图");
         if (!GetWindowRect(window, out var rectangle)) throw new IOException("无法读取游戏窗口尺寸");
         var width = rectangle.Right - rectangle.Left;
         var height = rectangle.Bottom - rectangle.Top;
@@ -144,6 +146,10 @@ public static class GameScreenshot
     /// 读取指定窗口边界
     /// </summary>
     [DllImport("user32.dll")] private static extern bool GetWindowRect(nint window, out WindowRectangle rectangle);
+    /// <summary>
+    /// 判断目标游戏窗口是否已最小化
+    /// </summary>
+    [DllImport("user32.dll")] private static extern bool IsIconic(nint window);
     /// <summary>
     /// 为截图辅助进程启用真实像素尺寸
     /// </summary>

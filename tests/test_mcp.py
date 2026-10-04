@@ -71,7 +71,7 @@ def main():
         assert by_id[1]['error']['code'] == -32002
         assert by_id[2]['result']['serverInfo']['name'] == 'MaxyModLoader'
         tools = by_id[3]['result']['tools']
-        assert len(tools) == 12 and len({tool['name'] for tool in tools}) == 12
+        assert len(tools) == 15 and len({tool['name'] for tool in tools}) == 15
         assert not by_id[4]['result']['isError']
         assert by_id[5]['result']['isError'] and by_id[6]['result']['isError']
         assert by_id[7]['error']['code'] == -32602
@@ -79,9 +79,8 @@ def main():
         assert received == [('ui_click', '中文按钮'), ('game_state', '')]
         assert {reply['error']['code'] for reply in replies if reply['id'] is None} == {-32700, -32600}
         assert not result.stderr
-        print('通过：MCP握手、十二项工具、错误隔离和Unicode传输')
+        print('通过：MCP握手、十五项工具、错误隔离和Unicode传输')
 
 
 if __name__ == '__main__':
     main()
-
