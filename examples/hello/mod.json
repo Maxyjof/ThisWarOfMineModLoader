@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.hello",
+  "name": "加载器欢迎示例",
+  "version": "0.1.0",
+  "author": "ThisWarOfMineModLoader",
+  "description": "演示 Lua 模组入口和日志。",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {},
+  "conflicts": []
+}
