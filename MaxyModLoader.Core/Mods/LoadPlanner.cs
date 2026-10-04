@@ -1,4 +1,4 @@
-namespace ThisWarOfMineModLoader.Mods;
+namespace MaxyModLoader.Mods;
 
 /// <summary>
 /// 保存完整加载顺序或阻止加载的错误
@@ -6,6 +6,7 @@ namespace ThisWarOfMineModLoader.Mods;
 public sealed record LoadPlan(IReadOnlyList<DiscoveredMod> Ordered, IReadOnlyList<string> Errors)
 {
     public bool IsValid => Errors.Count == 0;
+    public IReadOnlyList<DiscoveredMod> Catalog { get; init; } = Ordered;
 }
 
 /// <summary>
@@ -60,6 +61,6 @@ public static class LoadPlanner
         //仍有正入度节点说明存在循环拒绝输出可能误用的部分计划
         if (ordered.Count != enabled.Count)
             errors.Add($"循环依赖或被循环阻塞：{string.Join(", ", indegrees.Where(pair => pair.Value > 0).Select(pair => pair.Key).Order(StringComparer.Ordinal))}");
-        return errors.Count > 0 ? new([], errors) : new(ordered, errors);
+        return errors.Count > 0 ? new([], errors) : new(ordered, errors) { Catalog = all };
     }
 }

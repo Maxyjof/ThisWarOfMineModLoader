@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace ThisWarOfMineModLoader.Archives;
+namespace MaxyModLoader.Archives;
 
 /// <summary>
 /// 计算Liquid Engine资源路径使用的MurmurHash2标识

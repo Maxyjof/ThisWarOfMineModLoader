@@ -2,6 +2,19 @@
   "id": "twom.play.stamina",
   "name": "节省移动体力",
   "version": "0.1.0",
-  "dependencies": {"twom.play.bridge": "0.2.0"},
-  "settings": {"consumption_factor": 0.5}
+  "dependencies": {
+    "twom.play.bridge": "0.2.0"
+  },
+  "settings": {
+    "consumption_factor": 0.5
+  },
+  "author": "MaxyModLoader",
+  "description": "降低角色初始化时传给游戏原生体力控制器的移动消耗。默认跑步消耗从30降至15，走路从10降至5，不改变体力恢复速度或角色移动速度。效果需要在新建角色或重新进入场景后验证。",
+  "features": [
+    "默认跑步与走路消耗减少50%",
+    "保留原版移动速度和恢复参数",
+    "记录角色初始化采用的体力配置"
+  ],
+  "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
+  "license": "未指定"
 }

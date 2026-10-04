@@ -1,10 +1,10 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThisWarOfMineModLoader", "ThisWarOfMineModLoader\ThisWarOfMineModLoader.csproj", "{9B739040-EF2B-49A2-AD21-44EB0BEA0997}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaxyModLoader.Core", "MaxyModLoader.Core\MaxyModLoader.Core.csproj", "{9B739040-EF2B-49A2-AD21-44EB0BEA0997}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThisWarOfMineModLoader.Cli", "ThisWarOfMineModLoader.Cli\ThisWarOfMineModLoader.Cli.csproj", "{164CAAA0-A807-42BD-A00C-9C84EBCC010D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaxyModLoader.Cli", "MaxyModLoader.Cli\MaxyModLoader.Cli.csproj", "{164CAAA0-A807-42BD-A00C-9C84EBCC010D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThisWarOfMineModLoader.Tests", "ThisWarOfMineModLoader.Tests\ThisWarOfMineModLoader.Tests.csproj", "{8491F64B-CFD9-4141-A4EA-F86D8E60EAB0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaxyModLoader.Tests", "MaxyModLoader.Tests\MaxyModLoader.Tests.csproj", "{8491F64B-CFD9-4141-A4EA-F86D8E60EAB0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

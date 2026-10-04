@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using ThisWarOfMineModLoader.Archives;
-using ThisWarOfMineModLoader.Mods;
-using ThisWarOfMineModLoader.Runtime;
+using MaxyModLoader.Archives;
+using MaxyModLoader.Mods;
+using MaxyModLoader.Runtime;
 
-namespace ThisWarOfMineModLoader.Deployment;
+namespace MaxyModLoader.Deployment;
 
 /// <summary>
 /// 保存离线构建容器的原始和生成文件指纹

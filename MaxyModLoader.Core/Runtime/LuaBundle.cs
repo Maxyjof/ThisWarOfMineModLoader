@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using ThisWarOfMineModLoader.Mods;
+using MaxyModLoader.Mods;
 
-namespace ThisWarOfMineModLoader.Runtime;
+namespace MaxyModLoader.Runtime;
 
 /// <summary>
 /// 将原始Main脚本和按依赖顺序排列的模组合成为单个Lua入口
@@ -23,13 +23,27 @@ public static class LuaBundle
             throw new InvalidDataException("Main 是 Lua 字节码，需要分析具体 Lua 版本；当前只接受 UTF-8 Lua 源码。");
         //严格读取UTF8原脚本并去除不参与Lua语法的字节顺序标记
         var original = Utf8.GetString(originalMain).TrimStart('\ufeff');
-        var text = new StringBuilder("--由ThisWarOfMineModLoader0.1.0生成\nlocal compile = loadstring or load\n");
+        var text = new StringBuilder("--由MaxyModLoader0.3.0生成\nlocal compile = loadstring or load\n");
         //单独编译原Main以保留其return语句和局部作用域
         text.Append("local original, err = compile(").Append(Quote(original)).Append(", '@common/scripts/Main.lua')\nif not original then error(err) end\noriginal()\n");
         //加载嵌入式运行库确保分发工具无需携带额外源码文件
-        using var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThisWarOfMineModLoader.Runtime.bootstrap.lua")!;
+        using var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.bootstrap.lua")!;
         using var reader = new StreamReader(resource, Utf8);
         text.Append(reader.ReadToEnd()).Append('\n');
+        //界面回调先于模组包装使后续扩展保留管理界面的帧处理
+        using var managerResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.manager.lua")!;
+        using var managerReader = new StreamReader(managerResource, Utf8);
+        //单独作用域使没有原生UI时的提前返回不会跳过后续模组加载
+        text.Append("local install_manager, manager_error = compile(").Append(Quote(managerReader.ReadToEnd()))
+            .Append(", '@MaxyModLoader/manager.lua')\nif not install_manager then error(manager_error) end\ninstall_manager()\n");
+        //控制桥属于内置功能没有任何模组时也随加载器自动安装
+        using var mcpResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.mcp.lua")!;
+        using var mcpReader = new StreamReader(mcpResource, Utf8);
+        text.Append("local install_mcp, mcp_error = compile(").Append(Quote(mcpReader.ReadToEnd()))
+            .Append(", '@MaxyModLoader/mcp.lua')\nif not install_mcp then error(mcp_error) end\ninstall_mcp()\n");
+        //完整目录包含禁用模组先注册介绍再执行入口以记录真实结果
+        foreach (var mod in plan.Catalog.OrderBy(mod => mod.Manifest.Id, StringComparer.Ordinal))
+            AppendMetadata(text, mod.Manifest);
         //重新解析入口路径防止发现与编译之间发生路径替换
         foreach (var mod in plan.Ordered)
         {
@@ -51,6 +65,24 @@ public static class LuaBundle
         //所有模组尝试加载后广播就绪事件
         text.Append("TWOMLoader.emit('loader.ready')\n");
         return Utf8.GetBytes(text.ToString());
+    }
+
+    /// <summary>
+    /// 将模组介绍和依赖清单编入管理界面的数据源
+    /// </summary>
+    private static void AppendMetadata(StringBuilder text, ModManifest manifest)
+    {
+        //介绍采用同一UTF8转义方式不会拼接可执行的用户文本
+        text.Append("MaxyModLoader.register_mod({id=").Append(Quote(manifest.Id))
+            .Append(",name=").Append(Quote(manifest.Name)).Append(",version=").Append(Quote(manifest.Version))
+            .Append(",author=").Append(Quote(manifest.Author)).Append(",description=").Append(Quote(manifest.Description))
+            .Append(",compatibility=").Append(Quote(manifest.Compatibility)).Append(",website=").Append(Quote(manifest.Website))
+            .Append(",license=").Append(Quote(manifest.License)).Append(",enabled=").Append(manifest.Enabled ? "true" : "false")
+            .Append(",features={").AppendJoin(',', manifest.Features.Select(Quote)).Append("},dependencies={");
+        //版本要求和冲突独立展示不依赖Lua表遍历的顺序
+        foreach (var (id, version) in manifest.Dependencies.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            text.Append('[').Append(Quote(id)).Append("]=").Append(Quote(version)).Append(',');
+        text.Append("},conflicts={").AppendJoin(',', manifest.Conflicts.Select(Quote)).Append("}})\n");
     }
 
     /// <summary>

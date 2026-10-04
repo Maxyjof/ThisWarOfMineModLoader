@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../ThisWarOfMineModLoader/ThisWarOfMineModLoader.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../MaxyModLoader.Core/MaxyModLoader.Core.csproj" /></ItemGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CodeAnalysis">
       <HintPath>$(MSBuildSDKsPath)/../Roslyn/bincore/Microsoft.CodeAnalysis.dll</HintPath>

@@ -1,10 +1,11 @@
 using System.Globalization;
 using System.Text;
-using ThisWarOfMineModLoader.Archives;
-using ThisWarOfMineModLoader.Deployment;
-using ThisWarOfMineModLoader.Mods;
+using MaxyModLoader.Archives;
+using MaxyModLoader.Deployment;
+using MaxyModLoader.Mods;
+using MaxyModLoader.Mcp;
 
-namespace ThisWarOfMineModLoader.Cli;
+namespace MaxyModLoader.Cli;
 
 /// <summary>
 /// 提供模组规划、容器检查和实验加载器部署命令
@@ -14,15 +15,22 @@ internal static class Program
     /// <summary>
     /// 分发命令并将可预期错误转换为非零退出码
     /// </summary>
-    public static int Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
         //统一控制台编码以正确显示中文模组名称和诊断信息
         Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
         try
         {
             //匹配固定命令形态未知参数直接显示用法
             switch (args)
             {
+                case ["mcp", "--game", var game]:
+                    await new McpServer(new GameBridgeClient(game)).RunAsync(Console.In, Console.Out);
+                    return 0;
+                case ["rpc", var game, var command]: return await Rpc(game, command, "");
+                case ["rpc", var game, var command, var argument]: return await Rpc(game, command, argument);
+                case ["screenshot", var game]: Console.WriteLine(GameScreenshot.Capture(game)); return 0;
                 case ["plan", var root]: return Plan(root);
                 case ["hash", var path]: Console.WriteLine($"{ResourceHash.Compute(path):x8}"); return 0;
                 case ["inspect", var container]: return Inspect(container);
@@ -34,19 +42,30 @@ internal static class Program
                     return 0;
                 case ["restore", var game]:
                     PackageInstaller.Restore(game);
-                    Console.WriteLine("已核验并恢复原容器备份仍保留在TWOMLoader/backups");
+                    Console.WriteLine("已核验并恢复原容器备份仍保留在MaxyModLoader/backups");
                     return 0;
                 default:
-                    Console.WriteLine("《这是我的战争》模组加载器工具\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录>\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>");
+                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录>\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>");
                     return args.Length == 0 || args is ["--help"] ? 0 : 1;
             }
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException or TimeoutException)
         {
             //预期的输入和文件错误不输出无关堆栈但保留明确退出码
             Console.Error.WriteLine($"错误：{exception.Message}");
             return 2;
         }
+    }
+
+    /// <summary>
+    /// 执行内置MCP控制桥的单个白名单游戏命令
+    /// </summary>
+    private static async Task<int> Rpc(string game, string command, string argument)
+    {
+        //只有游戏确认的响应才能返回成功退出码
+        var result = await new GameBridgeClient(game).CallAsync(command, argument);
+        Console.WriteLine(result.GetRawText());
+        return result.GetProperty("ok").GetBoolean() ? 0 : 2;
     }
 
     /// <summary>

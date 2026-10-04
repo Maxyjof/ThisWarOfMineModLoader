@@ -2,5 +2,16 @@
   "id": "twom.play.failure",
   "name": "故意失败的包装隔离探针",
   "version": "0.1.0",
-  "dependencies": {"twom.play.bridge": "0.2.0"}
+  "dependencies": {
+    "twom.play.bridge": "0.2.0"
+  },
+  "author": "MaxyModLoader",
+  "description": "故意失败的测试探针，入口先注册搜刮包装和服务，然后主动抛错，用来验证加载器能否撤销它拥有的包装、监听和服务。它正常情况下必须显示加载失败，不能作为正常玩法模组启用。",
+  "features": [
+    "制造预期入口错误",
+    "验证失败包装不会污染搜刮时长",
+    "验证失败服务不会继续可用"
+  ],
+  "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
+  "license": "未指定"
 }

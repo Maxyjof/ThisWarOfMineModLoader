@@ -14,7 +14,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: dotnet build -c Release
-      - run: dotnet run --project ThisWarOfMineModLoader.Tests -c Release --no-build
+      - run: dotnet run --project MaxyModLoader.Tests -c Release --no-build
       - run: python -m pip install -r tests/requirements.txt
       - run: python -X utf8 tests/test_runtime.py
       - run: python -X utf8 tests/test_modpack.py
+      - run: python -X utf8 tests/test_manager.py
+      - run: python -X utf8 tests/test_mcp.py

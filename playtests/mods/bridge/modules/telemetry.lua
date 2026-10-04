@@ -21,7 +21,7 @@ function module.record(kind, fields)
 
     --数据写入加载器目录不写入游戏原生存档
     if io and io.open then
-        local file = io.open("TWOMLoader/playtests.tsv", "a")
+        local file = io.open("MaxyModLoader/playtests.tsv", "a")
         if file then file:write(line .. "\n"); file:close() end
     end
 end

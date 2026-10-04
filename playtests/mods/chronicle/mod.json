@@ -2,7 +2,23 @@
   "id": "twom.play.chronicle",
   "name": "营地活动记录包",
   "version": "0.2.0",
-  "dependencies": {"twom.play.bridge": "0.2.0"},
-  "modules": {"journal": "modules/journal.lua", "summary": "modules/summary.lua"},
-  "settings": {"entry_limit": 500}
+  "dependencies": {
+    "twom.play.bridge": "0.2.0"
+  },
+  "modules": {
+    "journal": "modules/journal.lua",
+    "summary": "modules/summary.lua"
+  },
+  "settings": {
+    "entry_limit": 500
+  },
+  "author": "MaxyModLoader",
+  "description": "中型营地活动记录模组，订阅事件桥发出的游戏事件，将一天中的搜刮、制作与场景活动写入有容量上限的日志，并在白天结束时生成汇总。两个模块共享同一个缓存的日志服务。",
+  "features": [
+    "最多保留500条活动记录",
+    "对白天结束生成活动统计",
+    "验证内部模块缓存与跨模组服务"
+  ],
+  "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
+  "license": "未指定"
 }

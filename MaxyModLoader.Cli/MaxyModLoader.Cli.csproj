@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>MaxyModLoader</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../MaxyModLoader.Core/MaxyModLoader.Core.csproj" /></ItemGroup>
+</Project>

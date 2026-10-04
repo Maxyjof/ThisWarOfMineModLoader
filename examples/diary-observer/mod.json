@@ -3,10 +3,17 @@
   "id": "twom.diary-observer",
   "name": "游戏日记事件观察示例",
   "version": "0.1.0",
-  "author": "ThisWarOfMineModLoader",
-  "description": "包装本机版本已有的logEvent函数演示接入游戏Lua逻辑",
+  "author": "MaxyModLoader",
+  "description": "包装游戏已有的logEvent函数并广播game.diary事件。只覆盖经过该Lua函数的记录，不代表完整原生日记系统，也不改写玩家日记。",
   "entry": "main.lua",
   "enabled": true,
   "dependencies": {},
-  "conflicts": []
+  "conflicts": [],
+  "features": [
+    "观察已有日记记录接口",
+    "广播自定义事件",
+    "保留原函数执行"
+  ],
+  "compatibility": "已验证本机Steam版本的启动入口",
+  "license": "未指定"
 }

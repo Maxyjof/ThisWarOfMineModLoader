@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
 
-namespace ThisWarOfMineModLoader.Archives;
+namespace MaxyModLoader.Archives;
 
 /// <summary>
 /// 表示容器索引中的资源标识、长度、偏移和压缩状态

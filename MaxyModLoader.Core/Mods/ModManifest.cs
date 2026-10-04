@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace ThisWarOfMineModLoader.Mods;
+namespace MaxyModLoader.Mods;
 
 /// <summary>
 /// 描述Lua模组身份、入口以及依赖关系
@@ -14,6 +14,10 @@ public sealed record ModManifest
     public required string Version { get; init; }
     public string Author { get; init; } = "";
     public string Description { get; init; } = "";
+    public string[] Features { get; init; } = [];
+    public string Compatibility { get; init; } = "";
+    public string Website { get; init; } = "";
+    public string License { get; init; } = "";
     public string Entry { get; init; } = "main.lua";
     public bool Enabled { get; init; } = true;
     public Dictionary<string, string> Dependencies { get; init; } = new(StringComparer.Ordinal);
@@ -40,6 +44,12 @@ public sealed record ModManifest
         _ = ModVersion.Parse(Version);
         if (Dependencies is null || Conflicts is null || Modules is null || Settings is null)
             throw new InvalidDataException("依赖、冲突、模块和配置不能为null");
+        //管理界面读取原始UTF8文本不允许空引用或无效网页协议
+        if (Author is null || Description is null || Features is null || Features.Any(string.IsNullOrWhiteSpace) ||
+            Compatibility is null || Website is null || License is null)
+            throw new InvalidDataException("模组介绍字段不能为null功能列表不能包含空项");
+        if (Website.Length > 0 && (!Uri.TryCreate(Website, UriKind.Absolute, out var website) ||
+            website.Scheme is not ("https" or "http"))) throw new InvalidDataException("模组主页只支持HTTP或HTTPS地址");
         //模块名仅作为模组内部键使用实际文件路径仍单独检查
         foreach (var name in Modules.Keys)
             if (!Regex.IsMatch(name, "^[a-z][a-z0-9._-]*$")) throw new InvalidDataException($"模块名无效：{name}");

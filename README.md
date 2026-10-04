@@ -1,6 +1,10 @@
-# ThisWarOfMineModLoader
+# MaxyModLoader
 
 《这是我的战争》的社区模组加载器项目，目标是建立可组合的模组规范、Lua 扩展接口和原生引擎适配层。
+
+解决方案为`MaxyModLoader.sln`，仅保留核心库`MaxyModLoader.Core`、命令行入口`MaxyModLoader.Cli`和验证项目`MaxyModLoader.Tests`。核心库包含资源部署、模组运行库、管理界面和内置MCP桥，CLI负责构建、安装、恢复及MCP服务。0.3版的模组管理界面展示禁用、加载失败和依赖失败条目，介绍包括名称、标识、版本、作者、内容、功能、兼容性、依赖、冲突、主页、许可和错误详情。主菜单按钮的真实鼠标交互仍在实际游戏调试中。
+
+加载器[内置游戏MCP控制桥](docs/mcp.md)，安装时自动接入游戏Lua主线程，不需要额外MCP模组或独立MCP项目。统一CLI通过`mcp --game`启动服务，提供十二项工具，包括原生命中诊断、坐标点击和只读游戏截图。`MaxyModLoader`为游戏内API名称，`TWOMLoader`保留旧模组兼容；`MaxyModLoader.mods`包含完整目录与实际加载状态，`MaxyModLoader.loaded`记录成功加载的模组。
 
 ## 技术前提
 
@@ -16,8 +20,8 @@
 
 ```powershell
 dotnet build
-dotnet run --project ThisWarOfMineModLoader.Tests
-dotnet run --project ThisWarOfMineModLoader.Cli -- plan examples
+dotnet run --project MaxyModLoader.Tests
+dotnet run --project MaxyModLoader.Cli -- plan examples
 ```
 
 `plan` 检查清单、依赖、版本、冲突及循环，输出稳定的加载顺序。发现错误时返回非零退出码，并且不产生部分加载计划。
@@ -27,16 +31,16 @@ dotnet run --project ThisWarOfMineModLoader.Cli -- plan examples
 先退出游戏。在仓库根目录运行以下命令，将路径改为自己的安装目录。`artifacts/package-demo` 必须是尚不存在的目录。
 
 ```powershell
-dotnet run --project ThisWarOfMineModLoader.Cli -- build "D:\Steam\steamapps\common\This War of Mine\common" 5faa28a2 examples artifacts/package-demo
-dotnet run --project ThisWarOfMineModLoader.Cli -- install "D:\Steam\steamapps\common\This War of Mine" artifacts/package-demo
+dotnet run --project MaxyModLoader.Cli -- build "D:\Steam\steamapps\common\This War of Mine\common" 5faa28a2 examples artifacts/package-demo
+dotnet run --project MaxyModLoader.Cli -- install "D:\Steam\steamapps\common\This War of Mine" artifacts/package-demo
 ```
 
-通过 Steam 正常启动游戏。当前已验证版本的日志位于游戏根目录的 `TWOMLoader/runtime.log`。工具也把日志输出到游戏控制台。日志文件依赖游戏开放 `io` 库以及启动时工作目录；本机 Steam 启动已验证能生成日志。
+通过 Steam 正常启动游戏。当前已验证版本的日志位于游戏根目录的 `MaxyModLoader/runtime.log`。工具也把日志输出到游戏控制台。日志文件依赖游戏开放 `io` 库以及启动时工作目录；本机 Steam 启动已验证能生成日志。
 
 退出游戏后恢复原容器：
 
 ```powershell
-dotnet run --project ThisWarOfMineModLoader.Cli -- restore "D:\Steam\steamapps\common\This War of Mine"
+dotnet run --project MaxyModLoader.Cli -- restore "D:\Steam\steamapps\common\This War of Mine"
 ```
 
 安装器只接受与构建来源指纹完全一致的容器。更新游戏、其他模组修改文件或部署包损坏时拒绝安装。已安装时先恢复，再从原容器重新构建，避免把原始脚本包装多次。安装中断可用同一个 `restore` 命令恢复；如果其他工具再次改动文件，恢复器拒绝自动覆盖。恢复后保留备份。
@@ -46,8 +50,8 @@ dotnet run --project ThisWarOfMineModLoader.Cli -- restore "D:\Steam\steamapps\c
 也可用发布工具直接运行相同命令：
 
 ```powershell
-dotnet publish ThisWarOfMineModLoader.Cli -c Release -o artifacts/tool
-.\artifacts\tool\ThisWarOfMineModLoader.Cli.exe plan examples
+dotnet publish MaxyModLoader.Cli -c Release -o artifacts/tool
+.\artifacts\tool\MaxyModLoader.exe plan examples
 ```
 
 这份发布产物依赖 .NET 10 运行时，未做自包含打包。不要分发带有游戏原资源的构建部署包，分发工具和模组源码即可让玩家本机生成。
@@ -61,6 +65,7 @@ dotnet publish ThisWarOfMineModLoader.Cli -c Release -o artifacts/tool
 - `dependencies` 是依赖 ID 到最低版本的映射；禁用依赖视为缺失。
 - `conflicts` 列出不能同时启用的模组 ID。
 - `enabled` 控制是否纳入加载计划，禁用模组仍检查清单格式。
+- `name`、`author`、`description`填写展示信息；`features`为功能说明数组，`compatibility`填写兼容条件，`website`只接受HTTP或HTTPS地址，`license`填写许可名称。
 - `entry` 必须指向模组目录内真实存在的 Lua 文件，拒绝目录逃逸和入口符号链接。
 - 扫描模组根目录的直接子目录；没有 `mod.json` 的目录跳过。
 
@@ -96,7 +101,7 @@ Lua 测试使用 Lupa 的 Lua5.1 运行时，测试依赖仅用于验证，不�
 
 ```powershell
 python -m pip install -r tests/requirements.txt
-dotnet run --project ThisWarOfMineModLoader.Tests
+dotnet run --project MaxyModLoader.Tests
 python -X utf8 tests/test_runtime.py
 ```
 

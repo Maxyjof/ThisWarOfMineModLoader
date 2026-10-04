@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
-using ThisWarOfMineModLoader.Mods;
+using MaxyModLoader.Mods;
 
-namespace ThisWarOfMineModLoader.Deployment;
+namespace MaxyModLoader.Deployment;
 
 /// <summary>
 /// 记录安装前备份与当前部署包身份以支持中断恢复
@@ -22,8 +22,9 @@ public static class PackageInstaller
         //拒绝运行中游戏或已有安装日志避免叠加修改原始容器
         gameDirectory = Path.GetFullPath(gameDirectory);
         EnsureGameStopped();
-        var statePath = Path.Combine(gameDirectory, "TWOMLoader", "install-state.json");
-        if (File.Exists(statePath)) throw new IOException("加载器已有安装或待恢复操作请先执行restore。");
+        var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
+        if (File.Exists(statePath) || File.Exists(Path.Combine(gameDirectory, "TWOMLoader", "install-state.json")))
+            throw new IOException("加载器已有安装或待恢复操作请先执行restore。");
         var package = JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(Path.Combine(packageDirectory, "package.json")), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("部署包清单为空。");
         ValidateContainer(package.Container);
@@ -37,7 +38,7 @@ public static class PackageInstaller
         Check(built + ".dat", package.BuiltDataSha256);
 
         //先备份两份原文件并写入恢复日志再开始任何目标替换
-        var backup = Path.Combine(gameDirectory, "TWOMLoader", "backups", Guid.NewGuid().ToString("N"));
+        var backup = Path.Combine(gameDirectory, "MaxyModLoader", "backups", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(backup);
         File.Copy(target + ".idx", Path.Combine(backup, package.Container + ".idx"));
         File.Copy(target + ".dat", Path.Combine(backup, package.Container + ".dat"));
@@ -61,12 +62,14 @@ public static class PackageInstaller
         //读取持久化日志以便恢复完整安装或只完成一半的安装
         gameDirectory = Path.GetFullPath(gameDirectory);
         EnsureGameStopped();
-        var statePath = Path.Combine(gameDirectory, "TWOMLoader", "install-state.json");
+        var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
+        //旧版恢复日志保持可读不能因品牌目录更名而丢失原文件恢复能力
+        if (!File.Exists(statePath)) statePath = Path.Combine(gameDirectory, "TWOMLoader", "install-state.json");
         var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(statePath), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("安装日志为空。");
         ValidateContainer(state.Package.Container);
         var backup = Path.GetFullPath(Path.Combine(gameDirectory, state.BackupDirectory));
-        var backupRoot = Path.GetFullPath(Path.Combine(gameDirectory, "TWOMLoader", "backups")) + Path.DirectorySeparatorChar;
+        var backupRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(statePath)!, "backups")) + Path.DirectorySeparatorChar;
         if (!backup.StartsWith(backupRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("备份路径超出本次游戏安装目录。");
         var package = state.Package;
         var target = Path.Combine(gameDirectory, package.Container);

@@ -2,7 +2,27 @@
   "id": "twom.play.survival-camp",
   "name": "生存营地辅助包",
   "version": "0.2.0",
-  "dependencies": {"twom.play.bridge": "0.2.0"},
-  "modules": {"nutrition": "modules/nutrition.lua", "supplies": "modules/supplies.lua", "recovery": "modules/recovery.lua"},
-  "settings": {"hunger_factor": 0.5, "starter_food": 2, "daily_tired_relief": 10}
+  "dependencies": {
+    "twom.play.bridge": "0.2.0"
+  },
+  "modules": {
+    "nutrition": "modules/nutrition.lua",
+    "supplies": "modules/supplies.lua",
+    "recovery": "modules/recovery.lua"
+  },
+  "settings": {
+    "hunger_factor": 0.5,
+    "starter_food": 2,
+    "daily_tired_relief": 10
+  },
+  "author": "MaxyModLoader",
+  "description": "中型生存辅助模组，由营养、补给和恢复三个模块组成。默认把每日饥饿增长减少50%，每个游戏进程首次进入有角色的庇护所时发放两个罐头，每次新一天回调减轻10点疲劳。退出并重启进程会重新允许发放补给，这不是存档持久化的领取记录。",
+  "features": [
+    "每日饥饿增长减少50%",
+    "每个进程首次进入庇护所补给两个罐头",
+    "新一天减轻10点疲劳",
+    "三个模块通过清单配置共同工作"
+  ],
+  "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
+  "license": "未指定"
 }

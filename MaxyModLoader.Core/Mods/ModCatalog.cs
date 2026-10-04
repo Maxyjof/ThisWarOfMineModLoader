@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace ThisWarOfMineModLoader.Mods;
+namespace MaxyModLoader.Mods;
 
 /// <summary>
 /// 扫描模组目录并解析清单

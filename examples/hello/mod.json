@@ -3,10 +3,17 @@
   "id": "twom.hello",
   "name": "加载器欢迎示例",
   "version": "0.1.0",
-  "author": "ThisWarOfMineModLoader",
-  "description": "演示 Lua 模组入口和日志。",
+  "author": "MaxyModLoader",
+  "description": "最小欢迎示例，演示入口协议、模组日志以及所有模组加载结束后的loader.ready事件。只输出日志，不改变游戏玩法。",
   "entry": "main.lua",
   "enabled": true,
   "dependencies": {},
-  "conflicts": []
+  "conflicts": [],
+  "features": [
+    "执行模组入口",
+    "响应加载完成事件",
+    "输出中文日志"
+  ],
+  "compatibility": "已验证本机Steam版本的启动入口",
+  "license": "未指定"
 }

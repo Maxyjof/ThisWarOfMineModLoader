@@ -3,7 +3,9 @@ local compile = loadstring or load
 local loaded = {}
 local listeners = {}
 local services = {}
-local api = { version = "0.2.0", loaded = loaded }
+local api = { name = "MaxyModLoader", version = "0.3.0", loaded = loaded, mods = {}, mod_by_id = {} }
+MaxyModLoader = api
+--保留旧API名称使已经发布的模组继续兼容
 TWOMLoader = api
 
 --<summary>
@@ -20,14 +22,28 @@ end
 --</summary>
 local function log(id, message)
     --日志设施异常不得中断其他模组
-    local line = "[TWOMLoader][" .. id .. "] " .. tostring(message)
+    local line = "[MaxyModLoader][" .. id .. "] " .. tostring(message)
     if print then pcall(print, line) end
     if io and io.open then
         pcall(function()
-            local file = io.open("TWOMLoader/runtime.log", "a")
+            local file = io.open("MaxyModLoader/runtime.log", "a")
             if file then file:write(line .. "\n"); file:close() end
         end)
     end
+end
+api.log = log
+
+--<summary>
+--注册管理界面使用的完整模组介绍和初始状态
+--</summary>
+function api.register_mod(metadata)
+    --禁用模组保留介绍但不会编译或执行其入口
+    require_condition(type(metadata) == "table" and type(metadata.id) == "string", "invalid mod metadata")
+    require_condition(api.mod_by_id[metadata.id] == nil, "duplicate mod metadata")
+    metadata.status = metadata.enabled == false and "disabled" or "pending"
+    metadata.error = ""
+    api.mod_by_id[metadata.id] = metadata
+    table.insert(api.mods, metadata)
 end
 
 --<summary>
@@ -161,13 +177,22 @@ end
 --加载单个模组并跳过运行时加载失败的依赖
 --</summary>
 function api.load_mod(id, source, dependencies, options)
+    --直接调用旧加载API的模组也有可查询状态
+    if not api.mod_by_id[id] then api.register_mod({id = id, name = id, enabled = true}) end
+    local metadata = api.mod_by_id[id]
     --静态依赖检查通过后仍需确认依赖入口实际成功执行
     for _, dependency in ipairs(dependencies) do
-        if not loaded[dependency] then log(id, "skipped: dependency failed: " .. dependency); return false end
+        if not loaded[dependency] then
+            metadata.status = "skipped"
+            metadata.error = "依赖未加载：" .. dependency
+            log(id, "skipped: dependency failed: " .. dependency)
+            return false
+        end
     end
     --编译入口并要求返回带on_load方法的模组表
     local context, rollback = context_for(id, dependencies, options or {})
-    local ok = guarded(id, function()
+    metadata.status = "loading"
+    local ok, failure = guarded(id, function()
         local chunk, err = compile(source, "@twom/mods/" .. id)
         require_condition(chunk, err)
         local mod = chunk()
@@ -175,6 +200,14 @@ function api.load_mod(id, source, dependencies, options)
         mod.on_load(context)
     end)
     --失败时清理框架拥有的注册项不声称可以回滚任意全局副作用
-    if ok then loaded[id] = true; log(id, "loaded") else rollback() end
+    if ok then
+        loaded[id] = true
+        metadata.status = "loaded"
+        log(id, "loaded")
+    else
+        metadata.status = "failed"
+        metadata.error = tostring(failure)
+        rollback()
+    end
     return ok
 end

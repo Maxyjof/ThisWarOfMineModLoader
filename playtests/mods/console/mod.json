@@ -2,5 +2,17 @@
   "id": "twom.play.console",
   "name": "现场状态快捷键",
   "version": "0.1.0",
-  "dependencies": {"twom.play.bridge": "0.2.0", "twom.play.chronicle": "0.2.0"}
+  "dependencies": {
+    "twom.play.bridge": "0.2.0",
+    "twom.play.chronicle": "0.2.0"
+  },
+  "author": "MaxyModLoader",
+  "description": "为实装测试提供现场状态快捷键。J显示游戏控制台并记录状态，K只记录当前角色快照。数据来自真实游戏角色，中文输入法开启时字母键可能被输入法拦截，可改用MCP查询。",
+  "features": [
+    "J显示控制台与活动统计",
+    "K记录角色快照",
+    "依赖事件桥和营地活动记录包"
+  ],
+  "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
+  "license": "未指定"
 }

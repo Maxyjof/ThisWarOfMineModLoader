@@ -1,12 +1,12 @@
 using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
-using ThisWarOfMineModLoader.Archives;
-using ThisWarOfMineModLoader.Deployment;
-using ThisWarOfMineModLoader.Mods;
-using ThisWarOfMineModLoader.Runtime;
+using MaxyModLoader.Archives;
+using MaxyModLoader.Deployment;
+using MaxyModLoader.Mods;
+using MaxyModLoader.Runtime;
 
-namespace ThisWarOfMineModLoader.Tests;
+namespace MaxyModLoader.Tests;
 
 /// <summary>
 /// 不依赖测试框架的集成验证入口
@@ -53,6 +53,22 @@ internal static class Program
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
         Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 2));
+        Test("管理目录保留禁用模组且不加载入口", () => InWorkspace(root =>
+        {
+            //禁用模组仍有介绍静态加载顺序只包含启用项
+            File.WriteAllText(Path.Combine(root, "main.lua"), "return {on_load=function() end}");
+            var plan = LoadPlanner.Create([Mod("active") with { Directory = root }, Mod("disabled", enabled: false)]);
+            Assert(plan.Catalog.Count == 2 && plan.Ordered.Count == 1);
+            var bundle = Encoding.UTF8.GetString(LuaBundle.Compile([], plan));
+            Assert(bundle.Contains("MaxyModLoader.register_mod") && bundle.Contains("enabled=false"));
+        }));
+        Test("管理介绍拒绝空引用和危险主页协议", () =>
+        {
+            //主页仅展示普通网页地址不接受脚本或本机文件协议
+            var manifest = new ModManifest { Id = "meta", Name = "介绍", Version = "1.0.0", Website = "javascript:alert(1)" };
+            Reject<InvalidDataException>(() => manifest.Validate());
+            Reject<InvalidDataException>(() => (manifest with { Website = "", Features = null! }).Validate());
+        });
         Test("中型模组模块禁止目录逃逸", () => InWorkspace(root =>
         {
             //入口合法而内部模块非法时必须在扫描阶段拒绝整个模组
@@ -125,7 +141,29 @@ internal static class Program
             PackageInstaller.Restore(game);
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
             Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
-            Assert(!File.Exists(Path.Combine(game, "TWOMLoader", "install-state.json")));
+            Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")));
+        }));
+        Test("旧品牌安装日志仍可恢复且禁止重复安装", () => InWorkspace(root =>
+        {
+            //构造旧版目录和日志验证重命名不会丢失原文件的恢复路径
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
+            var source = CreateFixture(game);
+            var package = Path.Combine(root, "package");
+            var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
+            PackageInstaller.Install(game, package);
+            var current = Path.Combine(game, "MaxyModLoader");
+            var legacy = Path.Combine(game, "TWOMLoader");
+            Directory.Move(current, legacy);
+            var path = Path.Combine(legacy, "install-state.json");
+            var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(path), ModManifest.JsonOptions)!;
+            File.WriteAllText(path, JsonSerializer.Serialize(state with
+            {
+                BackupDirectory = Path.Combine("TWOMLoader", "backups", Path.GetFileName(state.BackupDirectory))
+            }, ModManifest.JsonOptions));
+            Reject<IOException>(() => PackageInstaller.Install(game, package));
+            PackageInstaller.Restore(game);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
         }));
         Test("第三方改动阻止自动恢复", () => InWorkspace(root =>
         {
@@ -160,7 +198,7 @@ internal static class Program
             File.AppendAllText(Path.Combine(package, "common.dat"), "tampered");
             Reject<InvalidDataException>(() => PackageInstaller.Install(game, package));
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
-            Assert(!Directory.Exists(Path.Combine(game, "TWOMLoader")));
+            Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
         }));
 
         //输出可由独立Lua5.1解释器执行的完整引导脚本

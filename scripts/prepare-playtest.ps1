@@ -19,6 +19,8 @@ foreach ($taskName in $taskNames) {
     Copy-Item -LiteralPath (Join-Path $taskRepository ('playtests\mods\' + $taskName)) -Destination $taskModRoot -Recurse
 }
 
+#MCP控制桥随加载器内置无需复制额外模组
+
 #运行标识编入配置便于区分两轮真实游戏记录
 $taskBridgeManifest = Join-Path $taskModRoot 'bridge\mod.json'
 $taskBridge = Get-Content -LiteralPath $taskBridgeManifest -Raw | ConvertFrom-Json
@@ -28,6 +30,6 @@ $taskBridge | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $taskBridgeMan
 #只生成部署包不自动改变安装或存档状态
 $taskSource = Join-Path $GameDirectory 'common'
 $taskPackage = Join-Path $taskRunRoot 'package'
-dotnet run --project (Join-Path $taskRepository 'ThisWarOfMineModLoader.Cli') -c Release -- build $taskSource 5faa28a2 $taskModRoot $taskPackage
+dotnet run --project (Join-Path $taskRepository 'MaxyModLoader.Cli') -c Release -- build $taskSource 5faa28a2 $taskModRoot $taskPackage
 if ($LASTEXITCODE -ne 0) { throw '构建测试包失败' }
 Write-Output $taskPackage

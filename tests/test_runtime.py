@@ -10,13 +10,19 @@ runtime = LuaRuntime()
 messages = []
 runtime.globals().print = messages.append
 runtime.execute("assert = function() return nil end")
-runtime.execute(pathlib.Path("ThisWarOfMineModLoader/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
+runtime.execute(pathlib.Path("MaxyModLoader.Core/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
 runtime.execute(r'''
 --测试断言独立于被游戏覆盖的全局assert
 local assert = function(value, message)
     if not value then error(message or "test assertion failed") end
     return value
 end
+
+--正式名称和兼容别名必须指向同一个运行库
+assert(MaxyModLoader == TWOMLoader and MaxyModLoader.name == "MaxyModLoader")
+MaxyModLoader.register_mod({id="disabled.metadata", name="禁用介绍", enabled=false,
+    description="中文介绍与Unicode字符保持完整", features={"功能一", "功能二"}})
+assert(MaxyModLoader.mod_by_id["disabled.metadata"].status == "disabled")
 
 --测试事件异常隔离、取消订阅和尾部nil参数
 count = 0
@@ -50,6 +56,10 @@ TWOMLoader.emit("after.failure")
 --测试依赖入口失败时依赖方不执行与错误入口协议
 assert(not TWOMLoader.load_mod("dependent", [[error("must not execute")]], {"broken"}))
 assert(not TWOMLoader.loaded.dependent)
+--失败和跳过是不同状态管理界面不能只展示静态启用值
+assert(MaxyModLoader.mod_by_id.broken.status == "failed")
+assert(MaxyModLoader.mod_by_id.dependent.status == "skipped")
+assert(MaxyModLoader.mod_by_id.events.status == "loaded")
 assert(not TWOMLoader.load_mod("syntax", "this is not lua", {}))
 assert(not TWOMLoader.load_mod("protocol", "return 123", {}))
 assert(not TWOMLoader.load_mod("invalid.subscription", [[return {on_load = function(c)
