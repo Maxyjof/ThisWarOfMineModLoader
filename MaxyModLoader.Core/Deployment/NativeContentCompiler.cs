@@ -18,7 +18,7 @@ public sealed record NativePackage(Dictionary<string, string> Files, string[] It
 /// </summary>
 public static class NativeContentCompiler
 {
-    public const string GameFingerprint = "7E114E63D2371B3A31C6070011BA3869FECB2248895AFC0171B248C3E0B69BCB";
+    public const string GameFingerprint = GameExecutableInstaller.GameFingerprint;
     public const string ToolFingerprint = "303D4591F7CD7890E4CF2BC1279288DCC840A464ADBD7FDA40DA4C2C6039078C";
     public static readonly string[] FileNames = ["common.dat", "common.idx", "common.dat_items.dat", "localizations.dat", "localizations.idx"];
 
@@ -35,7 +35,7 @@ public static class NativeContentCompiler
             throw new InvalidDataException("跨模组原生物品重复或数量超限");
         //官方工具与EXE必须同时匹配不在未知版本上猜测资源结构
         game = Path.GetFullPath(game);
-        if (!OperatingSystem.IsWindows() || PackageBuilder.Fingerprint(Path.Combine(game, "x64", "This War of Mine.exe")) != GameFingerprint ||
+        if (!OperatingSystem.IsWindows() || PackageBuilder.Fingerprint(GameExecutableInstaller.ResolveOriginalExecutablePath(game)) != GameFingerprint ||
             PackageBuilder.Fingerprint(Path.Combine(game, "ModTools.exe")) != ToolFingerprint)
             throw new InvalidDataException("原生内容编译只支持已核验的游戏与ModTools版本");
         var relative = "Mods/MaxyModLoaderBuild" + Guid.NewGuid().ToString("N");

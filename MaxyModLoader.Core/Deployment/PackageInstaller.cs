@@ -166,9 +166,10 @@ public static class PackageInstaller
     /// </summary>
     private static void EnsureGameStopped()
     {
-        //按游戏进程名保守拒绝任何运行实例
+        //按游戏进程名拒绝其他运行实例但允许当前启动引导维护资源
         var processes = Process.GetProcessesByName("This War of Mine");
+        var active = processes.Where(process => process.Id != Environment.ProcessId).ToArray();
         foreach (var process in processes) process.Dispose();
-        if (processes.Length > 0) throw new IOException("请先退出游戏再安装或恢复加载器。");
+        if (active.Length > 0) throw new IOException("请先退出其他游戏实例再安装或恢复加载器");
     }
 }

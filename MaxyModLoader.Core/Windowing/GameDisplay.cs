@@ -185,7 +185,7 @@ public static class GameDisplay
         //窗口功能仅面向Windows且不允许静默选择多个安装中的任意进程
         if (!OperatingSystem.IsWindows()) throw new IOException("窗口模式仅支持Windows");
         SetProcessDpiAwarenessContext(-4);
-        var expected = Path.Combine(Path.GetFullPath(game), "x64", "This War of Mine.exe");
+        var expected = MaxyModLoader.Deployment.GameExecutableInstaller.ResolveOriginalExecutablePath(game);
         var matches = new List<Process>();
         foreach (var process in Process.GetProcessesByName("This War of Mine"))
         {

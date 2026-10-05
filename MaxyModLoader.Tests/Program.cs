@@ -28,6 +28,14 @@ internal static class Program
         //先检查用户约定的类方法文档和中文注释格式
         Test("中文XML与行注释规范", () => CommentConvention.Verify(Repository));
 
+        //自动启动仅允许固定游戏文件名位于x64入口目录
+        Test("游戏入口路径检测限制目录与文件名", () =>
+        {
+            Assert(GameExecutableInstaller.IsBootstrapPath(Path.Combine("D:\\game", "x64", "This War of Mine.exe")));
+            Assert(!GameExecutableInstaller.IsBootstrapPath(Path.Combine("D:\\game", "This War of Mine.exe")));
+            Assert(!GameExecutableInstaller.IsBootstrapPath(Path.Combine("D:\\game", "x64", "MaxyModLoader.exe")));
+        });
+
         //校验依赖顺序与完整计划的失败行为
         Test("依赖排序与输入顺序无关", () =>
         {
@@ -220,7 +228,7 @@ internal static class Program
             //玩家启动器直接运行自带运行时的应用入口不复制额外运行文件
             var source = Path.Combine(root, "source"); Directory.CreateDirectory(source);
             File.WriteAllText(Path.Combine(source, "MaxyModLoader.exe"), "apphost");
-            File.WriteAllText(Path.Combine(source, "coreclr.dll"), "runtime");
+            File.WriteAllText(Path.Combine(source, ".self-contained"), "single-file\n");
             var game = Path.Combine(root, "game"); Directory.CreateDirectory(Path.Combine(game, "MaxyModLoader", "app"));
             DisplayHost.Install(game, source);
             var script = File.ReadAllText(Path.Combine(game, "MaxyModLoader", "display-host.vbs"));

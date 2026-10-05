@@ -12,18 +12,28 @@ namespace MaxyModLoader.Cli;
 /// <summary>
 /// 提供模组规划、容器检查和实验加载器部署命令
 /// </summary>
-internal static class Program
+public static class Program
 {
     /// <summary>
     /// 分发命令并将可预期错误转换为非零退出码
     /// </summary>
     public static async Task<int> Main(string[] args)
     {
-        //统一控制台编码以正确显示中文模组名称和诊断信息
-        Console.OutputEncoding = Encoding.UTF8;
-        Console.InputEncoding = Encoding.UTF8;
+        //仅命令行管理模式配置控制台避免GUI游戏入口访问控制台句柄
+        var currentExecutable = Environment.ProcessPath;
+        var bootstrapGameRoot = currentExecutable is not null && GameExecutableInstaller.IsBootstrapPath(currentExecutable)
+            ? GameExecutableInstaller.ResolveGameDirectory(currentExecutable)
+            : null;
+        if (bootstrapGameRoot is null)
+        {
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.InputEncoding = Encoding.UTF8;
+        }
         try
         {
+            //原生游戏入口由已安装的同名单文件引导程序启动时自动进入模组加载流程
+            if (bootstrapGameRoot is not null) return await GameLauncher.PlayAsync(bootstrapGameRoot, args, true);
+
             //匹配固定命令形态未知参数直接显示用法
             switch (args)
             {
@@ -37,6 +47,14 @@ internal static class Program
                 case ["display", var game, var mode]: Console.WriteLine(JsonSerializer.Serialize(await DisplayHost.RequestAsync(game, mode))); return 0;
                 case ["display-host", var game]: await DisplayHost.RunAsync(game); return 0;
                 case ["play", var game, .. var forwarded]: return await GameLauncher.PlayAsync(game, forwarded);
+                case ["install-wrapper", var game]:
+                    GameExecutableInstaller.Install(game, Path.Combine(Path.GetFullPath(game), "MaxyModLoader", "app", "MaxyModLoader.Bootstrap.exe"));
+                    Console.WriteLine("已核验并安装游戏自启动引导程序");
+                    return 0;
+                case ["prepare-host", var game]:
+                    DisplayHost.Install(game, Path.Combine(Path.GetFullPath(game), "MaxyModLoader", "app"));
+                    Console.WriteLine("已准备自包含显示设置辅助入口");
+                    return 0;
                 case ["plan", var root]: return Plan(root);
                 case ["hash", var path]: Console.WriteLine($"{ResourceHash.Compute(path):x8}"); return 0;
                 case ["inspect", var container]: return Inspect(container);
@@ -49,19 +67,29 @@ internal static class Program
                     Console.WriteLine("已备份原容器并安装加载器可使用restore恢复");
                     return 0;
                 case ["restore", var game]:
-                    PackageInstaller.Restore(game);
+                    if (File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")) ||
+                        File.Exists(Path.Combine(game, "TWOMLoader", "install-state.json")))
+                        PackageInstaller.Restore(game);
                     DisplayHost.Uninstall(game);
-                    Console.WriteLine("已核验并恢复原容器备份仍保留在MaxyModLoader/backups");
+                    GameExecutableInstaller.Restore(game);
+                    Console.WriteLine("已核验并恢复原版容器和游戏启动程序备份仍保留在MaxyModLoader/backups");
                     return 0;
                 default:
-                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplay <游戏根目录> [Steam启动程序及参数]\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录> [DDS资源目录]\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>\ndisplay <游戏根目录> [borderless|windowed|fullscreen]");
+                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplay <游戏根目录> [Steam启动程序及参数]\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录> [DDS资源目录]\ninstall <游戏根目录> <部署包目录>\ninstall-wrapper <游戏根目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>\ndisplay <游戏根目录> [borderless|windowed|fullscreen]");
                     return args.Length == 0 || args is ["--help"] ? 0 : 1;
             }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             //预期的输入和文件错误不输出无关堆栈但保留明确退出码
-            Console.Error.WriteLine($"错误：{exception.Message}");
+            if (bootstrapGameRoot is not null)
+            {
+                //游戏入口没有控制台时将启动错误写入游戏目录便于排查
+                var log = Path.Combine(bootstrapGameRoot, "MaxyModLoader", "startup.log");
+                Directory.CreateDirectory(Path.GetDirectoryName(log)!);
+                File.AppendAllText(log, $"{DateTime.UtcNow:O} {exception.Message}{Environment.NewLine}", Encoding.UTF8);
+            }
+            else Console.Error.WriteLine($"错误：{exception.Message}");
             return 2;
         }
     }

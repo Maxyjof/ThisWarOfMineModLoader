@@ -16,7 +16,7 @@ internal static class CommentConvention
     public static void Verify(string repository)
     {
         //只检查自有源码目录避免扫描构建产物和本机游戏资源
-        foreach (var directory in new[] { "MaxyModLoader.Core", "MaxyModLoader.Cli", "MaxyModLoader.Tests" })
+        foreach (var directory in new[] { "MaxyModLoader.Core", "MaxyModLoader.Cli", "MaxyModLoader.Bootstrap", "MaxyModLoader.Tests" })
         {
             foreach (var file in Directory.EnumerateFiles(Path.Combine(repository, directory), "*.cs", SearchOption.AllDirectories))
             {

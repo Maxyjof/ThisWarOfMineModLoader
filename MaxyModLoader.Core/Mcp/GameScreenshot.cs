@@ -20,7 +20,7 @@ public static class GameScreenshot
         if (!OperatingSystem.IsWindows()) throw new IOException("游戏窗口截图仅支持Windows");
         //避免系统DPI虚拟化将窗口尺寸缩小从而裁掉右侧和底部
         SetProcessDpiAwarenessContext(-4);
-        var expected = Path.Combine(Path.GetFullPath(gameDirectory), "x64", "This War of Mine.exe");
+        var expected = MaxyModLoader.Deployment.GameExecutableInstaller.ResolveOriginalExecutablePath(gameDirectory);
         var candidates = Process.GetProcessesByName("This War of Mine").Where(process =>
             string.Equals(process.MainModule?.FileName, expected, StringComparison.OrdinalIgnoreCase) && process.MainWindowHandle != 0).ToArray();
         if (candidates.Length != 1) throw new IOException("未找到唯一的目标游戏窗口");

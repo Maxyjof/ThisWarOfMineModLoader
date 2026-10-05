@@ -99,9 +99,18 @@ public sealed class GameBridgeClient
     public async Task<(string Path, string Data)> CaptureAsync()
     {
         //辅助进程只支持固定截图命令不接收任意脚本或桌面输入
-        var start = new ProcessStartInfo("dotnet") { UseShellExecute = false, CreateNoWindow = true,
-            RedirectStandardOutput = true, RedirectStandardError = true };
-        start.ArgumentList.Add(System.Reflection.Assembly.GetEntryAssembly()?.Location ?? throw new IOException("无法确认加载器CLI入口"));
+        //单文件发布从游戏目录辅助应用启动开发版仍使用dotnet和程序集路径
+        var standalone = Path.Combine(game, "MaxyModLoader", "app", "MaxyModLoader.exe");
+        var start = File.Exists(standalone)
+            ? new ProcessStartInfo(standalone) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true }
+            : new ProcessStartInfo("dotnet") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+        if (!File.Exists(standalone))
+        {
+            //开发版程序集与dotnet入口保持在应用基目录
+            var entryName = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name
+                ?? throw new IOException("无法确认加载器CLI入口");
+            start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, entryName + ".dll"));
+        }
         start.ArgumentList.Add("screenshot"); start.ArgumentList.Add(game);
         using var process = Process.Start(start) ?? throw new IOException("无法启动截图辅助进程");
         var output = process.StandardOutput.ReadToEndAsync();

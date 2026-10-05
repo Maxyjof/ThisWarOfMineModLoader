@@ -21,7 +21,15 @@ public static class DisplayHost
         //自包含玩家启动器由VBS直接调用不依赖系统安装的dotnet运行时
         source = Path.GetFullPath(source);
         var destination = Path.Combine(Path.GetFullPath(game), "MaxyModLoader", "host");
-        var selfContained = File.Exists(Path.Combine(source, "MaxyModLoader.exe")) && File.Exists(Path.Combine(source, "coreclr.dll"));
+        var ownershipPath = Path.Combine(destination, "ownership.json");
+        if (File.Exists(ownershipPath))
+        {
+            //升级旧版辅助程序时按所有权指纹移除之前复制的运行库
+            var previous = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(ownershipPath))
+                ?? throw new InvalidDataException("窗口辅助所有权记录无效");
+            if (!previous.TryGetValue("mode", out var previousMode) || previousMode != "self-contained") Uninstall(game);
+        }
+        var selfContained = File.Exists(Path.Combine(source, "MaxyModLoader.exe")) && File.Exists(Path.Combine(source, ".self-contained"));
         Directory.CreateDirectory(destination);
         if (!selfContained)
         {
@@ -180,7 +188,7 @@ public static class DisplayHost
             {
                 foreach (var candidate in Process.GetProcessesByName("This War of Mine"))
                 {
-                    if (string.Equals(candidate.MainModule?.FileName, Path.Combine(game, "x64", "This War of Mine.exe"), StringComparison.OrdinalIgnoreCase) && candidate.MainWindowHandle != 0)
+                    if (string.Equals(candidate.MainModule?.FileName, MaxyModLoader.Deployment.GameExecutableInstaller.ResolveOriginalExecutablePath(game), StringComparison.OrdinalIgnoreCase) && candidate.MainWindowHandle != 0)
                     {
                         if (process is not null) { candidate.Dispose(); throw new IOException("存在多个目标游戏窗口"); }
                         process = candidate;

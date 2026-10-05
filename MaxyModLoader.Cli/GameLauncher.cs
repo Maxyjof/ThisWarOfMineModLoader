@@ -15,12 +15,12 @@ internal static class GameLauncher
     /// <summary>
     /// 构建当前模组包并启动游戏退出后恢复原版资源
     /// </summary>
-    public static async Task<int> PlayAsync(string gameDirectory, string[] forwardedArguments)
+    public static async Task<int> PlayAsync(string gameDirectory, string[] forwardedArguments, bool executableBootstrap = false)
     {
         //先核验游戏路径并准备游戏目录下的模组与缓存位置
         gameDirectory = Path.GetFullPath(gameDirectory);
         if (!Directory.Exists(gameDirectory)) throw new DirectoryNotFoundException($"找不到游戏目录：{gameDirectory}");
-        var executable = Path.Combine(gameDirectory, "x64", "This War of Mine.exe");
+        var executable = GameExecutableInstaller.ResolveOriginalExecutablePath(gameDirectory);
         if (!File.Exists(executable)) throw new FileNotFoundException("找不到已验证版本的游戏程序", executable);
         var modsDirectory = Path.Combine(gameDirectory, "Mods");
         Directory.CreateDirectory(modsDirectory);
@@ -46,9 +46,9 @@ internal static class GameLauncher
         try
         {
             PackageInstaller.Install(gameDirectory, packageDirectory);
-            DisplayHost.Install(gameDirectory, AppContext.BaseDirectory);
+            DisplayHost.Install(gameDirectory, Path.Combine(gameDirectory, "MaxyModLoader", "app"));
             displayHostInstalled = true;
-            var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments);
+            var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments, executableBootstrap);
             Console.WriteLine("MaxyModLoader部署完成正在启动游戏退出后会自动恢复原版文件");
             using var process = Process.Start(start) ?? throw new IOException("无法启动游戏进程");
             await process.WaitForExitAsync();
@@ -153,12 +153,12 @@ internal static class GameLauncher
     /// <summary>
     /// 选择游戏默认程序或Steam传入的原始启动命令
     /// </summary>
-    private static ProcessStartInfo CreateGameStartInfo(string executable, string gameDirectory, string[] forwardedArguments)
+    private static ProcessStartInfo CreateGameStartInfo(string executable, string gameDirectory, string[] forwardedArguments, bool executableBootstrap)
     {
         //默认启动已验证的Steam游戏程序并将工作目录设为游戏根目录
         var command = executable;
         var firstArgument = 0;
-        if (forwardedArguments.Length > 0)
+        if (!executableBootstrap && forwardedArguments.Length > 0)
         {
             //Steam启动选项可传入原命令以保持Steam启动链路
             command = Path.GetFullPath(forwardedArguments[0]);
@@ -166,6 +166,10 @@ internal static class GameLauncher
             if (!File.Exists(command)) throw new FileNotFoundException("Steam传入的游戏启动程序不存在", command);
         }
         var start = new ProcessStartInfo(command) { WorkingDirectory = gameDirectory, UseShellExecute = false };
+        //保留原版x64目录优先级供引擎解析本机依赖DLL
+        var gameBinaryDirectory = Path.Combine(gameDirectory, "x64");
+        var existingPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+        start.Environment["PATH"] = gameBinaryDirectory + Path.PathSeparator + existingPath;
         for (var index = firstArgument; index < forwardedArguments.Length; index++) start.ArgumentList.Add(forwardedArguments[index]);
         return start;
     }

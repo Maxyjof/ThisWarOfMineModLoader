@@ -32,26 +32,23 @@ dotnet run --project MaxyModLoader.Cli -- plan examples
 
 玩家只需安装一次启动器。它读取游戏目录`Mods`文件夹根部的ZIP压缩包，每个压缩包对应一个模组，压缩包根部或唯一一级目录中必须有`mod.json`。启动时自动安全解包、检查依赖与冲突、生成并缓存部署包，然后启动游戏；退出游戏后自动恢复原版容器。Windows目录不区分大小写，游戏已有的`Mods`目录就是玩家放ZIP的位置，原版文件会保留。
 
-在仓库根目录发布自包含启动器并安装到已核验的游戏目录：
+在仓库根目录发布单文件自包含启动器并安装到已核验的游戏目录：
 
 ```powershell
-dotnet publish MaxyModLoader.Cli -c Release -r win-x64 --self-contained true -o artifacts/loader-kit
-./tools/install-loader.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -PublishDirectory "$(Get-Location)\artifacts\loader-kit"
+dotnet publish MaxyModLoader.Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/loader-kit
+dotnet publish MaxyModLoader.Bootstrap -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/loader-bootstrap
+./tools/install-loader.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -PublishDirectory "$(Get-Location)\artifacts\loader-kit" -BootstrapDirectory "$(Get-Location)\artifacts\loader-bootstrap"
 ```
 
-安装脚本把程序放在游戏目录`MaxyModLoader/app`，并创建`使用MaxyModLoader启动.cmd`。把模组ZIP放入游戏目录`Mods`，双击该启动脚本即可运行。也可在Steam启动选项中设置一次，让Steam按钮经过加载器启动：
+安装程序会把自包含加载器放入游戏目录`MaxyModLoader/app`，核验原版EXE指纹后备份至`MaxyModLoader/original`，再将游戏目录`x64/This War of Mine.exe`替换为无控制台的GUI引导入口。把模组ZIP放入游戏目录`Mods`，之后直接从Steam或原游戏入口启动即可自动加载模组。加载器启动原版程序时会转交Steam传入的启动参数，并在游戏退出后恢复被替换的原版资源容器。
 
-```text
-"D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" play "D:\Steam\steamapps\common\This War of Mine" %command%
-```
-
-每次启动会检查ZIP内容并复用匹配的缓存；模组增删或更新后无需手工构建。启动器会在游戏退出后恢复原版容器。若系统意外结束了启动器，可先关闭游戏，再执行恢复命令：
+每次启动会检查ZIP内容并复用匹配的缓存；模组增删或更新后无需手工构建。若游戏或系统意外结束，可先确保游戏已退出，再执行恢复命令。该命令会恢复原版容器和游戏EXE：
 
 ```powershell
 "D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" restore "D:\Steam\steamapps\common\This War of Mine"
 ```
 
-启动器不会修改游戏EXE。原生LiquidEngine不提供读取ZIP或启动前加载插件的接口，因此Steam启动需使用上面的启动选项，或双击生成的启动脚本；直接启动原游戏EXE不会读取模组ZIP。原生内容模组仍须通过本机官方ModTools编译，并且只支持已核验的Steam游戏版本。模组代码以游戏Lua全局环境权限运行，只安装可信来源。
+重新安装或升级加载器时重新发布并运行同一安装脚本即可。若Steam验证游戏文件覆盖了引导入口，再次运行安装脚本即可恢复。加载器不会注入游戏进程或猜测原生调用地址；引导入口仅允许与已核验指纹匹配的游戏版本。原生内容模组仍须通过本机官方ModTools编译。模组Lua代码拥有游戏脚本环境权限，只安装可信来源。
 
 `MaxyModLoader/runtime.log`记录游戏内模组入口日志。日常用户不需要手动调用`build`或`install`；开发者命令仍可用于独立构建部署包。
 
