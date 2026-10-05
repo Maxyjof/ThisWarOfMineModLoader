@@ -86,9 +86,9 @@ Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存
 }
 ```
 
-完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、清单字段、ModdingAPI、原生内容与MCP指南。当前游戏结果见[模组实测矩阵](Docs/Testing/ModTestMatrix.md)。
+完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、能力总览、运行时API参考、原生内容与MCP指南。开发者可以从[快速入门](Docs/Developers/GettingStarted.md)开始，并查看[`examples`](examples)中的可运行示例。当前游戏结果见[模组实测矩阵](Docs/Testing/ModTestMatrix.md)。
 
-开发文档： [模组规范和ModdingAPI](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。加载器API支持生命周期、Lua内部模块、事件、依赖服务、可撤销包装、共享规则和原生内容声明。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
+开发文档：[额外能力总览](Docs/Developers/CapabilityOverview.md)、[运行时API参考](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。除原生内容构建外，加载器API支持Lua内部模块、事件、已存在函数包装、依赖服务、共享规则、按模组隔离的跨启动数据和MCP动作。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
 
 ## 开发者构建
 

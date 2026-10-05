@@ -1,5 +1,7 @@
 import pathlib
 import sys
+import os
+import tempfile
 
 #测试依赖由tests/requirements.txt统一提供
 from lupa.lua51 import LuaRuntime
@@ -219,3 +221,96 @@ if bundle.exists():
     print("通过：C#生成入口在Lua5.1中加载示例模组")
 else:
     raise FileNotFoundError("请先运行C#测试生成完整Lua入口")
+
+#用独立游戏目录验证持久数据API的隔离保存、跨虚拟机读取和损坏恢复
+repository = pathlib.Path.cwd()
+storage_example = (repository / "examples/persistent-storage/main.lua").read_text(encoding="utf-8")
+with tempfile.TemporaryDirectory(prefix="mml-storage-") as storage_root:
+    os.chdir(storage_root)
+    pathlib.Path("MaxyModLoader/storage").mkdir(parents=True)
+    storage_messages = []
+    for expected_count in (1, 2):
+        storage_runtime = LuaRuntime()
+        storage_runtime.globals().print = storage_messages.append
+        storage_runtime.execute((repository / "MaxyModLoader.Core/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
+        storage_runtime.globals().storage_example_source = storage_example
+        storage_runtime.execute(r'''
+--注册并执行真实示例以确认每次启动会读取并递增已有记录
+MaxyModLoader.register_mod({id="twom.storage.example", name="持久存储示例", enabled=true, description_document={}})
+local loaded = MaxyModLoader.load_mod("twom.storage.example", storage_example_source, {},
+    {config={}, modules={}, capabilities={}})
+if not loaded then error(MaxyModLoader.mod_by_id["twom.storage.example"].error) end
+''')
+        assert any(f"示例启动次数：{expected_count}" in message for message in storage_messages)
+
+    #校验标量类型、数据隔离、输入边界、复制语义和幂等操作
+    storage_runtime.execute(r'''
+MaxyModLoader.register_mod({id="twom.storage.contract", name="持久存储契约测试", enabled=true, description_document={}})
+local source = [[return {
+--<summary>
+--验证模组持久存储的类型校验和复制语义
+--</summary>
+on_load=function(context)
+    if context.storage.get("launch_count") ~= nil then error("storage leaked across mod IDs") end
+    context.storage.set("note", "中文换行\n内容")
+    context.storage.set("ratio", 1.25)
+    context.storage.set("enabled", false)
+    if context.storage.get("ratio") ~= 1.25 or context.storage.get("enabled", true) ~= false then error("scalar round trip failed") end
+    if context.storage.set("ratio", 1.25) then error("unchanged value should not write") end
+    local values = context.storage.all()
+    values.ratio = 99
+    if context.storage.get("ratio") ~= 1.25 then error("all exposed the internal table") end
+    if not context.storage.delete("enabled") or context.storage.delete("enabled") then error("delete idempotency failed") end
+    if pcall(context.storage.set, "Uppercase", true) then error("invalid key was accepted") end
+    if pcall(context.storage.set, "nested", {}) then error("table value was accepted") end
+    if pcall(context.storage.set, "not_finite", 0 / 0) then error("NaN was accepted") end
+    if pcall(context.storage.set, "too_long", string.rep("x", 4097)) then error("oversized text was accepted") end
+end}]]
+local loaded = MaxyModLoader.load_mod("twom.storage.contract", source, {}, {config={}, modules={}, capabilities={}})
+if not loaded then error(MaxyModLoader.mod_by_id["twom.storage.contract"].error) end
+''')
+    contract_runtime = LuaRuntime()
+    contract_runtime.globals().print = storage_messages.append
+    contract_runtime.execute((repository / "MaxyModLoader.Core/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
+    contract_runtime.execute(r'''
+--重新创建虚拟机确认字符串和数字已持久化且删除状态也已保存
+MaxyModLoader.register_mod({id="twom.storage.contract", name="持久存储读取测试", enabled=true, description_document={}})
+local source = [[return {
+--<summary>
+--确认新的Lua虚拟机可以读取已保存数据
+--</summary>
+on_load=function(context)
+    if context.storage.get("note") ~= "中文换行\n内容" or context.storage.get("ratio") ~= 1.25 then error("stored values were not restored") end
+    if context.storage.get("enabled") ~= nil then error("deleted value was restored") end
+end}]]
+local loaded = MaxyModLoader.load_mod("twom.storage.contract", source, {}, {config={}, modules={}, capabilities={}})
+if not loaded then error(MaxyModLoader.mod_by_id["twom.storage.contract"].error) end
+''')
+
+    #第一份快照写入失败时第二份仍应保存最后一次完整状态
+    slots = [pathlib.Path(f"MaxyModLoader/storage/twom.storage.example.{slot}.dat") for slot in (0, 1)]
+    assert all(path.exists() for path in slots)
+    generations = [int(path.read_text(encoding="ascii").split("\t", 1)[1].splitlines()[0]) for path in slots]
+    newest = generations.index(max(generations))
+    slots[newest].write_text("damaged current snapshot", encoding="ascii")
+    recovered_runtime = LuaRuntime()
+    recovered_runtime.globals().print = storage_messages.append
+    recovered_runtime.execute((repository / "MaxyModLoader.Core/Runtime/bootstrap.lua").read_text(encoding="utf-8"))
+    recovered_runtime.execute(r'''
+--有效槽损坏时使用另一份完整快照并继续接受当前契约写入
+MaxyModLoader.register_mod({id="twom.storage.example", name="持久存储恢复测试", enabled=true, description_document={}})
+local source = [[return {
+--<summary>
+--确认有效数据槽损坏时可以恢复上一份快照
+--</summary>
+on_load=function(context)
+    if context.storage.get("launch_count") ~= 1 then error("recovery did not select the previous snapshot") end
+    context.storage.set("recovered", true)
+end}]]
+local loaded = MaxyModLoader.load_mod("twom.storage.example", source, {}, {config={}, modules={}, capabilities={}})
+if not loaded then error(MaxyModLoader.mod_by_id["twom.storage.example"].error) end
+''')
+    assert any("持久数据槽损坏" in message for message in storage_messages)
+    os.chdir(repository)
+
+print("通过：Lua5.1模组持久存储、跨启动读取与双槽损坏恢复")

@@ -11,10 +11,12 @@
 ## 开发者
 
 - [制作第一个模组](Developers/GettingStarted.md)：Lua入口、打包与实测流程
+- [能力总览](Developers/CapabilityOverview.md)：官方原生内容之外的运行时扩展和当前限制
 - [清单字段](Developers/Manifest.md)：身份、依赖、模块、配置、Markdown和能力
-- [ModdingAPI](Developers/ModdingAPI.md)：事件、服务、函数包装、规则和生命周期边界
+- [运行时API参考](Developers/ModdingAPI.md)：事件、服务、函数包装、共享规则、持久存储和MCP动作
 - [原生内容](Developers/NativeContent.md)：物品、配方、掉落和交易声明
 - [内置MCP](Developers/MCP.md)：客户端配置、工具、测试方式及权限边界
+- [可运行示例](../examples)：入口、游戏函数观察、共享规则、持久数据和MCP动作
 
 ## 维护与测试
 

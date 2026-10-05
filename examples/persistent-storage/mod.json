@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.storage.example",
+  "name": "跨启动数据示例",
+  "version": "1.0.0",
+  "author": "MaxyModLoader",
+  "description": "演示按模组隔离的持久键值存储，每次启动读取并递增本模组的启动计数。",
+  "descriptionFile": "README.md",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {},
+  "conflicts": [],
+  "features": [
+    "读取跨游戏启动保存的数据",
+    "立即保存模组自己的整数计数",
+    "不修改游戏存档"
+  ],
+  "compatibility": "MaxyModLoaderModdingAPI1.0",
+  "license": "MIT"
+}

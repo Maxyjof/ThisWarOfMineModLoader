@@ -67,6 +67,272 @@ local function guarded(id, callback)
     return ok, result
 end
 
+local storage_header = "MMLSTORE1"
+local storage_max_bytes = 1048576
+local storage_max_entries = 256
+local storage_max_value_bytes = 4096
+
+--<summary>
+--校验模组持久数据的键名格式与长度
+--</summary>
+local function validate_storage_key(key)
+    --限制键名字符避免产生歧义并确保数据只属于当前模组
+    require_condition(type(key) == "string" and #key <= 64 and key:match("^[a-z][a-z0-9_.-]*$"), "invalid storage key")
+    return key
+end
+
+--<summary>
+--把字符串字节编码为仅含小写十六进制的文本
+--</summary>
+local function storage_to_hex(value)
+    --逐字节编码使换行和任意UTF8内容都能安全存入记录
+    local result = {}
+    for index = 1, #value do result[index] = string.format("%02x", value:byte(index)) end
+    return table.concat(result)
+end
+
+--<summary>
+--校验并解码持久数据中的十六进制文本
+--</summary>
+local function storage_from_hex(value)
+    --拒绝奇数长度或非十六进制内容避免静默丢失数据
+    require_condition(#value % 2 == 0 and value:match("^[0-9a-f]*$"), "invalid storage encoding")
+    local result = {}
+    for index = 1, #value, 2 do result[#result + 1] = string.char(tonumber(value:sub(index, index + 1), 16)) end
+    return table.concat(result)
+end
+
+--<summary>
+--校验单个模组数据文件并读取其最新快照
+--</summary>
+local function read_storage_slot(id, slot)
+    --文件名由已校验的模组ID和固定槽位构成不接受模组提供的路径
+    local path = "MaxyModLoader/storage/" .. id .. "." .. tostring(slot) .. ".dat"
+    if not io or type(io.open) ~= "function" then return {exists = true, error = "Lua文件读取接口不可用"} end
+    local file, open_error = io.open(path, "rb")
+    if not file then return {exists = false, error = open_error} end
+
+    --隔离文件读取与格式解析错误使另一份有效快照仍可用于恢复
+    local ok, result = pcall(function()
+        local contents, read_error = file:read("*a")
+        local close_ok, close_error = file:close()
+        file = nil
+        require_condition(contents ~= nil, read_error or "storage read failed")
+        require_condition(close_ok ~= nil, close_error or "storage close failed")
+        require_condition(#contents <= storage_max_bytes, "storage file exceeds maximum size")
+
+        --只接受当前格式标记不尝试解析旧格式或未知版本
+        local generation_text, body = contents:match("^MMLSTORE1\t(%d+)\n(.*)$")
+        require_condition(generation_text ~= nil, "storage format is not MMLSTORE1")
+        local generation = tonumber(generation_text)
+        require_condition(generation ~= nil and generation == generation and generation >= 0 and
+            generation % 1 == 0 and generation < math.huge, "invalid storage generation")
+
+        --只解析完整行并忽略崩溃时可能留下的末尾半行
+        local last_newline = body:match(".*()\n") or 0
+        local complete_body = body:sub(1, last_newline)
+        local values = {}
+        local count = 0
+        for line in complete_body:gmatch("(.-)\n") do
+            local operation, key_hex, value_type, value_hex = line:match("^([SD])\t([0-9a-f]+)\t?([snb]?)\t?([0-9a-f]*)$")
+            require_condition(operation ~= nil, "invalid storage record")
+            local key = validate_storage_key(storage_from_hex(key_hex))
+            if operation == "D" then
+                require_condition(value_type == "" and value_hex == "", "invalid storage delete record")
+                if values[key] ~= nil then values[key] = nil; count = count - 1 end
+            else
+                local encoded = storage_from_hex(value_hex)
+                local value
+                if value_type == "s" then
+                    require_condition(#encoded <= storage_max_value_bytes, "stored string exceeds maximum size")
+                    value = encoded
+                elseif value_type == "n" then
+                    value = tonumber(encoded)
+                    require_condition(value ~= nil and value == value and math.abs(value) < math.huge, "invalid stored number")
+                else
+                    require_condition(value_type == "b" and (encoded == "0" or encoded == "1"), "invalid stored boolean")
+                    value = encoded == "1"
+                end
+                if values[key] == nil then count = count + 1 end
+                require_condition(count <= storage_max_entries, "storage has too many entries")
+                values[key] = value
+            end
+        end
+        return {exists = true, valid = true, path = path, generation = generation, slot = slot,
+            values = values, truncated = #body > last_newline}
+    end)
+
+    --关闭读取期间发生解析错误时遗留的文件句柄
+    if file then pcall(function() file:close() end) end
+    if not ok then return {exists = true, path = path, error = tostring(result)} end
+    return result
+end
+
+--<summary>
+--创建当前模组专属的双槽持久键值存储
+--</summary>
+local function create_storage(id)
+    --读取两份快照并选择代数较新的有效文件
+    local slots = {read_storage_slot(id, 0), read_storage_slot(id, 1)}
+    local selected
+    for _, slot in ipairs(slots) do
+        if slot.valid then
+            if not selected or slot.generation > selected.generation then selected = slot end
+        end
+    end
+
+    --一份快照损坏时保留另一份有效状态并把恢复情况写入日志
+    if selected then
+        for _, slot in ipairs(slots) do
+            if slot.exists and not slot.valid then log(id, "持久数据槽损坏，已从另一份有效快照恢复：" .. tostring(slot.error)) end
+        end
+    else
+        --已有文件却没有有效快照时明确失败不把损坏数据伪装成空状态
+        for _, slot in ipairs(slots) do
+            require_condition(not slot.exists, "模组持久数据损坏：" .. tostring(slot.error))
+        end
+    end
+    --两个快照代数必须不同否则无法确定最近一次已提交的数据
+    if slots[1].valid and slots[2].valid then
+        require_condition(slots[1].generation ~= slots[2].generation, "模组持久数据代数重复")
+    end
+    if selected and selected.truncated then log(id, "持久数据末尾记录不完整，已使用最后一条完整记录") end
+
+    local values = selected and selected.values or {}
+    local active_slot = selected and selected.slot or nil
+    local generation = selected and selected.generation or 0
+    local storage = {}
+
+    --<summary>
+    --把完整新快照写入非活动槽并在成功后切换状态
+    --</summary>
+    local function persist(next_values)
+        --逐键排序使快照稳定并便于诊断同一模组的数据文件
+        local keys = {}
+        for key in pairs(next_values) do keys[#keys + 1] = key end
+        table.sort(keys)
+        local next_generation = generation + 1
+        require_condition(next_generation < math.huge and next_generation % 1 == 0, "storage generation exhausted")
+        local lines = {storage_header .. "\t" .. string.format("%.0f", next_generation) .. "\n"}
+        for _, key in ipairs(keys) do
+            local value = next_values[key]
+            local value_type, encoded
+            if type(value) == "string" then
+                value_type, encoded = "s", value
+            elseif type(value) == "number" then
+                value_type, encoded = "n", string.format("%.17g", value)
+            else
+                value_type, encoded = "b", value and "1" or "0"
+            end
+            lines[#lines + 1] = "S\t" .. storage_to_hex(key) .. "\t" .. value_type .. "\t" .. storage_to_hex(encoded) .. "\n"
+        end
+        local contents = table.concat(lines)
+        require_condition(#contents <= storage_max_bytes, "storage snapshot exceeds maximum size")
+
+        --完整写入临时文件并刷新后才替换较旧的数据槽
+        local target_slot = active_slot == 0 and 1 or 0
+        local target = "MaxyModLoader/storage/" .. id .. "." .. tostring(target_slot) .. ".dat"
+        local temporary = target .. ".tmp"
+        require_condition(io and type(io.open) == "function" and os and type(os.rename) == "function" and
+            type(os.remove) == "function", "Lua文件原子保存接口不可用")
+        local ok, failure = pcall(function()
+            local file, open_error = io.open(temporary, "wb")
+            require_condition(file ~= nil, open_error or "storage temporary file could not be opened")
+            local write_ok, write_error = file:write(contents)
+            if not write_ok then file:close(); error(write_error or "storage write failed", 0) end
+            local flush_ok, flush_error = file:flush()
+            if not flush_ok then file:close(); error(flush_error or "storage flush failed", 0) end
+            local close_ok, close_error = file:close()
+            require_condition(close_ok ~= nil, close_error or "storage close failed")
+
+            --旧活动槽保持不动直到临时快照全部写完并完成替换
+            if slots[target_slot + 1].exists then
+                local remove_ok, remove_error = os.remove(target)
+                require_condition(remove_ok ~= nil, remove_error or "old storage slot could not be removed")
+                slots[target_slot + 1].exists = false
+            end
+            local rename_ok, rename_error = os.rename(temporary, target)
+            require_condition(rename_ok ~= nil, rename_error or "new storage slot could not be installed")
+        end)
+        if not ok then
+            pcall(function() os.remove(temporary) end)
+            error(failure, 2)
+        end
+
+        --新槽替换成功后才提交内存状态并标记下一次写入目标
+        slots[target_slot + 1] = {exists = true, valid = true, slot = target_slot, generation = next_generation}
+        active_slot, generation = target_slot, next_generation
+    end
+
+    --<summary>
+    --读取指定键并在缺少数据时返回经过校验的默认值
+    --</summary>
+    function storage.get(key, default)
+        --默认值与已保存值使用相同的标量类型约束
+        validate_storage_key(key)
+        if default ~= nil then
+            require_condition(type(default) == "string" or type(default) == "number" and default == default and
+                math.abs(default) < math.huge or type(default) == "boolean", "storage default must be a finite scalar")
+            require_condition(type(default) ~= "string" or #default <= storage_max_value_bytes, "storage default string exceeds maximum size")
+        end
+        local value = values[key]
+        if value == nil then return default end
+        return value
+    end
+
+    --<summary>
+    --保存经过大小限制的字符串数值或布尔值
+    --</summary>
+    function storage.set(key, value)
+        --只允许有限标量并跳过没有变化的重复写入
+        validate_storage_key(key)
+        local value_type = type(value)
+        require_condition(value_type == "string" or value_type == "number" or value_type == "boolean", "storage value must be a string, finite number or boolean")
+        require_condition(value_type ~= "number" or value == value and math.abs(value) < math.huge, "storage number must be finite")
+        require_condition(value_type ~= "string" or #value <= storage_max_value_bytes, "storage string exceeds maximum size")
+        if values[key] == value then return false end
+        if values[key] == nil then
+            local count = 0
+            for _ in pairs(values) do count = count + 1 end
+            require_condition(count < storage_max_entries, "storage entry limit reached")
+        end
+        local next_values = {}
+        for existing_key, existing_value in pairs(values) do next_values[existing_key] = existing_value end
+        next_values[key] = value
+        persist(next_values)
+        values = next_values
+        return true
+    end
+
+    --<summary>
+    --删除已保存键并在磁盘快照成功后更新内存
+    --</summary>
+    function storage.delete(key)
+        --不存在的键保持幂等且不产生额外文件写入
+        validate_storage_key(key)
+        if values[key] == nil then return false end
+        local next_values = {}
+        for existing_key, existing_value in pairs(values) do
+            if existing_key ~= key then next_values[existing_key] = existing_value end
+        end
+        persist(next_values)
+        values = next_values
+        return true
+    end
+
+    --<summary>
+    --返回当前模组持久数据的浅复制表
+    --</summary>
+    function storage.all()
+        --复制键值避免调用者绕过校验直接修改内部数据
+        local result = {}
+        for key, value in pairs(values) do result[key] = value end
+        return result
+    end
+
+    return storage
+end
+
 --<summary>
 --创建模组上下文及失败时的订阅和函数包装清理操作
 --</summary>
@@ -88,6 +354,33 @@ local function context_for(id, dependencies, options)
     local allowed_capabilities = {}
     for _, capability in ipairs(options.capabilities) do allowed_capabilities[capability] = true end
     context.log = function(message) log(id, message) end
+
+    --<summary>
+    --惰性创建当前模组专属的数据存储
+    --</summary>
+    local mod_storage
+    local function get_storage()
+        --没有使用数据接口的模组不会产生磁盘访问
+        if not mod_storage then mod_storage = create_storage(id) end
+        return mod_storage
+    end
+    context.storage = {}
+    --<summary>
+    --从模组持久数据读取键值或默认值
+    --</summary>
+    context.storage.get = function(key, default) return get_storage().get(key, default) end
+    --<summary>
+    --保存模组持久数据并返回是否发生变化
+    --</summary>
+    context.storage.set = function(key, value) return get_storage().set(key, value) end
+    --<summary>
+    --删除模组持久数据并返回是否发生变化
+    --</summary>
+    context.storage.delete = function(key) return get_storage().delete(key) end
+    --<summary>
+    --返回模组持久数据的浅复制
+    --</summary>
+    context.storage.all = function() return get_storage().all() end
 
     --<summary>
     --加载并缓存当前模组显式声明的内部模块

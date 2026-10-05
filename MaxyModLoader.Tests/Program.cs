@@ -64,7 +64,7 @@ internal static class Program
         //校验清单边界和真实目录发现行为
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
-        Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 3));
+        Test("实际目录发现全部开发示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 4));
         Test("模组清单必须明确声明当前规范", () =>
         {
             //缺失规范号不能默认为历史格式当前规范仍验证数值本身
@@ -429,6 +429,9 @@ internal static class Program
             var package = Path.Combine(root, "package");
             var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
             PackageInstaller.Install(game, package);
+            //持久数据目录随当前加载器安装创建并在游戏恢复时保留
+            var modStorage = Path.Combine(game, "MaxyModLoader", "storage");
+            Assert(Directory.Exists(modStorage));
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
             //确认恢复后本次会话备份和没有安装日志关联的旧目录都被清理
             var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(Path.Combine(game, "MaxyModLoader", "install-state.json")), ModManifest.JsonOptions)!;
@@ -443,6 +446,7 @@ internal static class Program
             Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")));
             Assert(!Directory.Exists(backup));
             Assert(!Directory.Exists(staleBackup));
+            Assert(Directory.Exists(modStorage));
         }));
         Test("非当前部署格式在修改游戏前被拒绝", () => InWorkspace(root =>
         {

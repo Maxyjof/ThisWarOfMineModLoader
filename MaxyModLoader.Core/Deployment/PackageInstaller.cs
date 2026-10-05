@@ -40,6 +40,8 @@ public static class PackageInstaller
             Check(built + ".dat", item.BuiltDataSha256);
         }
         var nativeState = NativeContentInstaller.Prepare(gameDirectory, packageDirectory, package.Native);
+        //为游戏内Lua运行时预先创建仅由加载器管理的模组数据目录
+        Directory.CreateDirectory(Path.Combine(gameDirectory, "MaxyModLoader", "storage"));
 
         //确认没有活动安装状态后清理异常退出留下的孤立会话备份
         var backupRoot = Path.Combine(gameDirectory, "MaxyModLoader", "backups");
