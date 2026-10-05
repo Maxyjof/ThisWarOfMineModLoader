@@ -151,118 +151,53 @@ end
 --整理所选模组的完整介绍而不是只显示模组ID
 --</summary>
 function manager.details(mod)
-    --说明文件首标题若与面板标题相同则省略避免重复占用滚动空间
-    local description = mod.description ~= '' and mod.description or '作者尚未提供内容介绍'
-    local heading = description:match('^%s*#%s+([^\r\n]+)')
-    if heading == mod.name then description = description:gsub('^%s*#%s+[^\r\n]*\r?\n*', '', 1) end
-    local lines = {'## 版本信息', '**版本：**' .. mod.version .. '　**状态：**' .. (statuses[mod.status] or mod.status),
-        '**作者：**' .. (mod.author ~= '' and mod.author or '未提供'), '', '## 内容介绍',
-        description, '', '## 功能说明'}
-    for _, feature in ipairs(mod.features or {}) do table.insert(lines, '- ' .. feature) end
-    table.insert(lines, '')
-    table.insert(lines, '## 技术信息')
-    table.insert(lines, '**完整名称：**' .. mod.name)
-    table.insert(lines, '**标识：**`' .. mod.id .. '`')
-    table.insert(lines, '**兼容说明：**' .. (mod.compatibility or '未提供'))
+    local blocks = {}
+    --元数据直接构造语义节点作者说明使用打包时生成的标准Markdown语法树
+    local function block(kind, value, level)
+        table.insert(blocks, {kind = kind, level = level, runs = {{text = value}}})
+    end
+    block('heading', '版本信息', 2)
+    block('paragraph', '版本：' .. mod.version .. '  |  状态：' .. (statuses[mod.status] or mod.status))
+    block('paragraph', '作者：' .. (mod.author ~= '' and mod.author or '未提供'))
+    local document = mod.description_document or {{kind = 'paragraph', runs = {{text = mod.description or '作者尚未提供内容介绍'}}}}
+    for index, node in ipairs(document) do
+        local title = {}
+        for _, run in ipairs(node.runs or {}) do table.insert(title, run.text) end
+        --同名顶级标题已在面板顶部显示其他标题和所有嵌套结构完整保留
+        if not (index == 1 and node.kind == 'heading' and node.level == 1 and table.concat(title) == mod.name) then
+            table.insert(blocks, node)
+        end
+    end
+    if #(mod.features or {}) > 0 then
+        block('heading', '功能说明', 2)
+        local list = {kind = 'list', children = {}}
+        for _, feature in ipairs(mod.features) do
+            table.insert(list.children, {kind = 'item', children = {{kind = 'paragraph', runs = {{text = feature}}}}})
+        end
+        table.insert(blocks, list)
+    end
+    block('rule', '')
+    block('heading', '技术信息', 3)
+    block('paragraph', '标识：' .. mod.id)
+    block('paragraph', '兼容说明：' .. (mod.compatibility or '未提供'))
     --依赖排序显示使不同运行时的介绍顺序保持一致
     local dependencies = {}
     for id, version in pairs(mod.dependencies or {}) do table.insert(dependencies, id .. '，最低版本' .. version) end
     table.sort(dependencies)
-    table.insert(lines, '**依赖：**' .. (#dependencies > 0 and table.concat(dependencies, '，') or '无'))
-    table.insert(lines, '**冲突：**' .. (#(mod.conflicts or {}) > 0 and table.concat(mod.conflicts, '，') or '无'))
-    table.insert(lines, '**主页：**' .. (mod.website ~= '' and mod.website or '未提供'))
-    table.insert(lines, '**许可：**' .. (mod.license ~= '' and mod.license or '未指定'))
-    if mod.error and mod.error ~= '' then table.insert(lines, '### 错误详情\n' .. mod.error) end
-    return manager.markdown(table.concat(lines, '\n'))
+    block('paragraph', '依赖：' .. (#dependencies > 0 and table.concat(dependencies, '，') or '无'))
+    block('paragraph', '冲突：' .. (#(mod.conflicts or {}) > 0 and table.concat(mod.conflicts, '，') or '无'))
+    block('paragraph', '主页：' .. (mod.website ~= '' and mod.website or '未提供'))
+    block('paragraph', '许可：' .. (mod.license ~= '' and mod.license or '未指定'))
+    if mod.error and mod.error ~= '' then block('heading', '错误详情', 3); block('paragraph', mod.error) end
+    return api.markdown.layout(blocks, 595, characters)
 end
 
 --<summary>
---将安全的Markdown块和行内标记转换为带样式的文字行
+--将缺少语法树的兼容文本作为普通段落显示
 --</summary>
 function manager.markdown(value)
-    local rows, current, units, fenced = {}, {}, 0, false
-    --按有限的Markdown子集读取标题列表引用代码和普通段落
-    local function flush()
-        if #current > 0 then table.insert(rows, {runs = current}); current, units = {}, 0 end
-    end
-    --同一行按标记拆成有独立颜色的文本段不把说明交给脚本执行
-    local function inline(source, style)
-        local runs, index = {}, 1
-        local function add(text_value, kind)
-            if text_value == '' then return end
-            local previous = runs[#runs]
-            if previous and previous.style == kind then previous.text = previous.text .. text_value
-            else table.insert(runs, {text = text_value, style = kind}) end
-        end
-        while index <= #source do
-            local matched, next_index
-            local link = source:sub(index):match('^%[([^%]]+)%]%((https?://[^%s%)]+)%)')
-            if link then
-                local whole = source:sub(index):match('^(%[[^%]]+%]%(%w+://[^%s%)]+%))')
-                if whole then matched, next_index = whole, index + #whole; add(link, 'link') end
-            end
-            if not matched then
-                for _, marker in ipairs({{'**', 'strong'}, {'__', 'strong'}, {'`', 'code'}, {'*', 'emphasis'}, {'_', 'emphasis'}}) do
-                    if source:sub(index, index + #marker[1] - 1) == marker[1] then
-                        local close = source:find(marker[1], index + #marker[1], true)
-                        if close and close > index + #marker[1] then
-                            matched, next_index = source:sub(index, close + #marker[1] - 1), close + #marker[1]
-                            add(source:sub(index + #marker[1], close - 1), marker[2])
-                            break
-                        end
-                    end
-                end
-            end
-            if not matched then add(source:sub(index, index), style); index = index + 1
-            else index = next_index end
-        end
-        return runs
-    end
-    --逐行识别块级标记并保留代码块中的字面内容
-    for raw in (tostring(value or ''):gsub('[\r\n]+$', '') .. '\n'):gmatch('(.-)\r?\n') do
-        if raw:match('^%s*```') then
-            flush()
-            fenced = not fenced
-        else
-            local content, style = raw, fenced and 'code' or 'body'
-            if not fenced then
-                local heading, heading_text = raw:match('^%s*(#+)%s+(.+)$')
-                if heading and #heading <= 3 then content, style = heading_text, 'heading' end
-                if content == raw then
-                    local marker, rest = raw:match('^%s*([%-%*%+])%s+(.+)$')
-                    if marker then content, style = '• ' .. rest, 'bullet' end
-                end
-                if content == raw then
-                    local number, rest = raw:match('^%s*(%d+[%.%)])%s+(.+)$')
-                    if number then content, style = number .. ' ' .. rest, 'bullet' end
-                end
-                if content == raw and raw:match('^%s*>%s*') then content, style = raw:gsub('^%s*>%s*', '› '), 'quote' end
-                if content == raw and raw:match('^%s*[-*_][-*_][-*_]+%s*$') then content, style = '────────', 'rule' end
-            end
-            if content == '' then
-                flush()
-                --保留段落空行形成Markdown标题和正文间距
-                if #rows > 0 and not rows[#rows].blank then table.insert(rows, {runs = {}, blank = true}) end
-            else
-                if style == 'heading' or style == 'rule' then flush() end
-                for _, run in ipairs(inline(content, style)) do
-                    for _, item in ipairs(characters(run.text)) do
-                        local weight = item.code < 128 and 1 or 2
-                        if units + weight > 58 then flush() end
-                        local previous = current[#current]
-                        if previous and previous.style == run.style then previous.text = previous.text .. item.text
-                        else table.insert(current, {text = item.text, style = run.style}) end
-                        units = units + weight
-                    end
-                end
-                --每个Markdown原始段落独立成行保留换行语义和列表缩进
-                flush()
-                if style == 'heading' or style == 'rule' then flush() end
-            end
-        end
-    end
-    flush()
-    return rows
+    --正式描述全部由打包阶段的标准解析器生成不再运行简化的正则替代解析器
+    return api.markdown.layout({{kind = 'paragraph', runs = {{text = tostring(value or '')}}}}, 595, characters)
 end
 
 --<summary>
@@ -275,6 +210,9 @@ function manager.refresh()
         row:SetVisible(mod ~= nil)
         if mod then
             row:FindElementByName('MML_ROW_' .. index .. '_TEXT'):SetText(unicode(caption(mod.name, 30)))
+            --选择颜色由刷新本身维护鼠标停在游戏窗口外时也保持所选条目可辨认
+            row:FindElementByName('MML_ROW_' .. index .. '_TEXT'):SetColor(1, index == manager.selection and 0.55 or 1,
+                index == manager.selection and 0.16 or 1, 1)
             row:FindElementByName('MML_ROW_' .. index .. '_STATUS'):SetText(unicode(statuses[mod.status] or mod.status))
         end
     end
@@ -291,34 +229,62 @@ function manager.refresh()
     manager.detail_pane:DeleteChildren()
     manager.detail_anchor = nil
     manager.detail_lines = {}
+    manager.detail_geometry = {}
+    manager.detail_height = 0
+    --细线和低对比底色只绘制Markdown内部装饰保留外层炭笔贴图
+    local function shape(parent, name, x, y, width, height, color)
+        local element = UIElement:new()
+        element:SetName(name)
+        element:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
+        element:SetAnchor(vector(0, 0))
+        element:SetPosition(vector(x, y))
+        element:SetSize(vector(math.max(1, width), height))
+        element:SetColorMode(UICOLOR_STATIC)
+        element:SetColor(unpack(color))
+        element:ClearFlag(UIFLAG_FOCUSABLEWITHMOUSE)
+        parent:AddChild(element)
+    end
     for index, row in ipairs(lines) do
-        --每个逻辑行拥有独立滚动坐标内部文本段只负责呈现强调色
+        --实际高度与绝对原点用于裁剪和滚动标题表格及代码块不共用固定行高
         local container = UIElement:new()
         container:SetName('MML_DETAIL_LINE_' .. index)
         container:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
         container:SetAnchor(vector(0, 0))
-        container:SetSize(vector(625, 26))
+        container:SetSize(vector(625, row.height))
         container:SetColorMode(UICOLOR_STATIC)
         container:SetColor(1, 1, 1, 0)
         manager.detail_pane:AddChild(container)
         manager.detail_lines[index] = container
-        local x, height = 0, 18
-        for span, run in ipairs(row.runs) do
-            local size, color = 18, {1, 1, 1, 1}
-            if run.style == 'heading' then size, color = 22, {1, 0.45, 0, 1}
-            elseif run.style == 'strong' then color = {1, 0.62, 0.2, 1}
-            elseif run.style == 'emphasis' then color = {0.82, 0.82, 0.82, 1}
-            elseif run.style == 'code' then color = {0.85, 0.72, 0.54, 1}
-            elseif run.style == 'link' then color = {0.72, 0.82, 0.86, 1}
-            elseif run.style == 'quote' then color = {0.78, 0.78, 0.78, 1}
-            elseif run.style == 'rule' then color = {0.55, 0.55, 0.55, 1} end
-            local rendered = text(container, 'MML_DETAIL_SPAN_' .. index .. '_' .. span,
-                run.text, x, 0, 625 - x, 26, size)
-            rendered:SetColor(unpack(color))
-            height = math.max(height, size)
-            for _, item in ipairs(characters(run.text)) do x = x + (item.code < 128 and 1 or 2) * 10.75 end
+        manager.detail_geometry[index] = {top = row.top, height = row.height}
+        manager.detail_height = math.max(manager.detail_height, row.top + row.height)
+        local left, width = row.left or 0, row.width or 595
+        if row.decoration == 'code' then shape(container, 'MML_CODE_BG_' .. index, left - 7, 0, width + 14, row.height, {1, 1, 1, 0.08})
+        elseif row.decoration == 'quote' then shape(container, 'MML_QUOTE_' .. index, left - 13, 0, 2, row.height, {0.7, 0.62, 0.48, 0.8})
+        elseif row.decoration == 'rule' then shape(container, 'MML_RULE_' .. index, left, 5, width, 1, {1, 1, 1, 0.3})
+        elseif row.decoration == 'table' then
+            shape(container, 'MML_TABLE_BOTTOM_' .. index, left, row.height - 1, width, 1, {1, 1, 1, 0.32})
+            for column = 1, row.columns - 1 do
+                shape(container, 'MML_TABLE_COLUMN_' .. index .. '_' .. column, left + width * column / row.columns, 0, 1, row.height, {1, 1, 1, 0.18})
+            end
         end
-        container:SetSize(vector(625, height + 4))
+        for span, run in ipairs(row.runs) do
+            local size, color, x, y = run.size or 18, {1, 1, 1, 1}, run.x or 0, run.y or 0
+            if row.decoration == 'heading' then color = {1, 0.45, 0, 1}
+            elseif run.code then color = {0.85, 0.72, 0.54, 1}
+            elseif run.link and run.link ~= '' then color = {0.72, 0.82, 0.86, 1}
+            elseif row.decoration == 'quote' then color = {0.83, 0.83, 0.83, 1} end
+            --粗体增加原生字形笔画而非仅改颜色强调与链接下划线和删除线独立组合
+            if run.strong then
+                local bold = text(container, 'MML_DETAIL_BOLD_' .. index .. '_' .. span, run.text, x + 0.6, y, 625 - x, size * 1.5, size)
+                bold:SetColor(unpack(color))
+            end
+            local rendered = text(container, 'MML_DETAIL_SPAN_' .. index .. '_' .. span, run.text, x, y, 625 - x, size * 1.5, size)
+            rendered:SetColor(unpack(color))
+            if run.strike then shape(container, 'MML_STRIKE_' .. index .. '_' .. span, x, y + size * 0.62, run.width, 1, color) end
+            if run.emphasis or run.link and run.link ~= '' then
+                shape(container, 'MML_UNDERLINE_' .. index .. '_' .. span, x, y + size * 1.25, run.width, 1, color)
+            end
+        end
     end
     --介绍更换后从顶部显示列表仍保留自己的滚动位置
     manager.offsets = manager.offsets or {}
@@ -359,11 +325,13 @@ function manager.move_scroll(region, offset)
     if not elements then error('滚动区域无效') end
     local height, stride = region == 'list' and 410 or 350, region == 'list' and 57 or 25
     local inset, last_height = region == 'list' and 5 or 0, region == 'list' and 56 or 26
-    local maximum = math.max(0, inset + math.max(0, #elements - 1) * stride + last_height - height)
+    local content_height = region == 'detail' and manager.detail_height or inset + math.max(0, #elements - 1) * stride + last_height
+    local maximum = math.max(0, content_height - height)
     offset = math.max(0, math.min(offset, maximum))
     --避免原生聚焦接口居中和继承旧偏移所有内容使用同一绝对偏移
     for index, element in ipairs(elements) do
-        element:SetPosition(vector(0, inset + (index - 1) * stride - offset))
+        local geometry = region == 'detail' and manager.detail_geometry and manager.detail_geometry[index]
+        element:SetPosition(vector(0, (geometry and geometry.top or inset + (index - 1) * stride) - offset))
     end
     manager.offsets = manager.offsets or {}
     manager.offsets[region] = offset
@@ -465,7 +433,9 @@ function manager.scroll(argument)
     local elements = region == 'list' and manager.rows or region == 'detail' and manager.detail_lines
     if not elements or not index or index < 1 or index > #elements then error('滚动目标无效') end
     local height, stride = region == 'list' and 410 or 350, region == 'list' and 57 or 25
-    local result = manager.move_scroll(region, (index - 1) * stride - height / 2 + stride / 2)
+    local geometry = region == 'detail' and manager.detail_geometry and manager.detail_geometry[index]
+    local center = geometry and geometry.top + geometry.height / 2 or (index - 1) * stride + stride / 2
+    local result = manager.move_scroll(region, center - height / 2)
     result.index = index
     return result
 end
@@ -527,6 +497,7 @@ function manager.attach()
         manager.detail_pane, manager.list_pane, manager.scroll_template = nil, nil, nil
         manager.offsets, manager.last_scroll, manager.scrollbars, manager.drag = {}, nil, {}, nil
         manager.detail_lines, manager.footer, manager.visible_text = {}, nil, ''
+        manager.detail_geometry, manager.detail_height = nil, nil
         manager.skin_applied, manager.skin_error = nil, nil
         manager.palette = nil
         manager.layout_width = nil
@@ -766,7 +737,7 @@ function manager.pointer(down, up, element)
         if name == 'BUTTON_MAXY_MODS' then item.element:SetHighlight(item == pointed, false) end
         local label = item.element:FindElementByName(name .. '_TEXT')
         if label then
-            local row = name:match('^MML_ROW_(%d+)_TEXT$')
+            local row = name:match('^MML_ROW_(%d+)$')
             local selected = row and tonumber(row) == manager.selection
             if item == pointed or selected then label:SetColor(1, 0.55, 0.16, 1)
             else label:SetColor(1, 1, 1, 1) end

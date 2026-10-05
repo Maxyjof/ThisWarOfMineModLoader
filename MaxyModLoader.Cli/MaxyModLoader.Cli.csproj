@@ -4,4 +4,5 @@
     <AssemblyName>MaxyModLoader</AssemblyName>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../MaxyModLoader.Core/MaxyModLoader.Core.csproj" /></ItemGroup>
+  <ItemGroup><Content Include="../third-party/markdig-license.txt" Link="ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 </Project>

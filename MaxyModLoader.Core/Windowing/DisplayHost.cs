@@ -11,7 +11,7 @@ namespace MaxyModLoader.Windowing;
 /// </summary>
 public static class DisplayHost
 {
-    private static readonly string[] RuntimeFiles = ["MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll"];
+    private static readonly string[] RuntimeFiles = ["MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll", "Markdig.dll", "ThirdPartyNotices.txt"];
 
     /// <summary>
     /// 将当前加载器的运行文件和隐藏启动入口安装到游戏目录
@@ -51,8 +51,11 @@ public static class DisplayHost
         var ownership = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(manifest))
             ?? throw new InvalidDataException("窗口辅助所有权记录无效");
         var names = RuntimeFiles.Append("display-host.vbs").ToArray();
-        if (ownership.Count != names.Length || names.Any(name => !ownership.ContainsKey(name)))
+        //兼容升级前不包含Markdown解析器的固定运行文件集合
+        if (!ownership.ContainsKey("MaxyModLoader.Core.dll") || ownership.Keys.Any(name => !names.Contains(name)) ||
+            names.Where(name => name is not ("Markdig.dll" or "ThirdPartyNotices.txt")).Any(name => !ownership.ContainsKey(name)))
             throw new InvalidDataException("窗口辅助所有权记录包含未知文件");
+        names = names.Where(ownership.ContainsKey).ToArray();
         var paths = names.Select(name => Path.Combine(name == "display-host.vbs" ? root : host, name)).ToArray();
         //全部预校验完成后才删除任何文件避免篡改时留下半卸载状态
         for (var index = 0; index < names.Length; index++)
@@ -152,6 +155,8 @@ public static class DisplayHost
                 if (process is null) await Task.Delay(200);
             }
             if (process is null) throw new IOException("未找到目标游戏会话");
+            //片头或资源载入可能暂不处理Lua帧先等待只读探测成功才执行偏好变更
+            await WaitForBridgeAsync(bridge, process);
             //旧请求不跨会话重放保存的偏好只在本次启动中应用一次
             var request = Path.Combine(root, "display-request.txt");
             if (File.Exists(request)) File.Delete(request);
@@ -201,6 +206,30 @@ public static class DisplayHost
             throw;
         }
         finally { process?.Dispose(); }
+    }
+
+    /// <summary>
+    /// 等待加载期间的只读控制桥探测而不重放任何窗口操作
+    /// </summary>
+    private static async Task WaitForBridgeAsync(GameBridgeClient bridge, Process process)
+    {
+        //游戏窗口出现不代表Lua主线程已经处理请求资源加载时间较长时保持有界等待
+        var watch = Stopwatch.StartNew();
+        while (!process.HasExited && watch.Elapsed < TimeSpan.FromSeconds(120))
+        {
+            try
+            {
+                var reply = await bridge.CallAsync("game_state");
+                if (reply.GetProperty("ok").GetBoolean()) return;
+            }
+            catch (Exception exception) when (exception is IOException or TimeoutException or JsonException)
+            {
+                //这里只重试状态读取偏好应用和玩家请求仍各执行一次
+            }
+            await Task.Delay(300);
+            process.Refresh();
+        }
+        throw new TimeoutException("等待游戏控制桥初始化超时");
     }
 
     /// <summary>

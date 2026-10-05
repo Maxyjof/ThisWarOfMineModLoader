@@ -30,6 +30,11 @@ public static class LuaBundle
         using var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.bootstrap.lua")!;
         using var reader = new StreamReader(resource, Utf8);
         text.Append(reader.ReadToEnd()).Append('\n');
+        //结构化Markdown排版器在管理界面读取文档之前初始化
+        using var markdownResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.markdown.lua")!;
+        using var markdownReader = new StreamReader(markdownResource, Utf8);
+        text.Append("local install_markdown, markdown_error = compile(").Append(Quote(markdownReader.ReadToEnd()))
+            .Append(", '@MaxyModLoader/markdown.lua')\nif not install_markdown then error(markdown_error) end\ninstall_markdown()\n");
         //界面回调先于模组包装使后续扩展保留管理界面的帧处理
         using var managerResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.manager.lua")!;
         using var managerReader = new StreamReader(managerResource, Utf8);
@@ -81,6 +86,7 @@ public static class LuaBundle
         text.Append("MaxyModLoader.register_mod({id=").Append(Quote(manifest.Id))
             .Append(",name=").Append(Quote(manifest.Name)).Append(",version=").Append(Quote(manifest.Version))
             .Append(",author=").Append(Quote(manifest.Author)).Append(",description=").Append(Quote(manifest.Description))
+            .Append(",description_document=").Append(MarkdownContent.Encode(MarkdownContent.Parse(manifest.Description)))
             .Append(",compatibility=").Append(Quote(manifest.Compatibility)).Append(",website=").Append(Quote(manifest.Website))
             .Append(",license=").Append(Quote(manifest.License)).Append(",enabled=").Append(manifest.Enabled ? "true" : "false")
             .Append(",features={").AppendJoin(',', manifest.Features.Select(Quote)).Append("},dependencies={");

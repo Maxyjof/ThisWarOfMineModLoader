@@ -30,6 +30,7 @@ gGame = {GetPreFSEUIScreen = function() return nil end}
 gGameDelegate = {GetGameOverlayScreen = function() return fresh end}
 dead = setmetatable({}, {__index = function() error('访问已释放的原生控件') end})
 ''')
+    lua.execute((ROOT / 'MaxyModLoader.Core/Runtime/markdown.lua').read_text(encoding='utf-8'))
     lua.execute((ROOT / 'MaxyModLoader.Core/Runtime/manager.lua').read_text(encoding='utf-8'))
     lua.execute('''
 local manager = MaxyModLoader.manager
@@ -44,16 +45,57 @@ assert(not manager.activate('old'))
 local value = manager.unicode('中文A😀').values
 assert(#value == 5 and value[1] == 20013 and value[2] == 25991 and value[3] == 65)
 assert(value[4] == 55357 and value[5] == 56832)
---Markdown标题列表和行内强调转换为有样式的安全文本段
-local markdown = manager.markdown('# 标题' .. string.char(10) .. string.char(10) .. '- **重点**与`代码` [主页](https://example.com)')
-assert(#markdown == 3 and markdown[1].runs[1].text == '标题' and markdown[1].runs[1].style == 'heading')
-assert(markdown[2].blank and markdown[3].runs[1].text == '• ')
-assert(markdown[3].runs[2].text == '重点' and markdown[3].runs[2].style == 'strong')
-assert(markdown[3].runs[#markdown[3].runs].text == '主页' and markdown[3].runs[#markdown[3].runs].style == 'link')
-local detail = manager.details({id = 'twom.example', name = '示例模组', version = '1.0.0', status = 'loaded', author = 'Maxy',
-    description = '# 示例模组' .. string.char(10) .. string.char(10) .. '正文段落', features = {},
+--标准语法树排版保留嵌套缩进表格列和不同的块级高度
+local decode = function(value)
+    local result = {}
+    for index = 1, #value do table.insert(result, {text = value:sub(index, index), code = value:byte(index)}) end
+    return result
+end
+local rows, height = MaxyModLoader.markdown.layout({
+    {kind = 'heading', level = 2, runs = {{text = 'Heading'}}},
+    {kind = 'paragraph', runs = {{text = 'Text with', strong = true}, {text = ' nested', strong = true, emphasis = true}}},
+    {kind = 'list', ordered = true, start = 4, children = {
+        {kind = 'item', children = {{kind = 'paragraph', runs = {{text = 'Outer'}}},
+            {kind = 'list', children = {{kind = 'item', children = {{kind = 'paragraph', runs = {{text = 'Inner'}}}}}}}}}}},
+    {kind = 'table', children = {
+        {kind = 'table_row', header = true, children = {
+            {kind = 'table_cell', children = {{kind = 'paragraph', runs = {{text = 'Key'}}}}},
+            {kind = 'table_cell', alignment = 'right', children = {{kind = 'paragraph', runs = {{text = 'Value'}}}}}}},
+        {kind = 'table_row', children = {
+            {kind = 'table_cell', children = {{kind = 'paragraph', runs = {{text = 'Long value wraps'}}}}},
+            {kind = 'table_cell', children = {{kind = 'paragraph', runs = {{text = '12'}}}}}}}}},
+    {kind = 'code', language = 'lua', runs = {{text = 'a = 1' .. string.char(10) .. 'b = 2', code = true}}},
+    {kind = 'paragraph', runs = {{text = 'After table'}}}
+}, 170, decode)
+local tables, nested, code, combined, ending = 0, false, 0, false, false
+local previous = -1
+for _, row in ipairs(rows) do
+    assert(row.top > previous and row.height > 0)
+    previous = row.top
+    if row.decoration == 'table' then
+        tables = tables + 1
+        assert(row.columns == 2 and #row.runs > 0)
+        if row.header then assert(row.runs[1].strong and row.runs[2].x > 85) end
+    end
+    if row.decoration == 'code' then code = code + 1 end
+    for _, run in ipairs(row.runs) do
+        if run.text == 'Inner' then nested = run.x >= 50 end
+        if run.strong and run.emphasis then combined = true end
+        if run.text == 'After table' then ending = true end
+    end
+end
+assert(tables == 2 and nested and code == 3 and combined and ending)
+assert(height == rows[#rows].top + rows[#rows].height)
+local detail = manager.details({id = 'twom.example', name = 'Example', version = '1.0.0', status = 'loaded', author = 'Maxy',
+    description_document = {{kind = 'heading', level = 1, runs = {{text = 'Example'}}},
+        {kind = 'paragraph', runs = {{text = 'Description paragraph'}}}}, features = {},
     dependencies = {}, conflicts = {}, website = '', license = '', compatibility = ''})
-assert(detail[5].runs[1].text == '内容介绍' and detail[6].runs[1].text == '正文段落')
+local found = false
+for _, row in ipairs(detail) do for _, run in ipairs(row.runs) do
+    assert(run.text ~= 'Example')
+    if run.text == 'Description paragraph' then found = true end
+end end
+assert(found)
 
 --创建可见层级验证点击文字子控件也能激活其按钮
 local function element(name, parent)
@@ -91,6 +133,12 @@ manager.buttons = {MML_ROW_2 = {element = list_button, handler = function() end}
 manager.selection = 2
 manager.pointer(false, false, list_button)
 assert(label_color[1] == 1 and label_color[2] == 0.55 and label_color[3] == 0.16)
+--鼠标离开后仍保留选择高亮取消选择则恢复白色
+manager.pointer(false, false, nil)
+assert(label_color[2] == 0.55)
+manager.selection = 1
+manager.pointer(false, false, nil)
+assert(label_color[2] == 1 and label_color[3] == 1)
 manager.open = false
 manager.buttons = {test = {element = button, handler = function() calls = calls + 1 end}}
 manager.open = true
@@ -217,6 +265,14 @@ assert(manager.scroll_pointer(false, true, nil, {y = 2}) and manager.drag == nil
 assert(not manager.scroll_pointer(false, false, nil, {y = 0.5}))
 manager.update_scrollbar('list', 0, 410)
 assert(not bar_visible)
+
+--不同块高度的介绍首尾边界使用绝对几何而非行数乘固定步长
+manager.detail_geometry, manager.detail_height = {}, 900
+for index = 1, 30 do manager.detail_geometry[index] = {top = (index - 1) * 30, height = 30} end
+assert(manager.scroll('detail|30').maximum == 550)
+assert(detail_positions[30] + 30 == 350)
+assert(manager.move_scroll('detail', -5).offset == 0 and detail_positions[1] == 0)
+manager.detail_geometry, manager.detail_height = nil, nil
 
 --原版入口必须允许原配方动作执行不能采用默认的立即切换模式
 manager.open = false

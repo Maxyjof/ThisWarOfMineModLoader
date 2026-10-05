@@ -85,6 +85,31 @@ internal static class Program
             File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"../README.md\"}");
             Reject<InvalidDataException>(() => ModCatalog.Discover(root));
         }));
+        Test("标准Markdown保留嵌套转义引用和代码语义", () =>
+        {
+            //检查标准解析结果而不是仅检查输入标记存在
+            var blocks = MarkdownContent.Parse("标题\n====\n\n**粗体与*嵌套***，\\*字面星号\\* &amp; [链接][ref]\n换行  \n硬换行\n\n> 引用\n>\n> - 父级\n>   - 子级\n\n```lua\nprint('**保持原样**')\n```\n\n[ref]: https://example.com\n");
+            Assert(blocks[0].Kind == "heading" && blocks[0].Level == 1);
+            var runs = blocks[1].Runs;
+            Assert(runs.Any(run => run.Strong && run.Emphasis && run.Text == "嵌套"));
+            Assert(string.Concat(runs.Select(run => run.Text)).Contains("*字面星号* &"));
+            Assert(runs.Any(run => run.Link == "https://example.com") && runs.Any(run => run.Text == "\n"));
+            Assert(blocks[2].Kind == "quote" && blocks[2].Children.Any(node => node.Kind == "list"));
+            Assert(blocks[3].Kind == "code" && blocks[3].Runs.Single().Text.Contains("**保持原样**"));
+        });
+        Test("Markdown表格任务列表和危险地址有明确结构", () =>
+        {
+            //表格列对齐与任务状态保留脚本协议不成为操作链接
+            var blocks = MarkdownContent.Parse("|名称|数值|\n|:---|---:|\n|**工具**|12|\n\n- [x] 完成\n- [ ] 待办\n\n[危险](javascript:alert) ![图示](image.png) ~~删除~~\n");
+            Assert(blocks[0].Kind == "table" && blocks[0].Children[0].Header);
+            Assert(blocks[0].Children[1].Children[1].Alignment == "right");
+            Assert(blocks[1].Children[0].Children[0].Runs.Any(run => run.Text.Contains("[x]")));
+            Assert(blocks[2].Runs.Any(run => run.Text == "危险" && run.Link == ""));
+            Assert(blocks[2].Runs.Any(run => run.Image == "image.png") && blocks[2].Runs.Any(run => run.Strike));
+            Reject<InvalidDataException>(() => MarkdownContent.Parse(new string('a', 16385)));
+            var encoded = MarkdownContent.Encode(MarkdownContent.Parse("```\n\"} error('注入') --\n```"));
+            Assert(encoded.Contains(LuaBundle.Quote("\"} error('注入') --")));
+        });
         Test("中型模组模块禁止目录逃逸", () => InWorkspace(root =>
         {
             //入口合法而内部模块非法时必须在扫描阶段拒绝整个模组
@@ -124,7 +149,7 @@ internal static class Program
         {
             //合成运行文件核验复制清单不将日志或个人配置带入安装
             var source = Path.Combine(root, "source"); Directory.CreateDirectory(source);
-            foreach (var name in new[] { "MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll" })
+            foreach (var name in new[] { "MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll", "Markdig.dll", "ThirdPartyNotices.txt" })
                 File.WriteAllText(Path.Combine(source, name), name);
             File.WriteAllText(Path.Combine(source, "private.txt"), "keep");
             var game = Path.Combine(root, "game");
