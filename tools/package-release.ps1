@@ -81,7 +81,8 @@ $sampleMods = @(
     @{ Name = '更多枪械模组'; Source = 'mods\more-guns' },
     @{ Name = '弹药补给模组'; Source = 'mods\ammunition-supply' },
     @{ Name = '野战工具与防护装备'; Source = 'mods\field-equipment' },
-    @{ Name = '军火交易扩展'; Source = 'mods\weapon-trading' }
+    @{ Name = '军火交易扩展'; Source = 'mods\weapon-trading' },
+    @{ Name = '开局物资实测包'; Source = 'playtests\mods\starter-armory' }
 )
 $samplesArchive = [IO.Compression.ZipFile]::Open($sampleZip, [IO.Compression.ZipArchiveMode]::Create)
 try {

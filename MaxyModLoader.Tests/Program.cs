@@ -735,8 +735,10 @@ internal static class Program
             File.WriteAllBytes(Path.Combine(output, "bundle.lua"), Encoding.UTF8.GetBytes(bundle));
             Reject<InvalidDataException>(() => LuaBundle.Compile([0x1b, 0x4c], plan));
             //额外导出实际多模组包供独立解释器执行每个内部模块
-            var playtestMods = ModCatalog.Discover(Path.Combine(Repository, "playtests", "mods"));
-            Assert(playtestMods.Count == 9);
+            //开局物资模组依赖内容目录内的物品模组由独立测试验证避免混入九模组脚本组合
+            var playtestMods = ModCatalog.Discover(Path.Combine(Repository, "playtests", "mods"))
+                .Where(mod => mod.Manifest.Id != "twom.play.starter-armory").ToArray();
+            Assert(playtestMods.Length == 9);
             var playtestPlan = LoadPlanner.Create(playtestMods);
             Assert(playtestPlan.IsValid);
             File.WriteAllBytes(Path.Combine(output, "playtest-bundle.lua"), LuaBundle.Compile(Encoding.UTF8.GetBytes("return true"), playtestPlan));

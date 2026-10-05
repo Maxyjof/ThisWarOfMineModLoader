@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.play.starter-armory",
+  "name": "开局物资实测包",
+  "version": "0.1.0",
+  "dependencies": {
+    "twom.play.bridge": "0.2.0",
+    "twom.content.ammunition": "0.1.0",
+    "twom.content.field-equipment": "0.1.0",
+    "twom.content.more-guns": "0.1.0",
+    "twom.content.weapon-trading": "0.1.0"
+  },
+  "author": "MaxyModLoader",
+  "description": "仅用于新存档实测。第1天首次进入庇护所时，将40把新增枪械、4种扩展弹药补给、6种工具装备各发放1件，并将4类原版子弹各发放30发。物资发给第一名幸存者携带，不会伪装成公共仓库注入。",
+  "features": [
+    "一次发放50种模组新增物品，每种1件",
+    "手枪弹、霰弹、步枪弹和通用弹药各30发",
+    "跨游戏启动记录发放状态，避免重复领取",
+    "依赖枪械、弹药、装备、交易和游戏事件桥模组"
+  ],
+  "compatibility": "测试包针对Steam BuildID22193501，需同时启用依赖模组",
+  "license": "MIT",
+  "descriptionFile": "README.md",
+  "entry": "main.lua"
+}

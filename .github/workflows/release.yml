@@ -25,7 +25,7 @@ jobs:
       - name: 运行Lua和管理界面回归测试
         shell: pwsh
         run: |
-          $tests = @('tests/test_runtime.py', 'tests/test_modpack.py', 'tests/test_manager.py', 'tests/test_mcp.py', 'tests/test_display.py')
+          $tests = @('tests/test_runtime.py', 'tests/test_modpack.py', 'tests/test_starter_armory.py', 'tests/test_manager.py', 'tests/test_mcp.py', 'tests/test_display.py')
           foreach ($test in $tests) {
             python -X utf8 $test
             if ($LASTEXITCODE -ne 0) { throw "$test回归测试失败" }
@@ -56,12 +56,13 @@ jobs:
           } finally { $loaderArchive.Dispose() }
           $sampleArchive = [IO.Compression.ZipFile]::OpenRead($samples.FullName)
           try {
-            if ($sampleArchive.Entries.Count -lt 8) { throw '示例模组包内容不足' }
+            if ($sampleArchive.Entries.Count -lt 9) { throw '示例模组包内容不足' }
             $requiredModFiles = [ordered]@{
               '更多枪械模组.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/MoreGuns.dds')
               '弹药补给模组.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/Ammunition.dds')
               '野战工具与防护装备.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/FieldEquipment.dds')
               '军火交易扩展.zip' = @('mod.json', 'native-content.json', 'README.md')
+              '开局物资实测包.zip' = @('mod.json', 'main.lua', 'README.md')
             }
             foreach ($modName in $requiredModFiles.Keys) {
               $entry = $sampleArchive.GetEntry($modName)
