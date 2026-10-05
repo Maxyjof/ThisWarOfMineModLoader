@@ -45,7 +45,10 @@ public static class ModCatalog
             var entry = manifest.Enabled ? ResolveEntry(directory, manifest.Entry) : "";
             //启用模组的每个显式模块都必须属于同一个模组目录
             if (manifest.Enabled)
+            {
                 foreach (var path in manifest.Modules.Values) _ = ResolveEntry(directory, path);
+                if (manifest.NativeContentFile.Length > 0) _ = ResolveLocalFile(directory, manifest.NativeContentFile);
+            }
             result.Add(new(directory, manifest, entry));
         }
         return result;
@@ -67,7 +70,7 @@ public static class ModCatalog
     /// <summary>
     /// 解析模组目录内的文本文件并拒绝目录逃逸或符号链接
     /// </summary>
-    private static string ResolveLocalFile(string directory, string relative)
+    public static string ResolveLocalFile(string directory, string relative)
     {
         //拒绝绝对路径、驱动器限定及特殊路径段
         if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Contains(':'))

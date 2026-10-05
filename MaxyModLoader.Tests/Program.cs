@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 using MaxyModLoader.Archives;
 using MaxyModLoader.Deployment;
 using MaxyModLoader.Mods;
@@ -366,6 +367,75 @@ internal static class Program
         }));
 
         //输出可由独立Lua5.1解释器执行的完整引导脚本
+        Test("原生内容声明拒绝路径重复物品和错误配方", () =>
+        {
+            //新增物品限定自有前缀成本和时长必须是有限合法值
+            var item = new NativeItem("MML_Test", "Machinegun", "测试物品", "中文介绍", new(), [], 45);
+            new NativeContent([item], []).Validate();
+            Reject<InvalidDataException>(() => new NativeContent([item with { Id = "../Gun" }], []).Validate());
+            Reject<InvalidDataException>(() => new NativeContent([item, item with { Id = "MML_test" }], []).Validate());
+            Reject<InvalidDataException>(() => new NativeContent([item with { Recipes = [new("MetalWorkshop3", double.NaN, new() { ["Parts"] = 1 })] }], []).Validate());
+            Reject<InvalidDataException>(() => new NativeContent([item], [new("LootGen_Map11", "MML_Unknown", 0, 1)]).Validate());
+        });
+        Test("物品配方补丁只改直接属性且保留其他模板数据", () =>
+        {
+            //合成模板不含官方素材检查同名嵌套属性不会被误改
+            var document = XDocument.Parse("""
+                <KosovoItemElementConfig><Properties><Prop Name="Name" Value="Machinegun"/><Prop Name="StringName" Value="old"/>
+                <Prop Name="StringDescription" Value="old"/><Prop Name="Value" Value="74"/><Prop Name="HP" Value="-1"/>
+                <Prop Name="PassiveMultipliers"><Entry><Properties><Prop Name="ParameterName" Value="DamageMultiplier"/>
+                <Prop Name="MultiplierValue" Value="50"/><Prop Name="Value" Value="keep"/></Properties></Entry></Prop>
+                <Prop Name="CraftingRecipes"><Entry>old</Entry></Prop></Properties></KosovoItemElementConfig>
+                """);
+            var item = new NativeItem("MML_Test", "Machinegun", "测试", "介绍", new() { ["Value"] = "90" },
+                [new("MetalWorkshop3", 1.5, new() { ["WeaponParts"] = 4 })], 45);
+            NativeContentCompiler.ApplyItem(document, item, new HashSet<string> { "MetalWorkshop3", "WeaponParts" });
+            Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "HP").Attribute("Value")!.Value == "-1");
+            Assert(document.Descendants("Prop").Any(node => (string?)node.Attribute("Value") == "keep"));
+            Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "Count").Attribute("Value")!.Value == "4");
+            Reject<InvalidDataException>(() => NativeContentCompiler.ApplyItem(document, item with { Properties = new() { ["Missing"] = "0" } }, new HashSet<string>()));
+        });
+        Test("原生语言字典保留中文代理项和长度边界", () =>
+        {
+            //字符数按UTF16计数与原版二进制语言格式一致
+            var data = LiquidLanguage.Encode(new Dictionary<string, string> { ["MML/Test"] = "测试😀" });
+            using var reader = new BinaryReader(new MemoryStream(data));
+            Assert(reader.ReadUInt32() == data.Length - 4 && reader.ReadUInt32() == 1);
+            Assert(Encoding.UTF8.GetString(reader.ReadBytes(reader.ReadUInt16())) == "MML/Test");
+            var count = reader.ReadUInt16(); Assert(count == 4 && Encoding.Unicode.GetString(reader.ReadBytes(count * 2)) == "测试😀");
+            Assert(reader.BaseStream.Position == data.Length);
+        });
+        Test("原生登记安装拒绝第三方修改并逐字节恢复原列表", () => InWorkspace(root =>
+        {
+            //原生产物使用自有合成字节验证安装所有权不运行游戏或官方工具
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
+            var source = CreateFixture(game);
+            var package = Path.Combine(root, "package");
+            var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
+            Directory.CreateDirectory(Path.Combine(package, "native"));
+            var files = new Dictionary<string, string>();
+            foreach (var name in NativeContentCompiler.FileNames)
+            {
+                var path = Path.Combine(package, "native", name); File.WriteAllText(path, "fixture-" + name);
+                files.Add(name, PackageBuilder.Fingerprint(path));
+            }
+            manifest = manifest with { Native = new(files, ["MML_Test"]) };
+            File.WriteAllText(Path.Combine(package, "package.json"), JsonSerializer.Serialize(manifest, ModManifest.JsonOptions));
+            Directory.CreateDirectory(Path.Combine(game, "Mods"));
+            var list = Path.Combine(game, "Mods", "Mods.list"); var original = Encoding.UTF8.GetBytes("other|已有模组|说明|disabled|local|SWG");
+            File.WriteAllBytes(list, original);
+            PackageInstaller.Install(game, package);
+            var installed = File.ReadAllBytes(list); Assert(Encoding.UTF8.GetString(installed).Contains("MaxyModLoaderNative|"));
+            File.AppendAllText(list, "third-party");
+            Reject<InvalidDataException>(() => PackageInstaller.Restore(game));
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.BuiltDataSha256);
+            File.WriteAllBytes(list, installed);
+            //模拟登记尚未完成以及部分自有文件已被恢复的混合中断状态
+            File.WriteAllBytes(list, original); File.Delete(Path.Combine(game, "Mods", "MaxyModLoaderNative_common.idx"));
+            PackageInstaller.Restore(game);
+            Assert(File.ReadAllBytes(list).AsSpan().SequenceEqual(original));
+            Assert(!Directory.EnumerateFiles(Path.Combine(game, "Mods"), "MaxyModLoaderNative_*").Any());
+        }));
         Test("官方未压缩容器格式保留资源并拒绝伪造长度", () => InWorkspace(root =>
         {
             //官方编译器实测使用000300头部资源仍按逐条标志读取

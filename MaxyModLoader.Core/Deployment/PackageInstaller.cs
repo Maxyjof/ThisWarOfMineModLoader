@@ -7,7 +7,7 @@ namespace MaxyModLoader.Deployment;
 /// <summary>
 /// 记录安装前备份与当前部署包身份以支持中断恢复
 /// </summary>
-public sealed record InstallState(PackageManifest Package, string BackupDirectory);
+public sealed record InstallState(PackageManifest Package, string BackupDirectory, NativeInstallState? Native = null);
 
 /// <summary>
 /// 安装离线Lua加载器容器并保留可核验的原文件备份
@@ -39,6 +39,7 @@ public static class PackageInstaller
             Check(built + ".idx", item.BuiltIndexSha256);
             Check(built + ".dat", item.BuiltDataSha256);
         }
+        var nativeState = NativeContentInstaller.Prepare(gameDirectory, packageDirectory, package.Native);
 
         //先备份两份原文件并写入恢复日志再开始任何目标替换
         var backup = Path.Combine(gameDirectory, "MaxyModLoader", "backups", Guid.NewGuid().ToString("N"));
@@ -51,8 +52,9 @@ public static class PackageInstaller
             Check(Path.Combine(backup, item.Container + ".idx"), item.OriginalIndexSha256);
             Check(Path.Combine(backup, item.Container + ".dat"), item.OriginalDataSha256);
         }
+        NativeContentInstaller.Backup(gameDirectory, backup, nativeState);
         using (var state = new FileStream(statePath, FileMode.CreateNew))
-            JsonSerializer.Serialize(state, new InstallState(package, Path.GetRelativePath(gameDirectory, backup)), ModManifest.JsonOptions);
+            JsonSerializer.Serialize(state, new InstallState(package, Path.GetRelativePath(gameDirectory, backup), nativeState), ModManifest.JsonOptions);
 
         //游戏已停止单文件替换使用临时文件后重命名中断时保留恢复日志
         foreach (var item in containers)
@@ -64,6 +66,7 @@ public static class PackageInstaller
             Check(target + ".dat", item.BuiltDataSha256);
             Check(target + ".idx", item.BuiltIndexSha256);
         }
+        NativeContentInstaller.Install(gameDirectory, packageDirectory, package.Native, nativeState);
     }
 
     /// <summary>
@@ -83,6 +86,7 @@ public static class PackageInstaller
         var backup = Path.GetFullPath(Path.Combine(gameDirectory, state.BackupDirectory));
         var backupRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(statePath)!, "backups")) + Path.DirectorySeparatorChar;
         if (!backup.StartsWith(backupRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("备份路径超出本次游戏安装目录。");
+        NativeContentInstaller.CheckRestore(gameDirectory, backup, state.Package.Native, state.Native);
         //全部容器校验通过才恢复任意文件中断状态允许各文件仍然是原版
         foreach (var item in containers)
         {
@@ -102,6 +106,7 @@ public static class PackageInstaller
             Check(target + ".dat", item.OriginalDataSha256);
             Check(target + ".idx", item.OriginalIndexSha256);
         }
+        NativeContentInstaller.Restore(gameDirectory, backup, state.Package.Native, state.Native);
         File.Delete(statePath);
     }
 

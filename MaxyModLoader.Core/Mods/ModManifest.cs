@@ -15,6 +15,7 @@ public sealed record ModManifest
     public string Author { get; init; } = "";
     public string Description { get; init; } = "";
     public string DescriptionFile { get; init; } = "";
+    public string NativeContentFile { get; init; } = "";
     public string[] Features { get; init; } = [];
     public string Compatibility { get; init; } = "";
     public string Website { get; init; } = "";
@@ -46,7 +47,8 @@ public sealed record ModManifest
         if (Dependencies is null || Conflicts is null || Modules is null || Settings is null)
             throw new InvalidDataException("依赖、冲突、模块和配置不能为null");
         //管理界面读取原始UTF8文本不允许空引用或无效网页协议
-        if (Author is null || Description is null || Description.Length > 16384 || DescriptionFile is null ||
+        if (Author is null || Description is null || Description.Length > 16384 || NativeContentFile is null ||
+            NativeContentFile.Length > 240 || NativeContentFile.Length > 0 && Path.GetExtension(NativeContentFile) != ".json" || DescriptionFile is null ||
             DescriptionFile.Length > 240 || DescriptionFile.Length > 0 &&
             !Path.GetExtension(DescriptionFile).Equals(".md", StringComparison.OrdinalIgnoreCase) &&
             !Path.GetExtension(DescriptionFile).Equals(".markdown", StringComparison.OrdinalIgnoreCase) ||

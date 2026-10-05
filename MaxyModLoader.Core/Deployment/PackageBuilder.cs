@@ -13,6 +13,7 @@ public sealed record PackageManifest(string Container, string OriginalIndexSha25
     string BuiltIndexSha256, string BuiltDataSha256, string[] Mods)
 {
     public PackageManifest? Textures { get; init; }
+    public NativePackage? Native { get; init; }
 }
 
 /// <summary>
@@ -35,6 +36,8 @@ public static class PackageBuilder
         var outputBase = Path.Combine(outputDirectory, name);
         var originalIndex = Fingerprint(source.BasePath + ".idx");
         var originalData = Fingerprint(source.BasePath + ".dat");
+        //原生内容由本机官方工具编译成独立差异包不会覆盖主脚本资源
+        var native = NativeContentCompiler.Compile(Path.GetDirectoryName(source.BasePath)!, plan, outputDirectory);
 
         //编译后写入独立目录并确认源文件没有在构建期间发生变化
         var compiled = LuaBundle.Compile(source.Read(mainHash), plan);
@@ -61,7 +64,8 @@ public static class PackageBuilder
             plan.Ordered.Select(m => m.Manifest.Id).ToArray())
         {
             Textures = new PackageManifest("textures-s3", originalTextureIndex, originalTextureData,
-                Fingerprint(textureOutput + ".idx"), Fingerprint(textureOutput + ".dat"), [])
+                Fingerprint(textureOutput + ".idx"), Fingerprint(textureOutput + ".dat"), []),
+            Native = native
         };
         File.WriteAllText(Path.Combine(outputDirectory, "package.json"), JsonSerializer.Serialize(manifest, ModManifest.JsonOptions));
         return manifest;
