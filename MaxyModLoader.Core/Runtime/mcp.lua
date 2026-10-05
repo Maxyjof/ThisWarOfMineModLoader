@@ -163,6 +163,25 @@ function module.hit_test(argument)
 end
 
 --<summary>
+--读取实际注册物品的公开参数以验证原生配置编译结果
+--</summary>
+function module.item_config(name)
+    --名称只作为原生查询键不能包含路径或可执行表达式
+    if type(name) ~= 'string' or #name > 96 or not name:match('^[A-Za-z][A-Za-z0-9_]*$') then error('物品名称无效') end
+    if not gKosovoItemConfig then error('原生物品配置尚未就绪') end
+    local entry = gKosovoItemConfig:GetEntryWithName(name)
+    if not entry then return {name = name, registered = false} end
+    --只复制已核验的数字属性避免返回原生对象或读取未知偏移
+    local result = {name = name, registered = true, properties = {}}
+    for _, property in ipairs({'Value', 'StackSize', 'HP', 'BulletsPerShot', 'BulletTimeInterval',
+        'CooldownTime', 'CombatSinA', 'CombatSinB', 'CombatSinC', 'CombatSinMax', 'DamageBoostMultiplier'}) do
+        local value = entry[property]
+        if type(value) == 'number' then result.properties[property] = value end
+    end
+    return result
+end
+
+--<summary>
 --分发白名单命令所有游戏操作均在主线程执行
 --</summary>
 function module.dispatch(command, argument)
@@ -225,10 +244,15 @@ function module.dispatch(command, argument)
         return MaxyModLoader.manager.state()
     end
     if command == "inspect_type" then return module.inspect(argument) end
+    if command == 'item_config' then return module.item_config(argument) end
     if command == 'ui_hit_test' then local element, result = module.hit_test(argument); return result end
     if command == 'ui_click_point' then
         local element, result = module.hit_test(argument)
         if not element or not element:IsEnabled() then error('坐标处没有可操作控件') end
+        --原生命中缓存可能保留已关闭页面控件必须核验整条父链
+        for _, node in ipairs(result.chain) do
+            if not node.visible or not node.enabled then error('坐标命中控件属于隐藏或禁用页面') end
+        end
         --自有控件也必须经过原生命中不允许按名字直接调用函数冒充点击验证
         local manager = MaxyModLoader.manager
         if manager and manager.pointed_button(element) then

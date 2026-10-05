@@ -366,6 +366,20 @@ internal static class Program
         }));
 
         //输出可由独立Lua5.1解释器执行的完整引导脚本
+        Test("官方未压缩容器格式保留资源并拒绝伪造长度", () => InWorkspace(root =>
+        {
+            //官方编译器实测使用000300头部资源仍按逐条标志读取
+            var source = CreateFixture(root);
+            var index = File.ReadAllBytes(source + ".idx");
+            index[2] = 0;
+            File.WriteAllBytes(source + ".idx", index);
+            var archive = LiquidArchive.Open(source);
+            Assert(Encoding.UTF8.GetString(archive.Read(MainHash)).Contains("original"));
+            //压缩总标记不改变每条资源的边界校验
+            index[15] = 255; index[16] = 255; index[17] = 255; index[18] = 127;
+            File.WriteAllBytes(source + ".idx", index);
+            Reject<InvalidDataException>(() => LiquidArchive.Open(source));
+        }));
         Test("导出Lua集成验证入口", () =>
         {
             var plan = LoadPlanner.Create(ModCatalog.Discover(Path.Combine(Repository, "examples")));

@@ -57,7 +57,7 @@ internal static class Program
                     return args.Length == 0 || args is ["--help"] ? 0 : 1;
             }
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException or TimeoutException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException or TimeoutException)
         {
             //预期的输入和文件错误不输出无关堆栈但保留明确退出码
             Console.Error.WriteLine($"错误：{exception.Message}");

@@ -22,6 +22,7 @@ public sealed class McpServer(GameBridgeClient bridge)
         new("game_state", "game_state", "读取真实场景天数、暂停状态和角色饥饿疲劳疾病受伤参数"),
         new("game_screenshot", "screenshot", "只读捕获目标游戏窗口返回PNG图像不激活窗口或发送键鼠输入"),
         new("inspect_type", "inspect_type", "列出公开Lua类型的绑定方法仅用于接口诊断不执行任意源码", "name"),
+        new("item_config", "item_config", "读取原生物品注册状态及已公开的价值堆叠和枪械参数不生成物资", "name"),
         new("mods_list", "mods_list", "列出MaxyModLoader发现的模组及详细介绍和真实加载状态"),
         new("mod_manager", "mod_manager", "读取独立模组管理面板的可见状态当前选择滚动窗口偏移和鼠标滚轮记录"),
         new("mod_scroll", "mod_scroll", "将模组管理滚动窗口移到指定列表条目或介绍行格式为list|序号或detail|行号", "target", ReadOnly: false),

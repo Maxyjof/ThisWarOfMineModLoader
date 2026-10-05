@@ -39,11 +39,11 @@ public sealed class LiquidArchive
         using var data = File.OpenRead(basePath + ".dat");
         if (index.Length < 11 || (index.Length - 11) % 17 != 0) throw new InvalidDataException("索引长度不符合 11 + n × 17。");
         if (index.Length > 11 + 17L * 1_000_000) throw new InvalidDataException("索引条目过多。");
-        //保留原始头部只允许公开旧版本与本机实测版本
+        //保留原始头部只允许公开旧版本与本机实测版本包含官方编译器的未压缩输出
         var header = new byte[11];
         index.ReadExactly(header);
-        if (header[0] != 0 || header[2] != 1 || header[1] is not (3 or 6))
-            throw new InvalidDataException("未知容器版本：当前只接受 00 03 01 和 00 06 01，需先分析该游戏版本。");
+        if (header[0] != 0 || !(header[1] == 3 && header[2] is 0 or 1 || header[1] == 6 && header[2] == 1))
+            throw new InvalidDataException("未知容器版本：只接受000300、000301和000601");
         var count = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(3));
         if (count != (index.Length - 11) / 17) throw new InvalidDataException("索引声明的条目数与长度不符。");
         //逐条读取小端索引不解压数据即可验证所有资源的存储范围

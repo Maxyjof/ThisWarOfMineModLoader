@@ -291,5 +291,34 @@ assert(not pcall(manager.scroll, 'list|1'))
     print('通过：界面引用清理、UTF16字符、原生鼠标处理、独立滚轮边界与自有控件调整边界')
 
 
+    #原生物品查询只读白名单参数缺失返回未注册不虚构默认物品
+    lua.execute('''
+gGameDelegate = {}
+MaxyModLoader.log = function() end
+local calls = 0
+gKosovoItemConfig = {GetEntryWithName = function(self, name)
+    calls = calls + 1
+    if name == 'MML_Test' then return {Value = 90, StackSize = 1, BulletsPerShot = 1} end
+end}
+item_calls = function() return calls end
+''')
+    lua.execute((ROOT / 'MaxyModLoader.Core/Runtime/mcp.lua').read_text(encoding='utf-8'))
+    lua.execute('''
+local bridge = MaxyModLoader.mcp
+local value = bridge.dispatch('item_config', 'MML_Test')
+assert(value.registered and value.properties.Value == 90 and value.properties.BulletsPerShot == 1)
+assert(not bridge.dispatch('item_config', 'Missing').registered)
+assert(not pcall(bridge.item_config, '../MML_Test') and item_calls() == 2)
+gKosovoItemConfig = nil
+assert(not pcall(bridge.item_config, 'MML_Test'))
+--已关闭设置页留下的原生命中缓存不得被模拟点击
+bridge.hit_test = function()
+    return {IsEnabled = function() return true end}, {chain = {{visible = true, enabled = true}, {visible = false, enabled = true}}}
+end
+assert(not pcall(bridge.dispatch, 'ui_click_point', '0.5,0.5'))
+''')
+    print('通过：MCP只读物品注册查询与名称边界')
+
+
 if __name__ == '__main__':
     main()
