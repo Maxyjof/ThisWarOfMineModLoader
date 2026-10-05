@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.rules.tuner",
+  "name": "生存规则调整示例",
+  "version": "1.0.0",
+  "author": "MaxyModLoader",
+  "description": "依赖规则提供方并展示读取、受范围限制的调整与变更通知",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {
+    "twom.rules.provider": "1.0.0"
+  },
+  "conflicts": [],
+  "features": ["读取依赖规则", "调整规则值", "监听规则变化"],
+  "compatibility": "MaxyModLoaderModdingAPI1.0",
+  "license": "MIT"
+}

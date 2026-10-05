@@ -27,6 +27,7 @@ public sealed class McpServer(GameBridgeClient bridge)
         new("mod_manager", "mod_manager", "读取独立模组管理面板的可见状态当前选择滚动窗口偏移和鼠标滚轮记录"),
         new("mod_scroll", "mod_scroll", "将模组管理滚动窗口移到指定列表条目或介绍行格式为list|序号或detail|行号", "target", ReadOnly: false),
         new("quit_game", "quit", "请求游戏正常退出以进行可恢复部署", ReadOnly: false),
+        new("rule_list", "rules_list", "读取运行中的模组规则及其当前值、默认值、范围和来源模组"),
         new("set_pause", "pause", "明确设置游戏用户暂停状态", "paused", "boolean", false),
         new("settings_state", "settings_state", "读取原版窗口设置行真实模式待应用选择后台服务和错误状态"),
         new("ui_click", "ui_click", "按元素名称在游戏当前原生界面触发点击不控制Windows桌面", "name", ReadOnly: false),

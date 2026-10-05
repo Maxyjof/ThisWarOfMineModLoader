@@ -3,7 +3,8 @@ local compile = loadstring or load
 local loaded = {}
 local listeners = {}
 local services = {}
-local api = { name = "MaxyModLoader", version = "0.3.0", loaded = loaded, mods = {}, mod_by_id = {} }
+local rules = {}
+local api = { name = "MaxyModLoader", version = "0.3.0", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
 MaxyModLoader = api
 --保留旧API名称使已经发布的模组继续兼容
 TWOMLoader = api
@@ -70,7 +71,7 @@ end
 --</summary>
 local function context_for(id, dependencies, options)
     --记录模组拥有的注册项以便入口失败后撤销
-    local context = { id = id, api_version = api.version }
+    local context = { id = id, api_version = api.api_version, loader_version = api.version }
     context.config = options.config or {}
     local module_cache = {}
     local module_loading = {}
@@ -80,6 +81,8 @@ local function context_for(id, dependencies, options)
     services[id] = {}
     local owned_listeners = {}
     local owned_wrappers = {}
+    local owned_rules = {}
+    local owned_rule_changes = {}
     context.log = function(message) log(id, message) end
 
     --<summary>
@@ -147,13 +150,143 @@ local function context_for(id, dependencies, options)
         table.insert(owned_wrappers, item)
         return function() item.active = false end
     end
+    context.rules = {}
+    --<summary>
+    --校验规则值与声明的类型范围和枚举约束一致
+    --</summary>
+    local function validate_rule_value(definition, value)
+        --拒绝Lua中可传播的NaN与无穷数避免规则结果不稳定
+        if definition.type == "number" then
+            require_condition(type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge, "rule requires a finite number")
+            require_condition(definition.minimum == nil or value >= definition.minimum, "rule value is below minimum")
+            require_condition(definition.maximum == nil or value <= definition.maximum, "rule value is above maximum")
+        elseif definition.type == "boolean" then
+            require_condition(type(value) == "boolean", "rule requires a boolean")
+        elseif definition.type == "string" then
+            require_condition(type(value) == "string", "rule requires a string")
+            require_condition(#value <= (definition.max_length or 4096), "rule string exceeds maximum length")
+            if definition.values then
+                local found = false
+                for _, choice in ipairs(definition.values) do if choice == value then found = true; break end end
+                require_condition(found, "rule value is not an allowed choice")
+            end
+        else
+            error("unsupported rule type", 2)
+        end
+        return value
+    end
+    --<summary>
+    --将规则名称限定在提供方命名空间并验证本地声明
+    --</summary>
+    local function resolve_rule(provider, name)
+        require_condition(allowed_services[provider], "undeclared rule dependency: " .. tostring(provider))
+        require_condition(provider == id or loaded[provider], "rule provider not loaded")
+        require_condition(type(name) == "string" and name:match("^[a-z][a-z0-9_.-]*$"), "invalid rule name")
+        local key = provider .. ":" .. name
+        local rule = rules[key]
+        require_condition(rule ~= nil, "unknown rule: " .. key)
+        return key, rule
+    end
+    context.rules.define = function(name, definition)
+        --只接收有限且有默认值的简单规则不执行模组传入的表达式
+        require_condition(type(name) == "string" and #name <= 64 and name:match("^[a-z][a-z0-9_.-]*$") and type(definition) == "table", "invalid rule definition")
+        require_condition(definition.type == "number" or definition.type == "boolean" or definition.type == "string", "unsupported rule type")
+        require_condition(definition.description == nil or type(definition.description) == "string" and #definition.description <= 256, "invalid rule description")
+        if definition.type == "number" then
+            require_condition(definition.minimum == nil or type(definition.minimum) == "number" and definition.minimum == definition.minimum and math.abs(definition.minimum) < math.huge, "invalid rule minimum")
+            require_condition(definition.maximum == nil or type(definition.maximum) == "number" and definition.maximum == definition.maximum and math.abs(definition.maximum) < math.huge, "invalid rule maximum")
+            require_condition(definition.minimum == nil or definition.maximum == nil or definition.minimum <= definition.maximum, "rule minimum exceeds maximum")
+        elseif definition.minimum ~= nil or definition.maximum ~= nil then
+            error("only number rules may declare bounds", 2)
+        end
+        if definition.type == "string" and definition.values ~= nil then
+            require_condition(type(definition.values) == "table" and #definition.values > 0 and #definition.values <= 128, "string rule choices must contain one to 128 values")
+            local seen = {}
+            for _, choice in ipairs(definition.values) do
+                require_condition(type(choice) == "string" and #choice <= 4096, "string rule choices must be short strings")
+                require_condition(not seen[choice], "duplicate string rule choice")
+                seen[choice] = true
+            end
+        elseif definition.values ~= nil then
+            error("only string rules may declare choices", 2)
+        end
+        if definition.max_length ~= nil then
+            require_condition(definition.type == "string" and type(definition.max_length) == "number" and definition.max_length >= 1 and definition.max_length <= 4096 and definition.max_length % 1 == 0, "invalid string rule maximum length")
+        end
+        local key = id .. ":" .. name
+        require_condition(rules[key] == nil, "duplicate rule: " .. key)
+        local rule = {owner = id, name = name, type = definition.type, default = definition.default,
+            minimum = definition.minimum, maximum = definition.maximum, values = definition.values,
+            description = tostring(definition.description or ""), watchers = {}}
+        rule.value = validate_rule_value(rule, definition.default)
+        rules[key] = rule
+        table.insert(owned_rules, key)
+        return key
+    end
+    context.rules.get = function(provider, name)
+        --读取规则要求自有模组或清单中直接声明的依赖
+        if name == nil then name, provider = provider, id end
+        local _, rule = resolve_rule(provider or id, name)
+        return rule.value
+    end
+    context.rules.set = function(provider, name, value)
+        --消费者只能修改已声明依赖提供的规则
+        if value == nil then value, name, provider = name, provider, id end
+        local key, rule = resolve_rule(provider or id, name)
+        validate_rule_value(rule, value)
+        if rule.value == value then return false end
+        local previous = rule.value
+        if owned_rule_changes[key] == nil then owned_rule_changes[key] = previous end
+        rule.value = value
+        for _, subscription in ipairs(rule.watchers) do
+            if subscription.active then guarded(subscription.id, function() subscription.callback(value, previous, key) end) end
+        end
+        return true
+    end
+    context.rules.on_change = function(provider, name, callback)
+        --变更监听同样受依赖边界限制并纳入入口失败清理
+        if callback == nil then callback, name, provider = name, provider, id end
+        local key, rule = resolve_rule(provider or id, name)
+        require_condition(type(callback) == "function", "rule listener must be a function")
+        local subscription = {id = id, callback = callback, active = true}
+        table.insert(rule.watchers, subscription)
+        table.insert(owned_listeners, subscription)
+        return function() subscription.active = false end
+    end
     local rollback = function()
         --保留其他模组包装和订阅只禁用当前入口新增的注册项
         for _, item in ipairs(owned_listeners) do item.active = false end
         for _, item in ipairs(owned_wrappers) do item.active = false end
+        --失败入口撤销其对其他模组规则的改值并通知仍有效的监听者
+        for key, previous in pairs(owned_rule_changes) do
+            local rule = rules[key]
+            if rule then
+                local current = rule.value
+                rule.value = previous
+                for _, subscription in ipairs(rule.watchers) do
+                    if subscription.active then guarded(subscription.id, function() subscription.callback(previous, current, key) end) end
+                end
+            end
+        end
+        for _, key in ipairs(owned_rules) do rules[key] = nil end
         services[id] = nil
     end
     return context, rollback
+end
+
+--<summary>
+--返回规则定义和值的稳定快照供调试工具读取
+--</summary>
+function api.rule_snapshot()
+    --按完整规则键排序避免依赖Lua表遍历顺序
+    local result = {}
+    for key, rule in pairs(rules) do
+        table.insert(result, {id = key, owner = rule.owner, name = rule.name, type = rule.type,
+            value = rule.value, default = rule.default, minimum = rule.minimum, maximum = rule.maximum,
+            values = rule.values, description = rule.description})
+    end
+    table.sort(result, function(left, right) return left.id < right.id end)
+    return result
 end
 
 --<summary>

@@ -227,6 +227,7 @@ function module.dispatch(command, argument)
     end
     if command == "game_state" then return module.state() end
     if command == "mods_list" then return {mods = MaxyModLoader.mods} end
+    if command == "rules_list" then return {rules = MaxyModLoader.rule_snapshot()} end
     if command == "ui_tree" then return module.ui_tree() end
     if command == 'ui_catalog' then return module.ui_tree(true) end
     if command == 'ui_adjust' then

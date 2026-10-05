@@ -23,6 +23,7 @@ end
 
 --正式名称和兼容别名必须指向同一个运行库
 assert(MaxyModLoader == TWOMLoader and MaxyModLoader.name == "MaxyModLoader")
+assert(MaxyModLoader.api_version == "1.0.0")
 MaxyModLoader.register_mod({id="disabled.metadata", name="禁用介绍", enabled=false,
     description="中文介绍与Unicode字符保持完整", features={"功能一", "功能二"}})
 assert(MaxyModLoader.mod_by_id["disabled.metadata"].status == "disabled")
@@ -110,6 +111,46 @@ end}]], {}))
 assert(not TWOMLoader.load_mod("service.dependent", [[return {on_load = function(c)
     error("must not execute")
 end}]], {"service.failure"}))
+
+--验证模组可声明受类型范围约束的规则并由显式依赖调整
+rule_notifications = 0
+assert(TWOMLoader.load_mod("rules.provider", [[return {on_load = function(c)
+    c.rules.define("fatigue_rate", {type = "number", default = 0.5, minimum = 0, maximum = 1,
+        description = "每日疲劳增长倍率"})
+    c.rules.define("supply_mode", {type = "string", default = "balanced", values = {"scarce", "balanced", "abundant"}})
+    c.rules.define("enabled", {type = "boolean", default = true})
+    if c.rules.get("fatigue_rate") ~= 0.5 then error("rule default mismatch") end
+end}]], {}))
+assert(TWOMLoader.load_mod("rules.tuner", [[return {on_load = function(c)
+    c.rules.on_change("rules.provider", "fatigue_rate", function(value, previous)
+        if value == 0.75 and (previous == 0.5 or previous == 0.2) then rule_notifications = rule_notifications + 1 end
+    end)
+    c.rules.set("rules.provider", "fatigue_rate", 0.75)
+    c.rules.set("rules.provider", "supply_mode", "abundant")
+    local accepted = pcall(function() c.rules.set("rules.provider", "fatigue_rate", 3) end)
+    if accepted or c.rules.get("rules.provider", "fatigue_rate") ~= 0.75 then error("rule range was not enforced") end
+    local accepted_choice = pcall(function() c.rules.set("rules.provider", "supply_mode", "impossible") end)
+    if accepted_choice then error("rule choices were not enforced") end
+    if c.rules.get("rules.provider", "enabled") ~= true then error("boolean rule mismatch") end
+end}]], {"rules.provider"}))
+assert(rule_notifications == 1)
+assert(not TWOMLoader.load_mod("rules.unauthorized", [[return {on_load = function(c)
+    c.rules.set("rules.provider", "fatigue_rate", 0.2)
+end}]], {}))
+assert(not TWOMLoader.load_mod("rules.failed_writer", [[return {on_load = function(c)
+    c.rules.set("rules.provider", "fatigue_rate", 0.2)
+    error("expected writer rollback")
+end}]], {"rules.provider"}))
+assert(TWOMLoader.loaded["rules.provider"] and TWOMLoader.loaded["rules.tuner"])
+assert(rule_notifications == 2)
+local rule_rows = MaxyModLoader.rule_snapshot()
+assert(#rule_rows == 3 and rule_rows[1].id == "rules.provider:enabled")
+assert(rule_rows[2].value == 0.75 and rule_rows[3].value == "abundant")
+assert(not TWOMLoader.load_mod("rules.rollback", [[return {on_load = function(c)
+    c.rules.define("temporary", {type = "boolean", default = true})
+    error("expected rule rollback")
+end}]], {}))
+for _, rule in ipairs(MaxyModLoader.rule_snapshot()) do assert(rule.id ~= "rules.rollback:temporary") end
 ''')
 assert any("expected entry failure" in message for message in messages)
 assert any("expected callback failure" in message for message in messages)

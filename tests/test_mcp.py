@@ -71,7 +71,8 @@ def main():
         assert by_id[1]['error']['code'] == -32002
         assert by_id[2]['result']['serverInfo']['name'] == 'MaxyModLoader'
         tools = by_id[3]['result']['tools']
-        assert len(tools) == 18 and len({tool['name'] for tool in tools}) == 18
+        assert len(tools) == 19 and len({tool['name'] for tool in tools}) == 19
+        assert next(tool for tool in tools if tool['name'] == 'rule_list')['annotations']['readOnlyHint']
         assert next(tool for tool in tools if tool['name'] == 'item_config')['annotations']['readOnlyHint']
         assert next(tool for tool in tools if tool['name'] == 'settings_state')['annotations']['readOnlyHint']
         display = next(tool for tool in tools if tool['name'] == 'display_mode')
@@ -84,7 +85,7 @@ def main():
         assert received == [('ui_click', '中文按钮'), ('game_state', '')]
         assert {reply['error']['code'] for reply in replies if reply['id'] is None} == {-32700, -32600}
         assert not result.stderr
-        print('通过：MCP握手、十八项工具、错误隔离和Unicode传输')
+        print('通过：MCP握手、十九项工具、规则查询、错误隔离和Unicode传输')
         #独立客户端并发时必须依次取得锁且各自收到关联响应
         stop.clear()
         received.clear()

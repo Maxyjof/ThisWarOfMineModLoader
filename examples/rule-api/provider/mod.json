@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.rules.provider",
+  "name": "生存规则示例提供方",
+  "version": "1.0.0",
+  "author": "MaxyModLoader",
+  "description": "声明可被依赖模组读取和调整的有限范围生存规则",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {},
+  "conflicts": [],
+  "features": ["规则定义", "范围校验", "规则快照"],
+  "compatibility": "MaxyModLoaderModdingAPI1.0",
+  "license": "MIT"
+}
