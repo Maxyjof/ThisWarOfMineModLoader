@@ -29,13 +29,16 @@ dead = setmetatable({}, {__index = function() error('访问已释放的原生控
     lua.execute('''
 local manager = MaxyModLoader.manager
 --主菜单新场景先等待淡入帧界限不同界面重新开始计时
-local first_screen, second_screen, menu = {}, {}, {}
-assert(not manager.menu_fade_complete(first_screen, menu, 100))
-assert(not manager.menu_fade_complete(first_screen, menu, 189))
-assert(manager.menu_fade_complete(first_screen, menu, 190))
-assert(not manager.menu_fade_complete(second_screen, menu, 191))
-assert(not manager.menu_fade_complete(second_screen, menu, 280))
-assert(manager.menu_fade_complete(second_screen, menu, 281))
+assert(not manager.menu_fade_complete(100))
+assert(not manager.menu_fade_complete(189))
+assert(manager.menu_fade_complete(190))
+--界面代理身份每帧变化时仍持续计时不让入口永久隐藏
+assert(manager.menu_fade_complete(191))
+assert(manager.menu_fade_complete(279))
+assert(manager.menu_fade_complete(280))
+manager.fade_start = nil
+assert(not manager.menu_fade_complete(281))
+assert(manager.menu_fade_complete(371))
 manager.screen, manager.menu, manager.frame = dead, dead, dead
 manager.detail, manager.footer = dead, dead
 manager.buttons = {old = {element = dead, handler = function() error('旧按钮被调用') end}}
@@ -44,6 +47,28 @@ assert(manager.frame == nil and manager.menu == nil)
 assert(next(manager.buttons) == nil)
 assert(not manager.state().open)
 assert(not manager.activate('old'))
+--MCP可用界面树完整路径激活加载器控件并保留按下释放成对逻辑
+local prior_attach, prior_pointed, prior_pointer = manager.attach, manager.pointed_button, manager.pointer
+local prior_screen, prior_buttons = manager.screen, manager.buttons
+local path_screen = {}
+local path_menu = {GetName = function() return 'ClassicModeMainMenu' end,
+    GetParent = function() return path_screen end}
+local path_button = {GetName = function() return 'BUTTON_MAXY_MODS' end,
+    GetParent = function() return path_menu end}
+local activated = false
+manager.attach = function() end
+manager.screen = path_screen
+manager.buttons = {BUTTON_MAXY_MODS = {element = path_button, handler = function() activated = true end}}
+manager.pointed_button = function(element)
+    if element == path_button then return manager.buttons.BUTTON_MAXY_MODS end
+end
+manager.pointer = function(_, up, element)
+    if up and element == path_button then activated = true; return true end
+    return false
+end
+assert(manager.activate('//ClassicModeMainMenu/BUTTON_MAXY_MODS') and activated)
+manager.attach, manager.pointed_button, manager.pointer = prior_attach, prior_pointed, prior_pointer
+manager.screen, manager.buttons = prior_screen, prior_buttons
 local value = manager.unicode('中文A😀').values
 assert(#value == 5 and value[1] == 20013 and value[2] == 25991 and value[3] == 65)
 assert(value[4] == 55357 and value[5] == 56832)

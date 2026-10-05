@@ -9,10 +9,10 @@ local fade_wait_frames = 90
 --<summary>
 --等待原版菜单首轮淡入结束后再创建加载器入口
 --</summary>
-function manager.menu_fade_complete(screen, menu, frame)
-    --菜单场景改变时重新计时不继承上一页面的淡入状态
-    if manager.fade_screen ~= screen or manager.fade_menu ~= menu then
-        manager.fade_screen, manager.fade_menu, manager.fade_start = screen, menu, frame
+function manager.menu_fade_complete(frame)
+    --首次看到原版菜单时记录游戏帧不依赖每帧重建的界面代理对象
+    if not manager.fade_start then
+        manager.fade_start = frame
         return false
     end
     --固定帧界限覆盖低帧率启动场景且菜单切换仍由游戏帧自然推进
@@ -657,13 +657,12 @@ function manager.attach()
         manager.skin_applied, manager.skin_error = nil, nil
         manager.palette = nil
         manager.layout_width = nil
-        manager.fade_screen, manager.fade_menu, manager.fade_start = nil, nil, nil
         manager.screen, manager.open, manager.pressed = screen, false, nil
     end
-    if not menu then return end
+    if not menu then manager.fade_start = nil; return end
     if manager.frame then return end
     --原版用屏幕淡入遮罩逐步显现按钮延后入口避免新控件提前呈现完整亮度
-    if not manager.menu_fade_complete(screen, menu, gGame:GetCurrentFrame()) then return end
+    if not manager.menu_fade_complete(gGame:GetCurrentFrame()) then return end
     --游戏界面以720逻辑高度缩放横坐标根据当前宽高比计算
     manager.menu, manager.screen, manager.buttons = menu, screen, {}
     manager.template = menu:FindElementByName('BUTTON_STARTNEW')
@@ -991,6 +990,20 @@ function manager.activate(name)
     --MCP轮询可能先于管理帧执行先重新校验当前界面所有权
     manager.attach()
     local item = manager.buttons[name]
+    --界面树的完整路径也可精确对应加载器按钮不再退回原生模拟点击
+    if not item and type(name) == 'string' and name:sub(1, 2) == '//' then
+        for _, candidate in pairs(manager.buttons) do
+            local names, element = {}, candidate.element
+            while element and element ~= manager.screen do
+                table.insert(names, 1, element:GetName() or '')
+                element = element:GetParent()
+            end
+            if element == manager.screen and '//' .. table.concat(names, '/') == name then
+                item = candidate
+                break
+            end
+        end
+    end
     if not item then return false end
     if manager.pointed_button(item.element) ~= item then error('管理按钮当前不可操作') end
     manager.pointer(true, false, item.element)
