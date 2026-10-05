@@ -1,9 +1,13 @@
 param(
     [Parameter(Mandatory = $true)][string]$GameDirectory,
-    [Parameter(Mandatory = $true)][string]$PublishDirectory,
-    [Parameter(Mandatory = $true)][string]$BootstrapDirectory
+    [string]$PublishDirectory,
+    [string]$BootstrapDirectory
 )
 $ErrorActionPreference = 'Stop'
+
+#未显式传入构建目录时使用发布压缩包附带的app文件夹
+if ([string]::IsNullOrWhiteSpace($PublishDirectory)) { $PublishDirectory = Join-Path $PSScriptRoot 'app' }
+if ([string]::IsNullOrWhiteSpace($BootstrapDirectory)) { $BootstrapDirectory = Join-Path $PSScriptRoot 'app' }
 
 #解析游戏和发布目录并检查目标游戏程序
 $game = [IO.Path]::GetFullPath($GameDirectory)
@@ -13,7 +17,7 @@ if (!(Test-Path -LiteralPath (Join-Path $game 'x64\This War of Mine.exe'))) { th
 if (!(Test-Path -LiteralPath (Join-Path $publish 'MaxyModLoader.exe'))) { throw '发布目录缺少MaxyModLoader.exe请先执行单文件自包含发布' }
 if (!(Test-Path -LiteralPath (Join-Path $bootstrapPublish 'MaxyModLoader.Bootstrap.exe'))) { throw '引导发布目录缺少MaxyModLoader.Bootstrap.exe请先执行GUI单文件发布' }
 
-#将启动器放入专属子目录并保留已有备份日志和运行记录
+#将启动器放入专属子目录并保留现有日志与运行记录
 $app = Join-Path $game 'MaxyModLoader\app'
 New-Item -ItemType Directory -Path $app -Force | Out-Null
 #旧版多文件自包含部署只保留新入口所需的应用文件

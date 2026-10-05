@@ -41,8 +41,12 @@ public static class PackageInstaller
         }
         var nativeState = NativeContentInstaller.Prepare(gameDirectory, packageDirectory, package.Native);
 
+        //确认没有活动安装状态后清理旧版遗留的孤立会话备份
+        var backupRoot = Path.Combine(gameDirectory, "MaxyModLoader", "backups");
+        PruneOrphanedBackups(backupRoot + Path.DirectorySeparatorChar);
+
         //先备份两份原文件并写入恢复日志再开始任何目标替换
-        var backup = Path.Combine(gameDirectory, "MaxyModLoader", "backups", Guid.NewGuid().ToString("N"));
+        var backup = Path.Combine(backupRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(backup);
         foreach (var item in containers)
         {
@@ -108,6 +112,19 @@ public static class PackageInstaller
         }
         NativeContentInstaller.Restore(gameDirectory, backup, state.Package.Native, state.Native);
         File.Delete(statePath);
+        try
+        {
+            DeleteRestoredBackup(backup, backupRoot);
+            PruneOrphanedBackups(backupRoot);
+        }
+        catch (IOException)
+        {
+            //文件恢复已经完成清理受限时留下无引用备份供玩家手动检查
+        }
+        catch (UnauthorizedAccessException)
+        {
+            //权限限制不应把已成功恢复的游戏伪装成恢复失败
+        }
     }
 
     /// <summary>
@@ -162,30 +179,101 @@ public static class PackageInstaller
     }
 
     /// <summary>
+    /// 清理已成功恢复的本次会话备份
+    /// </summary>
+    private static void DeleteRestoredBackup(string backupDirectory, string backupRoot)
+    {
+        //恢复日志已删除且容器校验完成后备份不再承担崩溃恢复职责
+        if (!Directory.Exists(backupDirectory)) return;
+        var rootPath = Path.GetFullPath(backupRoot).TrimEnd(Path.DirectorySeparatorChar);
+        if ((File.GetAttributes(rootPath) & FileAttributes.ReparsePoint) != 0) throw new IOException("恢复备份根目录是链接不能自动清理");
+        var root = rootPath + Path.DirectorySeparatorChar;
+        var target = Path.GetFullPath(backupDirectory);
+        if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase) ||
+            (File.GetAttributes(target) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("恢复完成后的备份清理路径无效");
+
+        //枚举时拒绝链接以免清理目标越过加载器专属备份目录
+        var directories = new List<string>();
+        var pending = new Stack<string>();
+        pending.Push(target);
+        while (pending.TryPop(out var current))
+        {
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("恢复备份包含目录链接不能自动清理");
+            directories.Add(current);
+            foreach (var file in Directory.EnumerateFiles(current))
+            {
+                if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException("恢复备份包含文件链接不能自动清理");
+                File.Delete(file);
+            }
+            foreach (var child in Directory.EnumerateDirectories(current)) pending.Push(child);
+        }
+
+        //按由深至浅的顺序删除空目录避免递归跨过已验证边界
+        foreach (var directory in directories.OrderByDescending(path => path.Length)) Directory.Delete(directory);
+    }
+
+    /// <summary>
+    /// 清理恢复完成后不再关联安装状态的旧会话备份
+    /// </summary>
+    private static void PruneOrphanedBackups(string backupRoot)
+    {
+        //只扫描加载器专属备份目录中采用GUID命名的旧会话子目录
+        var root = Path.GetFullPath(backupRoot).TrimEnd(Path.DirectorySeparatorChar);
+        if (!Directory.Exists(root) || (File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0) return;
+        foreach (var directory in Directory.EnumerateDirectories(root))
+        {
+            var name = Path.GetFileName(directory);
+            if (name.Length != 32 || !name.All(char.IsAsciiHexDigit)) continue;
+
+            //单个旧目录清理受限时保留该目录而继续处理其他孤立备份
+            try
+            {
+                DeleteRestoredBackup(directory, root + Path.DirectorySeparatorChar);
+            }
+            catch (IOException)
+            {
+                //链接或文件占用不影响已经完成的游戏资源恢复
+            }
+            catch (UnauthorizedAccessException)
+            {
+                //权限受限的旧目录留给玩家手动检查
+            }
+        }
+    }
+
+    /// <summary>
     /// 确认游戏进程未运行以避免读取到半替换容器
     /// </summary>
     private static void EnsureGameStopped(string gameDirectory, bool allowCurrentBootstrap)
     {
-        //按真实原版程序路径拒绝运行中的游戏且允许启动引导为本会话部署资源
+        //按真实原版程序路径识别目标安装允许其他独立测试目录并行运行
         gameDirectory = Path.GetFullPath(gameDirectory);
         var bootstrap = Path.Combine(gameDirectory, "x64", "This War of Mine.exe");
         var processes = Process.GetProcessesByName("This War of Mine")
             .Concat(Process.GetProcessesByName("MaxyModLoader.Original")).ToArray();
         var active = new List<Process>();
+        var gamePrefix = gameDirectory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         foreach (var process in processes)
         {
-            //单文件入口可能由Steam进程托管以文件身份识别引导位置而非假定进程ID
+            //读取实际映像路径区分目标游戏与另一个安装目录中的游戏
             string? path;
             try { path = process.MainModule?.FileName; }
             catch (System.ComponentModel.Win32Exception) { path = null; }
             catch (InvalidOperationException) { path = null; }
-            if (allowCurrentBootstrap && string.Equals(path, bootstrap, StringComparison.OrdinalIgnoreCase))
+            var sameInstallation = path is not null &&
+                (string.Equals(Path.GetFullPath(path), gameDirectory, StringComparison.OrdinalIgnoreCase) ||
+                 Path.GetFullPath(path).StartsWith(gamePrefix, StringComparison.OrdinalIgnoreCase));
+            if (allowCurrentBootstrap && sameInstallation && string.Equals(path, bootstrap, StringComparison.OrdinalIgnoreCase))
             {
                 process.Dispose();
                 continue;
             }
-            //其他同名进程一律保守拦截避免未知游戏实例同时替换容器
-            active.Add(process);
+            //路径不可读取时仍保守拦截同名进程避免并发写入目标容器
+            if (path is null || sameInstallation) active.Add(process);
+            else process.Dispose();
         }
         if (active.Count > 0)
         {

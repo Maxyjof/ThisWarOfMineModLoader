@@ -1,118 +1,115 @@
 # MaxyModLoader
 
-《这是我的战争》的社区模组加载器项目，目标是建立可组合的模组规范、Lua 扩展接口和原生引擎适配层。
+MaxyModLoader是《这是我的战争》WindowsSteam版的模组加载器与Lua模组API。玩家把加载器文件放进游戏目录，再把模组ZIP放进`Mods`文件夹，就能从Steam启动游戏并自动加载模组。
 
-解决方案为`MaxyModLoader.sln`，仅保留核心库`MaxyModLoader.Core`、命令行入口`MaxyModLoader.Cli`和验证项目`MaxyModLoader.Tests`。核心库包含资源部署、模组运行库、管理界面和内置MCP桥，CLI负责构建、安装、恢复及MCP服务。0.3版的模组管理界面展示禁用、加载失败和依赖失败条目，介绍包括名称、标识、版本、作者、内容、功能、兼容性、依赖、冲突、主页、许可和错误详情。管理界面复用本机原版森林与标题刷痕，列表和介绍使用自制透明炭笔纹理，列表和完整介绍采用独立滚动区域，支持鼠标滚轮、滑块拖动和轨道点击。主菜单入口复用原版按钮的字体、箭头和悬停配方动作。
+> 当前只接受经过核验的Steam版BuildID22193501。安装器会校验游戏文件指纹，其他版本会被拒绝。加载器不使用Unity、Mono、BepInEx或Harmony。
 
-加载器[内置游戏MCP控制桥](docs/mcp.md)，安装时自动接入游戏Lua主线程，不需要额外MCP模组或独立MCP项目。统一CLI通过`mcp --game`启动服务，提供十九项内置工具，包括原生物品注册查询和模组规则查询，并可发现清单授权模组发布的结构化工具、原生命中诊断、坐标点击、自有界面调整、窗口模式及只读游戏截图。模组清单可引用模组目录内的Markdown说明，构建阶段用Markdig按CommonMark解析Markdown，再将语法树交给游戏内排版器，支持标题、嵌套列表、引用、代码块、分隔线、表格、任务列表和组合行内格式。段落软换行合并、硬换行保留，引用式链接及转义由解析器处理。图片当前显示替代说明，HTML作为字面文本，不提供浏览器网页渲染；原生中文字体的斜体以强调下划线呈现，链接显示但不打开外部浏览器。`MaxyModLoader`为游戏内API名称，`TWOMLoader`保留旧模组兼容；`MaxyModLoader.mods`包含完整目录与实际加载状态，`MaxyModLoader.loaded`记录成功加载的模组。
+## 下载与安装
 
-原版设置中的“全屏”已替换为“窗口模式”，可选择窗口、全屏、无边框全屏，点击原版位置的“应用”后生效，取消会丢弃待应用选择。内置后台辅助服务随游戏启动，确认真实显示状态后保存模式，重启后恢复。普通窗口超出显示器工作区时缩小并居中；无边框覆盖当前显示器。设置行复用原版纸张、字体和箭头配方。当前实测覆盖本机Steam版本及2560×1440单显示器，其他游戏版本会拒绝窗口扩展，详见[显示验证](docs/validation.md)。
+打开[最新Release](https://github.com/Maxyjof/ThisWarOfMineModLoader/releases/latest)，下载同一版本的`MaxyModLoader-版本号-Windows-x64.zip`和可选的`MaxyModLoader-版本号-SampleMods.zip`。Release还附有`SHA256SUMS.txt`供校验下载文件。
 
-## 技术前提
+1. 在Steam中退出游戏，进入《这是我的战争》属性的“已安装文件”，选择“浏览”打开游戏目录
+2. 将加载器压缩包解压到一个临时文件夹，确认其中有`install-loader.ps1`和`app`文件夹
+3. 在该文件夹空白处右键并打开终端，运行下面命令，将路径替换为你的Steam游戏目录
 
-游戏使用 11 bit studios 自研 Liquid Engine，不是 Unity。不能将游戏资源当作 AssetBundle，也不能依赖 Assembly-CSharp、BepInEx 或 Harmony 直接修改其原生代码。
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File ".\install-loader.ps1" -GameDirectory "D:\Steam\steamapps\common\This War of Mine"
+   ```
 
-目前 C# / .NET 10 用于**游戏进程外**的管理和资源工具，游戏内接口使用 Lua5.1。首版通过替换 `common` 容器中的 `Main.lua` 引导模组，安装前保存原文件备份，恢复时核验指纹。原生 DLL 注入、运行时资源挂载、新地图和模型导入仍待开发。
+4. 安装完成后，把游戏从Steam启动。入口会自动运行MaxyModLoader，再启动原版游戏
 
-依据：[开发者访谈](https://www.gamedeveloper.com/design/road-to-the-igf-11bit-studios-i-this-war-of-mine-i-)、[Lua 与资源容器逆向记录](https://blog.mydayyy.eu/2018/12/18/This-War-of-Mine-Unpacking-gamefiles.html)。这些资料不是本机版本的验证结果。
+安装包自带Windows运行时，不需要另装.NET。它会在游戏目录创建`MaxyModLoader`和`Mods`文件夹，并将已核验的游戏启动入口替换为图形界面的引导程序。游戏实际运行时仍使用原版引擎和原版程序。启动所需的原版程序副本保存在`x64\MaxyModLoader.Original.exe`；不要手动删除或改名。正常退出游戏后，模组资源和原生登记会自动还原，会话用资源备份也会清理。
 
-## 构建与验证
+## 下载、安装和启用模组
 
-需要.NET10SDK，可直接使用Rider打开解决方案。首次构建会从NuGet还原Markdig1.3.2，用于按CommonMark解析描述文件；其BSD许可保留在`third-party/markdig-license.txt`，发布与安装同时携带许可文本。
+1. 从同一Release下载可选的`MaxyModLoader-版本号-SampleMods.zip`，解压后会看到若干独立模组ZIP
+2. 把要使用的模组ZIP复制到游戏目录的`Mods`文件夹，不要再解压里面的模组ZIP
+3. 从Steam启动游戏，在主菜单打开“模组管理”，确认模组状态和介绍
+4. 按介绍启用需要的模组，点击“重启并应用”即可重启游戏并重新加载
+5. 不想使用时取消启用，再次点击“重启并应用”
+
+模组管理界面的开关在下一次启动时应用。直接返回时若有未应用修改，界面会提示你选择是否放弃修改。模组ZIP的根目录必须直接包含`mod.json`和入口Lua文件；每个ZIP对应一个模组。加载器会自动检查依赖、版本和冲突并排序。修改或删除ZIP后，下次重启会重新生成缓存。
+
+### 随附示例模组
+
+示例模组包包含四个用于体验和验证的模组：
+
+| 模组 | 内容 | 依赖 |
+| --- | --- | --- |
+| 游戏事件与测试记录桥 | 记录已接入的场景、角色、搜刮和制作回调，为其他示例提供事件及诊断服务 | 无 |
+| 搜刮提速 | 默认把原版搜刮动作时长调整为一半，不改战利品计算 | 游戏事件与测试记录桥 |
+| 节省移动体力 | 默认把跑步和行走的体力消耗调整为一半 | 游戏事件与测试记录桥 |
+| 生存营地辅助包 | 减缓饥饿、首次进入庇护所时提供罐头，并在新一天减轻疲劳 | 游戏事件与测试记录桥 |
+
+安装后可在模组管理界面查看每个模组的完整说明、状态和依赖。示例玩法包会调整游戏平衡，建议先备份存档；它不包含故意报错的测试探针。事件桥只记录它实际接收到的回调，不保证覆盖所有游戏行为。更多源码示例见[`examples`](examples)，小型和组合实装测试见[`playtests/mods`](playtests/mods)。
+
+## 卸载和故障恢复
+
+正常退出游戏时，加载器会还原被替换的资源文件。若游戏或电脑在运行中异常关闭，再次通过Steam启动时加载器会先尝试恢复上次会话。若加载器不能启动或你要彻底移除它，在Steam中使用“验证游戏文件的完整性”恢复原版启动程序，然后删除游戏目录中的`MaxyModLoader`、`x64\MaxyModLoader.Original.exe`和`Mods`文件夹。删除`Mods`会一并移除里面的模组ZIP，请先保留你想留下的模组。
+
+已安装的加载器也提供显式恢复命令。打开PowerShell，在游戏目录外运行：
 
 ```powershell
-dotnet build
-dotnet run --project MaxyModLoader.Tests
-dotnet run --project MaxyModLoader.Cli -- plan examples
+& "D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" restore "D:\Steam\steamapps\common\This War of Mine"
 ```
 
-`plan` 检查清单、依赖、版本、冲突及循环，输出稳定的加载顺序。发现错误时返回非零退出码，并且不产生部分加载计划。
+Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存档或自装模组；Steam云存档状态取决于你的Steam设置。
 
-## 玩家安装与启动
+## 玩家常见问题
 
-玩家只需安装一次启动器。它读取游戏目录`Mods`文件夹根部的ZIP压缩包，每个压缩包对应一个模组，压缩包根部或唯一一级目录中必须有`mod.json`。启动时自动安全解包、检查依赖与冲突、生成并缓存部署包，然后启动游戏；退出游戏后自动恢复原版容器。Windows目录不区分大小写，游戏已有的`Mods`目录就是玩家放ZIP的位置，原版文件会保留。
+- **Steam启动没有加载模组**：确认游戏目录路径正确，`Mods`里放的是ZIP而非解压文件夹，并检查`MaxyModLoader\startup.log`
+- **报告版本不受支持**：当前启动引导只允许已核验的BuildID22193501，Steam更新后请等待兼容版本
+- **模组显示依赖缺失**：按界面介绍添加并启用其依赖；示例玩法模组都依赖“游戏事件与测试记录桥”
+- **更新或删除模组**：退出并重新启动游戏，加载器按ZIP内容自动更新缓存
+- **与其他模组冲突**：阅读模组介绍中的兼容和冲突信息，逐个禁用后使用“重启并应用”定位问题
 
-在仓库根目录发布单文件自包含启动器并安装到已核验的游戏目录：
+## 模组开发
 
-```powershell
-dotnet publish MaxyModLoader.Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/loader-kit
-dotnet publish MaxyModLoader.Bootstrap -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/loader-bootstrap
-./tools/install-loader.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -PublishDirectory "$(Get-Location)\artifacts\loader-kit" -BootstrapDirectory "$(Get-Location)\artifacts\loader-bootstrap"
+每个模组目录包含`mod.json`和一个Lua入口文件。将这些文件打包成ZIP，清单直接位于ZIP根目录，再放入游戏`Mods`文件夹。下面是最小示例：
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "author.example",
+  "name": "我的模组",
+  "version": "1.0.0",
+  "author": "作者名",
+  "description": "模组功能简介",
+  "entry": "main.lua",
+  "enabled": true
+}
 ```
 
-安装程序会把自包含加载器放入游戏目录`MaxyModLoader/app`，核验原版EXE指纹后备份至`MaxyModLoader/original`，再将游戏目录`x64/This War of Mine.exe`替换为无控制台的GUI引导入口。把模组ZIP放入游戏目录`Mods`，之后直接从Steam或原游戏入口启动即可自动加载模组。加载器启动原版程序时会转交Steam传入的启动参数，并在游戏退出后恢复被替换的原版资源容器。
+开发文档： [模组规范和ModdingAPI](docs/modding-api.md)、[游戏MCP桥](docs/mcp.md)、[游戏版本与实测范围](docs/validation.md)。加载器API支持生命周期、Lua内部模块、事件、依赖服务、可撤销包装、共享规则和原生内容声明。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
 
-每次启动会检查ZIP内容并复用匹配的缓存；模组增删或更新后无需手工构建。若游戏或系统意外结束，可先确保游戏已退出，再执行恢复命令。该命令会恢复原版容器和游戏EXE：
+## 开发者构建
 
-```powershell
-"D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" restore "D:\Steam\steamapps\common\This War of Mine"
-```
-
-重新安装或升级加载器时重新发布并运行同一安装脚本即可。若Steam验证游戏文件覆盖了引导入口，再次运行安装脚本即可恢复。加载器不会注入游戏进程或猜测原生调用地址；引导入口仅允许与已核验指纹匹配的游戏版本。原生内容模组仍须通过本机官方ModTools编译。模组Lua代码拥有游戏脚本环境权限，只安装可信来源。
-
-`MaxyModLoader/runtime.log`记录游戏内模组入口日志。日常用户不需要手动调用`build`或`install`；开发者命令仍可用于独立构建部署包。
-
-## 开发者发布
+需要.NET10SDK、Python3.12和Lua5.1测试依赖。Windows玩家包由Release工作流自动构建，也可在仓库根目录运行：
 
 ```powershell
-dotnet publish MaxyModLoader.Cli -c Release -o artifacts/tool
-.\artifacts\tool\MaxyModLoader.exe plan examples
-```
-
-开发者发布目录依赖.NET10运行时。自包含Windows玩家启动器使用上方`-r win-x64 --self-contained true`命令生成。不要分发带有游戏原资源的构建部署包，分发工具和模组源码即可让玩家本机生成。
-
-## 模组规范 v1
-
-每个模组独立文件夹，包含 `mod.json` 和 `main.lua`，参考 `examples/hello` 和 `examples/diary-observer`。
-
-- ID 使用小写字母、数字及 `. _ -`，必须以字母开头且全局唯一。
-- 版本使用 `major.minor.patch` 三段非负整数，暂不接受预发布或版本范围。
-- `dependencies` 是依赖 ID 到最低版本的映射；禁用依赖视为缺失。
-- `conflicts` 列出不能同时启用的模组 ID。
-- `enabled` 控制是否纳入加载计划，禁用模组仍检查清单格式。
-- `name`、`author`、`description`填写展示信息；`features`为功能说明数组，`compatibility`填写兼容条件，`website`只接受HTTP或HTTPS地址，`license`填写许可名称。
-- `entry` 必须指向模组目录内真实存在的 Lua 文件，拒绝目录逃逸和入口符号链接。
-- `nativeContentFile`可选，指向本机已核验版本上构建的物品、制作配方、地图掉落或商人货单定义，格式见原生内容说明。
-- 扫描模组根目录的直接子目录；没有 `mod.json` 的目录跳过。
-
-MaxyModLoader同时提供版本化的LuaModdingAPI，当前契约版本为1.0.0。除模组入口、事件、内部模块、依赖服务和可撤销Lua函数包装外，模组可声明带类型、范围或选项约束的运行时共享规则，依赖模组可受控读取、调整并监听规则变化。内置MCP提供规则只读查询。完整接口、兼容约定和限制见[ModdingAPI开发文档](docs/modding-api.md)。
-
-`TWOMLoader.emit(name, ...)` 广播自定义事件，`loader.ready` 在所有模组尝试加载后触发。静态依赖通过但依赖入口运行失败时，依赖方也会跳过。事件回调异常不影响其他订阅，参数尾部的 `nil` 保留，回调内新增订阅从下一次广播开始生效。
-
-0.2版新增 `modules` 和 `settings` 清单字段。`modules` 将内部模块名映射到模组内 Lua 文件，`context.require(name)` 注入上下文、缓存模块并检测循环；模块文件通过 `local context = ...` 取得上下文。`settings` 支持字符串、有限数字、布尔值和嵌套对象，由 `context.config` 读取，修改后需重新构建部署包。
-
-`context.services.provide(name, service)` 提供本模组服务，`context.services.get(providerId, name)` 获取服务。使用其他模组服务必须在清单中声明依赖，且提供方入口必须成功；入口失败会清理该模组提供的服务。这些接口不是不可信代码沙箱。
-
-小型和中型实装测试包位于 `playtests/mods`，与普通欢迎示例分开。测试包包括真实游戏接口桥、搜刮提速、移动体力、角色状态、生存营地、活动记录、快捷键及两种故意失败探针。基线包只包含观察功能，组合包用于验证模组实际效果及彼此组合，故意失败探针的错误日志属于预期结果。枪械与装备内容使用本机官方ModTools从原版物品模板编译，不带独立模型或动画；弹药补给尚未关联到枪械弹药消耗，枪械伤害、搜刮结果和商人实际库存还需要在具体玩法场景中验证。
-
-`diary-observer` 演示包装本机 `Events.lua` 中的 `logEvent` 并发出 `game.diary` 事件。这只覆盖经过该 Lua 函数的记录，不代表完整的原生日记事件总线。当前没有自动昼夜、角色、物品或场景事件接口。
-
-项目只提交自有代码、文档和示例，不提交游戏二进制或解包资源。将本机游戏、实验数据放入忽略的 `local/`。
-
-## 推进顺序
-
-1. 已完成模组清单、依赖与冲突规划、示例及测试。
-2. 已完成容器检查、Lua 引导编译、离线资源输出与安装恢复。
-3. 已在本机 Steam 版本验证 Lua 入口和示例模组启动加载。
-4. 原生文件系统拦截，做到不覆盖游戏文件的运行时挂载。
-5. 逐步提供角色、物品、事件、场景和模型接口。
-
-验证版本、证据和限制见 [验证记录](docs/validation.md)。当前验证覆盖游戏启动入口，未覆盖完整剧情流程或所有官方模组组合。
-
-## 自动化验证与注释规范
-
-C# 测试覆盖依赖规划、长依赖链、损坏索引、资源替换、指纹校验与中断恢复，也使用 SDK 自带 Roslyn 语法树检查所有自有 C# 类、方法和构造函数的中文 XML 注释。具体规范保存在 `AGENTS.md`。
-
-Lua 测试使用 Lupa 的 Lua5.1 运行时，测试依赖仅用于验证，不随加载器部署：
-
-```powershell
+dotnet build -c Release
+dotnet run --project MaxyModLoader.Tests -c Release --no-build
 python -m pip install -r tests/requirements.txt
-dotnet run --project MaxyModLoader.Tests
 python -X utf8 tests/test_runtime.py
+python -X utf8 tests/test_modpack.py
+python -X utf8 tests/test_manager.py
+python -X utf8 tests/test_mcp.py
+python -X utf8 tests/test_display.py
 ```
 
-`.github/workflows/verify.yml` 在 Windows 上运行构建、C# 测试和 Lua 测试。
+为创建Release，给已验证的版本提交打`v主版本.次版本.修订号`标签并推送。GitHub Actions会构建Windows自包含加载器包、示例模组包、SHA256校验清单并自动发布Release：
 
-## 管理面板自制纹理
+```powershell
+git tag v0.4.0
+git push origin v0.4.0
+```
 
-两块内容背景使用[自制炭笔素材](tools/ui-art/README.md)，保留透明边缘与纸张纹理。普通构建自动转换并追加到`textures-s3`，安装与恢复同时校验、备份和处理`common`及纹理容器。部署包包含完整原版纹理容器，约2GB，构建产物和游戏资源不会提交到Git。旧版单容器安装日志仍能恢复。
+自动发布使用GitHubActions内置的`GITHUB_TOKEN`，仓库设置须允许工作流创建Release。手动打包命令为`powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.4.0`。
+
+## 仓库清理原则
+
+Git只跟踪加载器源代码、文档、工具源码和示例模组。游戏程序、解包资源、构建缓存、发行包、日志和本机路径都由`.gitignore`排除。游戏运行时的会话备份只用于异常退出恢复，在成功还原后自动删除；Steam游戏启动所需的`MaxyModLoader.Original.exe`是运行文件，不是可安全删除的构建垃圾。
+
+## 许可
+
+MaxyModLoader代码以MIT许可证发布，Markdig依赖的BSD许可见[`third-party/markdig-license.txt`](third-party/markdig-license.txt)。游戏及其原始资源属于各自权利人；本仓库和Release不分发这些内容。

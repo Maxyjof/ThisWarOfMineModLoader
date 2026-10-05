@@ -24,6 +24,7 @@ public static class GameExecutableInstaller
         EnsureGameStopped();
         var target = TargetPath(gameDirectory);
         var backup = BackupPath(gameDirectory);
+        var legacyBackup = LegacyBackupPath(gameDirectory);
         var statePath = StatePath(gameDirectory);
         if (!File.Exists(target) || !File.Exists(bootstrapExecutable)) throw new FileNotFoundException("缺少游戏启动程序或加载器启动引导");
 
@@ -32,13 +33,18 @@ public static class GameExecutableInstaller
         if (File.Exists(statePath))
         {
             prior = ReadState(statePath);
-            if (prior.OriginalSha256 != GameFingerprint || !File.Exists(backup) || Fingerprint(backup) != prior.OriginalSha256)
-                throw new InvalidDataException("原版启动程序备份指纹不匹配");
+            if (prior.OriginalSha256 != GameFingerprint) throw new InvalidDataException("原版启动程序指纹不匹配");
+            if (!File.Exists(backup) && File.Exists(legacyBackup))
+            {
+                Check(legacyBackup, prior.OriginalSha256);
+                File.Copy(legacyBackup, backup, false);
+            }
+            Check(backup, prior.OriginalSha256);
         }
         else if (File.Exists(backup))
         {
             if (Fingerprint(backup) != GameFingerprint || Fingerprint(target) != GameFingerprint)
-                throw new InvalidDataException("已存在启动程序备份但当前文件身份不明");
+                throw new InvalidDataException("已有原版运行文件但游戏入口身份不明");
         }
         else
         {
@@ -48,14 +54,9 @@ public static class GameExecutableInstaller
             Check(backup, GameFingerprint);
         }
 
-        //原生游戏会相对x64目录读取依赖必须在原目录运行核验过的副本
+        //原版副本位于x64目录可同时满足引擎依赖查找和Steam入口转发
         var runtimeExecutable = RuntimePath(gameDirectory);
-        if (File.Exists(runtimeExecutable)) Check(runtimeExecutable, GameFingerprint);
-        else
-        {
-            File.Copy(backup, runtimeExecutable, false);
-            Check(runtimeExecutable, GameFingerprint);
-        }
+        Check(runtimeExecutable, GameFingerprint);
 
         //当前文件只能是原版、记录中的旧引导或预期的新引导
         var bootstrapHash = Fingerprint(bootstrapExecutable);
@@ -74,6 +75,7 @@ public static class GameExecutableInstaller
         //替换后复核实际磁盘文件再清除升级过程中的旧引导指纹
         Check(target, bootstrapHash);
         WriteState(statePath, next with { PreviousBootstrapSha256 = "" });
+        DeleteLegacyBackup(legacyBackup);
     }
 
     /// <summary>
@@ -91,6 +93,7 @@ public static class GameExecutableInstaller
         var state = ReadState(statePath);
         var target = TargetPath(gameDirectory);
         var backup = BackupPath(gameDirectory);
+        if (!File.Exists(backup) && File.Exists(LegacyBackupPath(gameDirectory))) backup = LegacyBackupPath(gameDirectory);
         Check(backup, state.OriginalSha256);
         var currentHash = Fingerprint(target);
         if (state.OriginalSha256 != GameFingerprint ||
@@ -100,6 +103,10 @@ public static class GameExecutableInstaller
         //仅在当前不是原版时用同目录临时文件原子恢复
         if (currentHash != state.OriginalSha256) Replace(backup, target, state.OriginalSha256);
         Check(target, state.OriginalSha256);
+
+        //先删除恢复状态使删除失败时仍保留可供下一次恢复的原版副本
+        File.Delete(statePath);
+
         //只移除本加载器创建且指纹完全匹配的同目录运行副本
         var runtimeExecutable = RuntimePath(gameDirectory);
         if (File.Exists(runtimeExecutable))
@@ -107,7 +114,7 @@ public static class GameExecutableInstaller
             Check(runtimeExecutable, state.OriginalSha256);
             File.Delete(runtimeExecutable);
         }
-        File.Delete(statePath);
+        DeleteLegacyBackup(LegacyBackupPath(gameDirectory));
     }
 
     /// <summary>
@@ -121,13 +128,13 @@ public static class GameExecutableInstaller
         if (File.Exists(backup))
         {
             Check(backup, GameFingerprint);
-            var runtimeExecutable = RuntimePath(gameDirectory);
-            if (File.Exists(runtimeExecutable))
-            {
-                Check(runtimeExecutable, GameFingerprint);
-                return runtimeExecutable;
-            }
             return backup;
+        }
+        var legacyBackup = LegacyBackupPath(gameDirectory);
+        if (File.Exists(legacyBackup))
+        {
+            Check(legacyBackup, GameFingerprint);
+            return legacyBackup;
         }
 
         //未安装启动引导时使用游戏原始路径并逐字节校验身份
@@ -267,8 +274,30 @@ public static class GameExecutableInstaller
     /// </summary>
     private static string BackupPath(string gameDirectory)
     {
-        //备份以原文件名保存以便启动时维持原生进程名
+        //原版运行副本同时承担Steam入口转发目标与启动恢复来源
+        return RuntimePath(gameDirectory);
+    }
+
+    /// <summary>
+    /// 构造旧版加载器保存的重复启动程序副本路径
+    /// </summary>
+    private static string LegacyBackupPath(string gameDirectory)
+    {
+        //迁移时兼容旧安装并在新运行副本校验成功后删除重复文件
         return Path.Combine(gameDirectory, "MaxyModLoader", "original", ExecutableName);
+    }
+
+    /// <summary>
+    /// 删除经指纹校验的旧版重复启动程序副本
+    /// </summary>
+    private static void DeleteLegacyBackup(string legacyBackup)
+    {
+        //只删除确认为原版游戏程序的旧副本并保留未知文件供用户检查
+        if (!File.Exists(legacyBackup)) return;
+        if (Fingerprint(legacyBackup) != GameFingerprint) throw new InvalidDataException("旧版启动程序副本身份不匹配拒绝删除");
+        File.Delete(legacyBackup);
+        var directory = Path.GetDirectoryName(legacyBackup)!;
+        if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
     }
 
     /// <summary>

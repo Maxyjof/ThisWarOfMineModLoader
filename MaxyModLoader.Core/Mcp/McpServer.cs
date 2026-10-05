@@ -90,7 +90,7 @@ public sealed class McpServer(GameBridgeClient bridge)
         {
             initialized = true;
             return Result(id, new { protocolVersion = "2025-06-18", capabilities = new { tools = new { listChanged = false } },
-                serverInfo = new { name = "MaxyModLoader", version = "0.3.0" }, instructions = "工具操作限于本机游戏，超时代表结果未确认，状态变更命令不要自动重试" });
+                serverInfo = new { name = "MaxyModLoader", version = "0.4.0" }, instructions = "工具操作限于本机游戏，超时代表结果未确认，状态变更命令不要自动重试" });
         }
         if (name == "ping") return Result(id, new { });
         if (!initialized) return Error(id, -32002, "请先初始化MCP服务");

@@ -372,10 +372,19 @@ internal static class Program
             var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
             PackageInstaller.Install(game, package);
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.BuiltDataSha256);
+            //确认恢复后本次会话备份和没有安装日志关联的旧目录都被清理
+            var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(Path.Combine(game, "MaxyModLoader", "install-state.json")), ModManifest.JsonOptions)!;
+            var backup = Path.Combine(game, state.BackupDirectory);
+            var staleBackup = Path.Combine(game, "MaxyModLoader", "backups", "00000000000000000000000000000000");
+            Directory.CreateDirectory(staleBackup);
+            File.WriteAllText(Path.Combine(staleBackup, "stale.marker"), "obsolete session");
+            Assert(Directory.Exists(backup));
             PackageInstaller.Restore(game);
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
             Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
             Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")));
+            Assert(!Directory.Exists(backup));
+            Assert(!Directory.Exists(staleBackup));
         }));
         Test("旧品牌安装日志仍可恢复且禁止重复安装", () => InWorkspace(root =>
         {

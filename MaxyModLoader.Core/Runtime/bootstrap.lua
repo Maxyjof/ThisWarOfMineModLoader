@@ -5,7 +5,7 @@ local listeners = {}
 local services = {}
 local rules = {}
 local actions = {}
-local api = { name = "MaxyModLoader", version = "0.3.0", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
+local api = { name = "MaxyModLoader", version = "0.4.0", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
 api.actions = {}
 MaxyModLoader = api
 --保留旧API名称使已经发布的模组继续兼容

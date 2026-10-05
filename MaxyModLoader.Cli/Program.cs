@@ -72,7 +72,7 @@ public static class Program
                         PackageInstaller.Restore(game);
                     DisplayHost.Uninstall(game);
                     GameExecutableInstaller.Restore(game);
-                    Console.WriteLine("已核验并恢复原版容器和游戏启动程序备份仍保留在MaxyModLoader/backups");
+                    Console.WriteLine("已核验并恢复原版容器和游戏启动入口");
                     return 0;
                 default:
                     Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplay <游戏根目录> [Steam启动程序及参数]\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录> [DDS资源目录]\ninstall <游戏根目录> <部署包目录>\ninstall-wrapper <游戏根目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>\ndisplay <游戏根目录> [borderless|windowed|fullscreen]");

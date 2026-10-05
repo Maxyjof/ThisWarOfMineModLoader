@@ -1,0 +1,60 @@
+name: 发布Windows玩家包
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装Lua运行时测试依赖
+        run: python -m pip install -r tests/requirements.txt
+      - name: 运行CSharp回归测试
+        run: dotnet run --project MaxyModLoader.Tests -c Release
+      - name: 运行Lua和管理界面回归测试
+        shell: pwsh
+        run: |
+          $tests = @('tests/test_runtime.py', 'tests/test_modpack.py', 'tests/test_manager.py', 'tests/test_mcp.py', 'tests/test_display.py')
+          foreach ($test in $tests) {
+            python -X utf8 $test
+            if ($LASTEXITCODE -ne 0) { throw "$test回归测试失败" }
+          }
+      - name: 构建加载器和示例模组包
+        shell: pwsh
+        run: ./tools/package-release.ps1 -Version $env:GITHUB_REF_NAME
+      - name: 校验发布压缩包结构
+        shell: pwsh
+        run: |
+          $loader = Get-ChildItem artifacts/release/*-Windows-x64.zip
+          $samples = Get-ChildItem artifacts/release/*-SampleMods.zip
+          if (!$loader -or !$samples) { throw '发布包缺失' }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $loaderArchive = [IO.Compression.ZipFile]::OpenRead($loader.FullName)
+          try {
+            $required = @('install-loader.ps1', 'app/MaxyModLoader.exe', 'app/MaxyModLoader.Bootstrap.exe', '安装说明.md')
+            $names = @($loaderArchive.Entries | ForEach-Object { $_.FullName })
+            foreach ($name in $required) {
+              if ($name -notin $names) { throw "加载器包缺少文件：$name" }
+            }
+          } finally { $loaderArchive.Dispose() }
+          $sampleArchive = [IO.Compression.ZipFile]::OpenRead($samples.FullName)
+          try {
+            if ($sampleArchive.Entries.Count -lt 4) { throw '示例模组包内容不足' }
+          } finally { $sampleArchive.Dispose() }
+      - name: 创建GitHubRelease并上传玩家包
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/release/*-Windows-x64.zip
+            artifacts/release/*-SampleMods.zip
+            artifacts/release/SHA256SUMS.txt
