@@ -4,7 +4,7 @@
   "name": "生存营地辅助包",
   "version": "0.2.0",
   "dependencies": {
-    "twom.play.bridge": "0.2.0"
+    "twom.play.bridge": "0.3.0"
   },
   "modules": {
     "nutrition": "modules/nutrition.lua",

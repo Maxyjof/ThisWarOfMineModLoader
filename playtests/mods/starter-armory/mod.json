@@ -4,7 +4,7 @@
   "name": "开局物资实测包",
   "version": "0.1.0",
   "dependencies": {
-    "twom.play.bridge": "0.2.0",
+    "twom.play.bridge": "0.3.0",
     "twom.content.ammunition": "0.1.0",
     "twom.content.field-equipment": "0.1.0",
     "twom.content.more-guns": "0.1.0",

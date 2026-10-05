@@ -22,7 +22,11 @@ dweller = {GetDwellerName = function() return "test-dweller" end,
     AddItems = function(self, name, amount) food = food + amount end}
 food = 0
 gKosovoGlobalState = {GetGlobalItemCount = function() return food end}
-KosovoScene = {OnAfterInit = function() end, OnDayBegin = function() end, OnEndDay = function() end}
+KosovoScene = {OnBeforeInit = function() end, OnAfterInit = function() end,
+    OnBeforeDayBegin = function() end, OnDayBegin = function() end, OnEndDay = function() end,
+    OnEnterScavenge = function() end, OnSaveScavengeState = function() end,
+    OnBeforeSwitchScene = function() end, OnRadioBroadcast = function() end,
+    NewShelterItemBuilt = function() end}
 gScene = {GetDwellerCount = function() return 1 end, GetCurrentDay = function() return 1 end,
     GetDweller = function() return dweller end}
 component = {GetMyHost = function() return dweller end}
@@ -49,6 +53,9 @@ check(igParams.ScavengeConfig.NormalScavenge.Duration == 3)
 check(igStaminaRunConsumption == 15 and igStaminaWalkConsumption == 5)
 KosovoDwellerControllerComponent.OnAfterInit(component)
 check(dweller:GetParameterValue("Hungry") == -10)
+KosovoScene.OnBeforeInit(gScene, true, true)
+KosovoScene.OnAfterInit(gScene, false)
+KosovoScene.OnBeforeDayBegin(gScene, true)
 KosovoScene.OnDayBegin(gScene, false)
 check(food == 2)
 KosovoScene.OnDayBegin(gScene, false)
@@ -62,10 +69,22 @@ KosovoCraftingBaseComponent.OnCraftingComplete({})
 KosovoParamComponent.TickParameters(component)
 check(dweller:GetParameterValue("Hungry") == 0)
 KosovoScene.OnEndDay(gScene)
+KosovoScene.OnEnterScavenge(gScene)
+KosovoScene.OnSaveScavengeState(gScene)
+KosovoScene.OnRadioBroadcast(gScene)
+KosovoScene.NewShelterItemBuilt(gScene, {name = "test-item"})
+KosovoScene.OnBeforeSwitchScene(gScene)
 TWOMPlaytestCommands.status()
 ''')
 assert any("chronicle.summary" in message for message in messages)
 assert any("scavenge.complete" in message for message in messages)
 assert any("craft.complete" in message for message in messages)
+assert any("chronicle.event\tname=game.scene.before_init" in message for message in messages)
+assert any("chronicle.event\tname=game.day.before_begin" in message for message in messages)
+assert any("chronicle.event\tname=game.scavenge.saving" in message for message in messages)
+assert any("chronicle.event\tname=game.scavenge.saved" in message for message in messages)
+assert any("chronicle.event\tname=game.radio.broadcast" in message for message in messages)
+assert any("chronicle.event\tname=game.shelter.item.built" in message for message in messages)
+assert any("chronicle.event\tname=game.scene.before_switch" in message for message in messages)
 assert any("skipped: dependency failed" in message for message in messages)
 print("通过：九模组组合、模块缓存、配置、服务、状态读写、一次性补给、失败隔离和共享函数包装")

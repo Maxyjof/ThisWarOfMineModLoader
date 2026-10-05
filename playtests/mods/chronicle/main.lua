@@ -7,7 +7,7 @@ return {
         local journal = context.require("journal")
         context.require("summary").install(journal)
         context.services.provide("journal", journal)
-        local names = {"game.scene.ready", "game.day.begin", "game.day.end", "game.scavenge.begin", "game.scavenge.complete", "game.craft.begin", "game.craft.complete"}
+        local names = {"game.scene.before_init", "game.scene.ready", "game.scene.before_switch", "game.day.before_begin", "game.day.begin", "game.day.end", "game.scavenge.entering", "game.scavenge.entered", "game.scavenge.saving", "game.scavenge.saved", "game.radio.broadcast", "game.shelter.item.built", "game.scavenge.begin", "game.scavenge.complete", "game.craft.begin", "game.craft.complete"}
         for _, name in ipairs(names) do
             local event_name = name
             context.events.on(event_name, function() journal.append(event_name) end)

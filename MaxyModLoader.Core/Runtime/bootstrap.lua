@@ -5,7 +5,7 @@ local listeners = {}
 local services = {}
 local rules = {}
 local actions = {}
-local api = { name = "MaxyModLoader", version = "@MML_VERSION@", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
+local api = { name = "MaxyModLoader", version = "@MML_VERSION@", api_version = "1.1.0", loaded = loaded, mods = {}, mod_by_id = {} }
 api.actions = {}
 MaxyModLoader = api
 
@@ -432,6 +432,43 @@ local function context_for(id, dependencies, options)
         table.insert(listeners[name], subscription)
         table.insert(owned_listeners, subscription)
         return function() subscription.active = false end
+    end
+    context.schedule = {}
+    --<summary>
+    --在收到指定数量的游戏日开始事件后执行一次回调
+    --</summary>
+    context.schedule.after_days = function(days, callback)
+        --仅接受正整数避免无意义或永不触发的倒计时
+        require_condition(type(days) == "number" and days == math.floor(days) and days >= 1 and days <= 36500, "days must be an integer from 1 to 36500")
+        require_condition(type(callback) == "function", "schedule callback must be a function")
+        local remaining = days
+        local cancel
+        cancel = context.events.on("game.day.begin", function(scene, ...)
+            --在回调前解除订阅确保异常也不会造成重复执行
+            remaining = remaining - 1
+            if remaining == 0 then
+                cancel()
+                callback(scene, ...)
+            end
+        end)
+        return cancel
+    end
+    --<summary>
+    --每收到指定间隔的游戏日开始事件重复执行回调
+    --</summary>
+    context.schedule.every_days = function(interval, callback)
+        --周期复用正整数限制并要求回调显式存在
+        require_condition(type(interval) == "number" and interval == math.floor(interval) and interval >= 1 and interval <= 36500, "interval must be an integer from 1 to 36500")
+        require_condition(type(callback) == "function", "schedule callback must be a function")
+        local elapsed = 0
+        return context.events.on("game.day.begin", function(scene, ...)
+            --以已确认的白天开始事件累计游戏日而非现实时间
+            elapsed = elapsed + 1
+            if elapsed >= interval then
+                elapsed = 0
+                callback(scene, ...)
+            end
+        end)
     end
     context.wrap = function(target, key, callback)
         require_condition(type(target) == "table" and type(target[key]) == "function", "wrap requires a Lua table function")

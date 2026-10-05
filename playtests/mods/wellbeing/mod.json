@@ -4,7 +4,7 @@
   "name": "角色初始状态辅助",
   "version": "0.1.0",
   "dependencies": {
-    "twom.play.bridge": "0.2.0"
+    "twom.play.bridge": "0.3.0"
   },
   "settings": {
     "hungry": -10,

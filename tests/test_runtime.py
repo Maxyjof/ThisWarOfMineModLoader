@@ -35,7 +35,7 @@ local function load_test_mod(id, source, dependencies, options)
     options.config, options.modules, options.capabilities = options.config or {}, options.modules or {}, options.capabilities or {}
     return MaxyModLoader.load_mod(id, source, dependencies or {}, options)
 end
-assert(MaxyModLoader.api_version == "1.0.0")
+assert(MaxyModLoader.api_version == "1.1.0")
 MaxyModLoader.register_mod({id="disabled.metadata", name="禁用介绍", enabled=false,
     description_document={{kind="paragraph", runs={{text="中文介绍与Unicode字符保持完整"}}}}, features={"功能一", "功能二"}})
 assert(MaxyModLoader.mod_by_id["disabled.metadata"].status == "disabled")
@@ -54,6 +54,32 @@ assert(load_test_mod("events", [[return {on_load = function(c)
 end}]], {}))
 MaxyModLoader.emit("sample", 1, nil, nil)
 assert(count == 1)
+
+--验证游戏日任务计数取消周期执行与输入边界
+scheduled_once, scheduled_repeat = 0, 0
+schedule_scene = {}
+assert(load_test_mod("schedule", [[return {on_load = function(c)
+    c.schedule.after_days(2, function(scene, was_scavenging)
+        scheduled_once = scheduled_once + 1
+        schedule_scene.scene, schedule_scene.was_scavenging = scene, was_scavenging
+    end)
+    c.schedule.every_days(2, function() scheduled_repeat = scheduled_repeat + 1 end)
+end}]], {}))
+local game_scene = {}
+MaxyModLoader.emit("game.day.begin", game_scene, true)
+assert(scheduled_once == 0 and scheduled_repeat == 0)
+MaxyModLoader.emit("game.day.begin", game_scene, true)
+assert(scheduled_once == 1 and scheduled_repeat == 1)
+MaxyModLoader.emit("game.day.begin", game_scene, false)
+assert(scheduled_once == 1 and scheduled_repeat == 1)
+MaxyModLoader.emit("game.day.begin", game_scene, false)
+assert(scheduled_once == 1 and scheduled_repeat == 2)
+assert(schedule_scene.scene == game_scene and schedule_scene.was_scavenging == true)
+assert(load_test_mod("schedule.invalid", [[return {on_load = function(c)
+    assert(not pcall(function() c.schedule.after_days(0, function() end) end))
+    assert(not pcall(function() c.schedule.every_days(1.5, function() end) end))
+    assert(not pcall(function() c.schedule.after_days(1, nil) end))
+end}]], {}))
 
 --测试包装顺序、多返回值和失败入口的包装撤销
 target = {value = function(x) return x, nil, "tail" end}

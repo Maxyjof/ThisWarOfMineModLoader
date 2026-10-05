@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.example.day-scheduler",
+  "name": "游戏日任务示例",
+  "version": "1.0.0",
+  "entry": "main.lua",
+  "author": "MaxyModLoader",
+  "description": "展示如何在若干游戏日后执行一次任务，并按游戏日周期触发任务。",
+  "features": [
+    "按游戏日安排一次性事件",
+    "按游戏日间隔重复记录",
+    "演示取消任务订阅"
+  ],
+  "compatibility": "需要随项目提供的游戏事件桥",
+  "license": "未指定",
+  "descriptionFile": "README.md"
+}

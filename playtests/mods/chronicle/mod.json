@@ -4,7 +4,7 @@
   "name": "营地活动记录包",
   "version": "0.2.0",
   "dependencies": {
-    "twom.play.bridge": "0.2.0"
+    "twom.play.bridge": "0.3.0"
   },
   "modules": {
     "journal": "modules/journal.lua",

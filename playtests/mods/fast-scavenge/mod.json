@@ -4,7 +4,7 @@
   "name": "搜刮提速",
   "version": "0.1.0",
   "dependencies": {
-    "twom.play.bridge": "0.2.0"
+    "twom.play.bridge": "0.3.0"
   },
   "settings": {
     "duration_factor": 0.5

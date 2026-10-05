@@ -1,6 +1,6 @@
 # MaxyModLoader运行时API参考
 
-当前API契约版本为`1.0.0`，由游戏原生Lua5.1.1虚拟机执行。它扩展现有Lua环境，不是.NET、Unity、Mono、BepInEx或Harmony插件接口。模组与原版Lua脚本拥有相同进程权限，只安装可信来源的模组。
+当前API契约版本为`1.1.0`，由游戏原生Lua5.1.1虚拟机执行。它扩展现有Lua环境，不是.NET、Unity、Mono、BepInEx或Harmony插件接口。模组与原版Lua脚本拥有相同进程权限，只安装可信来源的模组。
 
 ## API能力速览
 
@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `context.require` | 加载清单登记的内部Lua模块，自动缓存并检测循环 | 不能从任意磁盘路径加载文件 |
 | `context.events` | 订阅加载器就绪事件和模组自定义事件 | 没有自动覆盖所有游戏玩法事件 |
+| `context.schedule` | 根据事件桥的昼夜事件安排一次或周期性游戏日任务 | 依赖`game.day.begin`事件，不使用现实时间或后台线程 |
 | `context.services` | 向直接依赖模组提供命名服务 | 只能访问自身或清单中直接声明的依赖 |
 | `context.wrap` | 包装已存在的Lua表函数并保留原函数链 | 只处理实际经过该Lua函数的调用 |
 | `context.rules` | 声明、校验、读取、调整和监听共享规则 | 规则值只存在当前游戏进程，不会自动改变原生玩法 |
@@ -67,6 +68,37 @@ counter.increment()
 `context.events.on(name, callback)`订阅事件并返回取消函数；`MaxyModLoader.emit(name, ...)`广播事件。回调按订阅顺序运行，单个回调报错会记入日志且不会阻断其他订阅。广播使用订阅快照，因此回调中新建的订阅从下一次广播开始生效；尾部`nil`参数会保留。
 
 加载器目前保证的内置事件是`loader.ready`，表示本次计划内的模组入口均已尝试加载。它不代表进入庇护所、夜间或搜刮场景。模组可以广播自定义事件；接入具体游戏行为时，应在已核验的Lua函数包装器中广播，并清楚说明实际覆盖范围。
+
+### 已核验的游戏事件桥
+
+`twom.play.bridge`基于本机已核验的SteamBuildID22193501游戏Lua脚本发布下列事件。事件只表示对应函数确实被调用，不保证覆盖其他场景或原生引擎路径。
+
+| 事件 | 参数 | 触发时机 |
+| --- | --- | --- |
+| `game.scene.before_init` | `scene,is_shelter,first_time` | 场景初始化原函数之前 |
+| `game.scene.ready` | `scene,first_time` | 场景初始化原函数之后 |
+| `game.scene.before_switch` | `scene` | 场景切换清理函数之前 |
+| `game.day.before_begin` | `scene,was_scavenging` | 新一天原函数之前 |
+| `game.day.begin` | `scene,was_scavenging` | 新一天原函数之后 |
+| `game.day.end` | `scene` | 一天结束原函数之后 |
+| `game.scavenge.entering`与`game.scavenge.entered` | `scene` | 进入搜刮场景原函数前后 |
+| `game.scavenge.saving`与`game.scavenge.saved` | `scene` | `OnSaveScavengeState`原函数前后 |
+| `game.radio.broadcast` | `scene` | 广播原函数之后 |
+| `game.shelter.item.built` | `scene,item` | 营地建造完成原函数之后 |
+
+`game.scavenge.saving`只对应离开搜刮场景时的状态保存调用，不是通用存档钩子，不读取或改写存档数据。包装器始终调用原函数；原函数异常时不会伪造完成事件。
+
+### 按游戏日安排任务
+
+`context.schedule.after_days(days, callback)`在后续第`days`次`game.day.begin`时调用一次，`context.schedule.every_days(interval, callback)`按给定游戏日间隔重复调用。两者都接收事件的`scene`和`was_scavenging`参数，并返回可取消函数。运行时必须有事件桥广播`game.day.begin`，本项目测试桥已提供该事件。
+
+```lua
+context.schedule.after_days(2, function(scene, was_scavenging)
+    context.log("两个游戏日后触发，当前日" .. tostring(scene:GetCurrentDay()))
+end)
+```
+
+任务只在游戏昼夜回调中运行，不会在暂停、主菜单或游戏进程外推进。它是当前进程内的事件计划，不会跨重启持久化；需要持久计划时应将剩余天数保存在`context.storage`并在入口恢复。取消函数或入口失败清理会停用订阅。
 
 ```lua
 local cancel = context.events.on("loader.ready", function()
@@ -188,7 +220,7 @@ end)
 
 ## 生命周期、故障与安全
 
-加载器当前只要求入口表实现`on_load(context)`，没有通用热卸载、保存档回调、后台线程、协程调度器或游戏内任意UI注册API。开发者应自行保留取消函数和状态边界；模组管理器启用或禁用改动需重启后应用。
+加载器当前只要求入口表实现`on_load(context)`，没有通用热卸载、通用存档回调、后台线程、现实时间计时器、协程调度器或游戏内任意UI注册API。游戏桥提供的是有限且版本核验的生命周期事件。开发者应自行保留取消函数和状态边界；模组管理器启用或禁用改动需重启后应用。
 
 入口失败时，加载器撤销该入口新增的订阅、包装、服务、规则和MCP动作，也回滚它对规则值的临时调整。任意游戏全局变量、原生对象变化和已写入持久存储不能通用回滚。调用点应做好校验并尽量让每次写入幂等。
 
@@ -201,6 +233,7 @@ end)
 - [`examples/rule-api`](../../examples/rule-api)：规则提供方、显式依赖和调整方
 - [`examples/persistent-storage`](../../examples/persistent-storage)：跨启动持久数据
 - [`examples/mcp-tools`](../../examples/mcp-tools)：MCP结构化动作
+- [`examples/day-scheduler`](../../examples/day-scheduler)：基于游戏日回调的一次性和周期任务
 - [`playtests/mods/survival-camp`](../../playtests/mods/survival-camp)：多模块组合及经过核验的玩法适配示例
 
 示例源码经过Lua5.1运行时测试的范围见[游戏实测矩阵](../Testing/ModTestMatrix.md)。协议测试或模组加载成功不等同于武器射击、地图掉落、制作和交易等玩法已通过实机验证。
