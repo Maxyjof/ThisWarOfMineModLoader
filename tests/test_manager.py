@@ -109,6 +109,11 @@ for _, row in ipairs(rows) do
         if run.text == 'Inner' then nested = run.x >= 50 end
         if run.strong and run.emphasis then combined = true end
         if run.text == 'After table' then ending = true end
+        if run.text == 'Heading' then assert(run.size == 21) end
+        if run.text == 'Text with' then assert(run.size == 16) end
+        if run.text == '4.' then assert(run.size == 16) end
+        if row.decoration == 'table' then assert(run.size == 15) end
+        if row.decoration == 'code' then assert(run.size == 14) end
     end
 end
 assert(tables == 2 and nested and code == 3 and combined and ending)

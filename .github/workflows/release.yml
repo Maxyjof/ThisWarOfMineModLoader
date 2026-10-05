@@ -56,7 +56,25 @@ jobs:
           } finally { $loaderArchive.Dispose() }
           $sampleArchive = [IO.Compression.ZipFile]::OpenRead($samples.FullName)
           try {
-            if ($sampleArchive.Entries.Count -lt 4) { throw '示例模组包内容不足' }
+            if ($sampleArchive.Entries.Count -lt 8) { throw '示例模组包内容不足' }
+            $requiredModFiles = [ordered]@{
+              '更多枪械模组.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/MoreGuns.dds')
+              '弹药补给模组.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/Ammunition.dds')
+              '野战工具与防护装备.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/FieldEquipment.dds')
+              '军火交易扩展.zip' = @('mod.json', 'native-content.json', 'README.md')
+            }
+            foreach ($modName in $requiredModFiles.Keys) {
+              $entry = $sampleArchive.GetEntry($modName)
+              if (!$entry) { throw "示例模组包缺少内容模组：$modName" }
+              $entryStream = $entry.Open()
+              $modArchive = [IO.Compression.ZipArchive]::new($entryStream, [IO.Compression.ZipArchiveMode]::Read, $false)
+              try {
+                $names = @($modArchive.Entries | ForEach-Object { $_.FullName })
+                foreach ($required in $requiredModFiles[$modName]) {
+                  if ($required -notin $names) { throw "$modName缺少文件：$required" }
+                }
+              } finally { $modArchive.Dispose() }
+            }
           } finally { $sampleArchive.Dispose() }
       - name: 创建GitHubRelease并上传玩家包
         uses: softprops/action-gh-release@v2

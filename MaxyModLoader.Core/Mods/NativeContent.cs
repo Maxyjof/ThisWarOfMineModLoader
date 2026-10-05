@@ -38,6 +38,8 @@ public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot, Native
                 !ValidName(item.BaseItem) || !ids.Add(item.Id) || string.IsNullOrWhiteSpace(item.Name) ||
                 item.Name.Length > 96 || item.Description is null || item.Description.Length > 2048 ||
                 item.EnglishName is null || item.EnglishName.Length > 96 || item.EnglishDescription is null || item.EnglishDescription.Length > 2048 ||
+                item.IconTextureName is null || !Regex.IsMatch(item.IconTextureName, "^UI/MaxyModLoader/Items/[A-Za-z][A-Za-z0-9_-]*\\.dds$") ||
+                item.IconIndex is < 0 or > 63 ||
                 item.Properties is null || item.Properties.Count > 32 || item.Recipes is null || item.Recipes.Length > 16 ||
                 item.DamageMultiplier is { } damage && (!double.IsFinite(damage) || damage is < 0 or > 1000))
                 throw new InvalidDataException("原生物品身份属性或配方无效");
@@ -80,7 +82,7 @@ public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot, Native
 /// </summary>
 public sealed record NativeItem(string Id, string BaseItem, string Name, string Description,
     Dictionary<string, string> Properties, NativeRecipe[] Recipes, double? DamageMultiplier = null,
-    string EnglishName = "", string EnglishDescription = "");
+    string IconTextureName = "", int IconIndex = -1, string EnglishName = "", string EnglishDescription = "");
 
 /// <summary>
 /// 保存工作台成本时长和结果数量

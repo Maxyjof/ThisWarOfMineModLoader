@@ -72,12 +72,16 @@ try {
     $loaderArchive.Dispose()
 }
 
-#示例包仅包含有明确依赖和配置说明的日常玩法模组
+#示例包包含玩法模组和原创物品内容模组
 $sampleMods = @(
     @{ Name = '游戏事件与测试记录桥'; Source = 'playtests\mods\bridge' },
     @{ Name = '搜刮提速'; Source = 'playtests\mods\fast-scavenge' },
     @{ Name = '节省移动体力'; Source = 'playtests\mods\stamina' },
-    @{ Name = '生存营地辅助包'; Source = 'playtests\mods\survival-camp' }
+    @{ Name = '生存营地辅助包'; Source = 'playtests\mods\survival-camp' },
+    @{ Name = '更多枪械模组'; Source = 'mods\more-guns' },
+    @{ Name = '弹药补给模组'; Source = 'mods\ammunition-supply' },
+    @{ Name = '野战工具与防护装备'; Source = 'mods\field-equipment' },
+    @{ Name = '军火交易扩展'; Source = 'mods\weapon-trading' }
 )
 $samplesArchive = [IO.Compression.ZipFile]::Open($sampleZip, [IO.Compression.ZipArchiveMode]::Create)
 try {

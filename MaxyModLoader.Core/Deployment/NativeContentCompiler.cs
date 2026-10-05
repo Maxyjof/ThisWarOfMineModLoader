@@ -25,7 +25,7 @@ public static class NativeContentCompiler
     /// <summary>
     /// 生成原生差异包不登记或启用任何游戏模组
     /// </summary>
-    public static NativePackage? Compile(string game, LoadPlan plan, string output)
+    public static NativePackage? Compile(string game, LoadPlan plan, string output, IReadOnlySet<uint> textureHashes)
     {
         //没有原生内容时维持普通Lua构建行为包括持续集成的合成容器
         var contents = plan.Ordered.Where(mod => mod.Manifest.NativeContentFile.Length > 0).Select(NativeContent.Read).ToArray();
@@ -55,6 +55,9 @@ public static class NativeContentCompiler
             var englishTranslations = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var item in items)
             {
+                //每件新增物品必须引用本次模组计划提供的原创纹理资源
+                var textureHash = ResourceHash.Compute(item.IconTextureName[..^4] + ".texture");
+                if (!textureHashes.Contains(textureHash)) throw new InvalidDataException("原生物品图标未包含在启用模组资源中：" + item.Id);
                 //新物品只复制本机原版模板修改自己声明的标量和配方
                 var target = Path.Combine(work, "items", item.Id + ".xml");
                 if (File.Exists(target)) throw new InvalidDataException("原生物品标识与原版冲突");
@@ -129,6 +132,8 @@ public static class NativeContentCompiler
         Set(properties, "Name", item.Id);
         Set(properties, "StringName", "MaxyModLoader/Items/" + item.Id + "/Name");
         Set(properties, "StringDescription", "MaxyModLoader/Items/" + item.Id + "/Description");
+        Set(properties, "IconTextureName", item.IconTextureName);
+        Set(properties, "IconIndex", item.IconIndex.ToString(CultureInfo.InvariantCulture));
         foreach (var (name, value) in item.Properties) Set(properties, name, value);
         if (item.DamageMultiplier is { } damage)
         {

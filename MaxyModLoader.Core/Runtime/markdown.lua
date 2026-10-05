@@ -32,7 +32,7 @@ function markdown.layout(blocks, width, decode)
             if #current == 0 and not force then return end
             local shift = align == 'right' and available - used or align == 'center' and (available - used) / 2 or 0
             for _, run in ipairs(current) do run.x = run.x + math.max(0, shift) end
-            add({runs = current, height = math.ceil(size * 1.5), decoration = decoration,
+            add({runs = current, height = math.ceil(size * 1.45), decoration = decoration,
                 left = left, width = available})
             current, used = {}, 0
         end
@@ -81,7 +81,7 @@ function markdown.layout(blocks, width, decode)
                     copy.strong = source_row.header or copy.strong
                     table.insert(runs, copy)
                 end
-                inline(runs, left + (column - 1) * cell_width + 8, cell_width - 16, 17, nil, cell.alignment)
+                inline(runs, left + (column - 1) * cell_width + 8, cell_width - 16, 15, nil, cell.alignment)
                 cells[column], row_height = rows, math.max(row_height, top)
             end
             local combined = {runs = {}, height = math.max(28, row_height + 10), decoration = 'table',
@@ -102,14 +102,14 @@ function markdown.layout(blocks, width, decode)
         local kind = block.kind
         if kind == 'heading' then
             gap(12)
-            inline(block.runs, left, available, math.max(19, 27 - (block.level or 2) * 2), 'heading')
+            inline(block.runs, left, available, math.max(18, 25 - (block.level or 2) * 2), 'heading')
             gap(5)
-        elseif kind == 'paragraph' then inline(block.runs, left, available, 18, decoration); gap(7)
+        elseif kind == 'paragraph' then inline(block.runs, left, available, 16, decoration); gap(6)
         elseif kind == 'rule' then gap(6); add({runs = {}, height = 12, decoration = 'rule', left = left, width = available})
         elseif kind == 'code' then
             gap(5)
             if block.language and block.language ~= '' then inline({{text = block.language, code = true}}, left + 9, available - 18, 14, 'code') end
-            inline(block.runs, left + 9, available - 18, 16, 'code'); gap(8)
+            inline(block.runs, left + 9, available - 18, 14, 'code'); gap(7)
         elseif kind == 'quote' then
             for _, child in ipairs(block.children or {}) do walk(child, left + 18, available - 18, 'quote') end
         elseif kind == 'list' then
@@ -118,13 +118,13 @@ function markdown.layout(blocks, width, decode)
                 for _, child in ipairs(item.children or {}) do walk(child, left + 25, available - 25, decoration) end
                 if rows[first] then
                     table.insert(rows[first].runs, 1, {text = block.ordered and tostring((block.start or 1) + index - 1) .. '.' or '-',
-                        x = left, width = 23, size = 18})
+                        x = left, width = 23, size = 16})
                 end
             end
         elseif kind == 'table' then
             gap(5); block._outer_rows = rows; table_block(block, left, available); block._outer_rows = nil; gap(10)
         else
-            if block.runs then inline(block.runs, left, available, 18, decoration) end
+            if block.runs then inline(block.runs, left, available, 16, decoration) end
             for _, child in ipairs(block.children or {}) do walk(child, left, available, decoration) end
         end
     end

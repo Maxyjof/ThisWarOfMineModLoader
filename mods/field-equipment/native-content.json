@@ -4,7 +4,7 @@
       "id": "MML_ReinforcedVest",
       "baseItem": "Vest",
       "name": "加固防弹衣",
-      "description": "按原版Vest模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "description": "原创物品图标位于野战装备图集第1格。沿用原版防弹衣装备行为，耐久参数为20，交换价值为95。三级金工台制作，耗时1小时，消耗武器零件×10、材料×8。搜刮表：LootGen_Map02。",
       "properties": {
         "Value": "95.000000",
         "HP": "20.000000",
@@ -22,13 +22,15 @@
         }
       ],
       "englishName": "Reinforced ballistic vest",
-      "englishDescription": "Built from the vanilla Vest template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made equipment icon in atlas slot 0. Retains the vanilla ballistic vest equipment behavior. Durability parameter: 20; value: 95. Crafted at Metal Workshop level 3 in 1 hours using 10 WeaponParts and 8 Materials. Loot generator: LootGen_Map02.",
+      "iconTextureName": "UI/MaxyModLoader/Items/FieldEquipment.dds",
+      "iconIndex": 0
     },
     {
       "id": "MML_ReinforcedHelmet",
       "baseItem": "Helmet",
       "name": "加固头盔",
-      "description": "按原版Helmet模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "description": "原创物品图标位于野战装备图集第2格。沿用原版头盔装备行为，耐久参数为16，交换价值为65。三级金工台制作，耗时1.25小时，消耗武器零件×6、材料×6。搜刮表：LootGen_Map07。",
       "properties": {
         "Value": "65.000000",
         "HP": "16.000000",
@@ -46,13 +48,15 @@
         }
       ],
       "englishName": "Reinforced helmet",
-      "englishDescription": "Built from the vanilla Helmet template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made equipment icon in atlas slot 1. Retains the vanilla helmet equipment behavior. Durability parameter: 16; value: 65. Crafted at Metal Workshop level 3 in 1.25 hours using 6 WeaponParts and 6 Materials. Loot generator: LootGen_Map07.",
+      "iconTextureName": "UI/MaxyModLoader/Items/FieldEquipment.dds",
+      "iconIndex": 1
     },
     {
       "id": "MML_HeavyCrowbar",
       "baseItem": "Crowbar",
       "name": "重型撬棍",
-      "description": "按原版Crowbar模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "description": "原创物品图标位于野战装备图集第3格。沿用原版撬棍破障行为，耐久参数为22，交换价值为38。三级金工台制作，耗时1.5小时，消耗武器零件×7、材料×8。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "38.000000",
         "HP": "22.000000",
@@ -70,13 +74,15 @@
         }
       ],
       "englishName": "Heavy crowbar",
-      "englishDescription": "Built from the vanilla Crowbar template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made equipment icon in atlas slot 2. Retains the vanilla crowbar breaching behavior. Durability parameter: 22; value: 38. Crafted at Metal Workshop level 3 in 1.5 hours using 7 WeaponParts and 8 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/FieldEquipment.dds",
+      "iconIndex": 2
     },
     {
       "id": "MML_FieldPickaxe",
       "baseItem": "Pickaxe",
       "name": "野战镐",
-      "description": "按原版Pickaxe模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "description": "原创物品图标位于野战装备图集第4格。沿用原版镐破障行为，耐久参数为20，交换价值为34。三级金工台制作，耗时1.75小时，消耗武器零件×6、材料×8。搜刮表：LootGen_Map18。",
       "properties": {
         "Value": "34.000000",
         "HP": "20.000000",
@@ -94,13 +100,15 @@
         }
       ],
       "englishName": "Field pickaxe",
-      "englishDescription": "Built from the vanilla Pickaxe template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made equipment icon in atlas slot 3. Retains the vanilla pickaxe breaching behavior. Durability parameter: 20; value: 34. Crafted at Metal Workshop level 3 in 1.75 hours using 6 WeaponParts and 8 Materials. Loot generator: LootGen_Map18.",
+      "iconTextureName": "UI/MaxyModLoader/Items/FieldEquipment.dds",
+      "iconIndex": 3
     },
     {
       "id": "MML_FieldLockpick",
       "baseItem": "LockPick",
       "name": "野战撬锁器",
-      "description": "按原版LockPick模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "description": "原创物品图标位于野战装备图集第5格。沿用原版撬锁行为，耐久参数为12，交换价值为30。三级金工台制作，耗时2小时，消耗武器零件×5、材料×6。搜刮表：LootGen_Map03_family。",
       "properties": {
         "Value": "30.000000",
         "HP": "12.000000",
@@ -118,13 +126,15 @@
         }
       ],
       "englishName": "Field lockpick",
-      "englishDescription": "Built from the vanilla LockPick template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made equipment icon in atlas slot 4. Retains the vanilla lockpicking behavior. Durability parameter: 12; value: 30. Crafted at Metal Workshop level 3 in 2 hours using 5 WeaponParts and 6 Materials. Loot generator: LootGen_Map03_family.",
+      "iconTextureName": "UI/MaxyModLoader/Items/FieldEquipment.dds",
+      "iconIndex": 4
     },
     {
       "id": "MML_SturdyShovel",
       "baseItem": "Shovel",
       "name": "加固铲",
-      "description": "按原版Shovel模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "description": "原创物品图标位于野战装备图集第6格。沿用原版铲土行为，耐久参数为18，交换价值为28。三级金工台制作，耗时2.25小时，消耗武器零件×5、材料×6。搜刮表：LootGen_Map04。",
       "properties": {
         "Value": "28.000000",
         "HP": "18.000000",
@@ -142,7 +152,9 @@
         }
       ],
       "englishName": "Sturdy shovel",
-      "englishDescription": "Built from the vanilla Shovel template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made equipment icon in atlas slot 5. Retains the vanilla shovel digging behavior. Durability parameter: 18; value: 28. Crafted at Metal Workshop level 3 in 2.25 hours using 5 WeaponParts and 6 Materials. Loot generator: LootGen_Map04.",
+      "iconTextureName": "UI/MaxyModLoader/Items/FieldEquipment.dds",
+      "iconIndex": 5
     }
   ],
   "loot": [

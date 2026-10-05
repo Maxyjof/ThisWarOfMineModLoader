@@ -420,10 +420,10 @@ function manager.refresh()
             elseif row.decoration == 'quote' then color = {0.83, 0.83, 0.83, 1} end
             --粗体增加原生字形笔画而非仅改颜色强调与链接下划线和删除线独立组合
             if run.strong then
-                local bold = text(container, 'MML_DETAIL_BOLD_' .. index .. '_' .. span, run.text, x + 0.6, y, 625 - x, size * 1.5, size)
+                local bold = text(container, 'MML_DETAIL_BOLD_' .. index .. '_' .. span, run.text, x + 0.6, y, 625 - x, size * 1.45, size)
                 bold:SetColor(unpack(color))
             end
-            local rendered = text(container, 'MML_DETAIL_SPAN_' .. index .. '_' .. span, run.text, x, y, 625 - x, size * 1.5, size)
+            local rendered = text(container, 'MML_DETAIL_SPAN_' .. index .. '_' .. span, run.text, x, y, 625 - x, size * 1.45, size)
             rendered:SetColor(unpack(color))
             if run.strike then shape(container, 'MML_STRIKE_' .. index .. '_' .. span, x, y + size * 0.62, run.width, 1, color) end
             if run.emphasis or run.link and run.link ~= '' then

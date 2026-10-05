@@ -369,6 +369,19 @@ internal static class Program
             var builtin = LiquidArchive.Open(Path.Combine(plainPackage, "textures-s3"));
             Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/ModManager/BrushList.texture")).Length > 144);
             Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/ModManager/BrushDetail.texture")).Length > 144);
+            //模组目录内启用资源自动进入纹理容器不需要额外的CLI参数
+            var modRoot = Path.Combine(root, "resource-mods");
+            var modFolder = Path.Combine(modRoot, "asset-mod");
+            var modResourceRoot = Path.Combine(modFolder, "resources", "UI", "MaxyModLoader", "Items");
+            Directory.CreateDirectory(modResourceRoot);
+            File.WriteAllText(Path.Combine(modFolder, "mod.json"), "{\"schemaVersion\":1,\"id\":\"asset.mod\",\"name\":\"资源模组\",\"version\":\"1.0.0\"}");
+            File.WriteAllText(Path.Combine(modFolder, "main.lua"), "return {}\n");
+            File.WriteAllBytes(Path.Combine(modResourceRoot, "icon.dds"), dds);
+            var modPackage = Path.Combine(root, "mod-resource-package");
+            PackageBuilder.Build(source, MainHash, modRoot, modPackage);
+            var modTextures = LiquidArchive.Open(Path.Combine(modPackage, "textures-s3"));
+            Assert(modTextures.Read(ResourceHash.Compute("UI/MaxyModLoader/Items/icon.texture"))
+                .SequenceEqual(LiquidTexture.FromDds(dds)));
             Reject<InvalidDataException>(() => LiquidTexture.FromDds(dds[..^1]));
             var unsupported = (byte[])dds.Clone();
             BinaryPrimitives.WriteUInt32LittleEndian(unsupported.AsSpan(28, 4), 2);
@@ -533,27 +546,91 @@ internal static class Program
         Test("原生内容声明拒绝路径重复物品和错误配方", () =>
         {
             //新增物品限定自有前缀成本和时长必须是有限合法值
-            var item = new NativeItem("MML_Test", "Machinegun", "测试物品", "中文介绍", new(), [], 45);
+            var item = new NativeItem("MML_Test", "Machinegun", "测试物品", "中文介绍", new(), [], 45,
+                "UI/MaxyModLoader/Items/Test.dds", 17);
             new NativeContent([item], []).Validate();
+            Reject<InvalidDataException>(() => new NativeContent([item with { IconTextureName = "UI/KosovoIcons/vanilla.dds" }], []).Validate());
+            Reject<InvalidDataException>(() => new NativeContent([item with { IconIndex = 64 }], []).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item with { Id = "../Gun" }], []).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item, item with { Id = "MML_test" }], []).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item with { Recipes = [new("MetalWorkshop3", double.NaN, new() { ["Parts"] = 1 })] }], []).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item], [new("LootGen_Map11", "MML_Unknown", 0, 1)]).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item], [], [new("MissingTrader", "MML_Test", 2, 1)]).Validate());
         });
+        Test("全部示例原生物品均使用存在的原创图标", () =>
+        {
+            //按正式加载顺序解析所有示例模组与依赖
+            var mods = ModCatalog.Discover(Path.Combine(Repository, "mods"));
+            var plan = LoadPlanner.Create(mods);
+            Assert(plan.IsValid);
+            var textures = new HashSet<uint>();
+            var describedItems = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["twom.content.more-guns"] = 40,
+                ["twom.content.ammunition"] = 4,
+                ["twom.content.field-equipment"] = 6
+            };
+
+            //真实解析示例说明文件确认标题加粗和物品清单使用标准Markdown结构
+            foreach (var (id, expectedCount) in describedItems)
+            {
+                var mod = plan.Catalog.Single(item => item.Manifest.Id == id);
+                var document = MarkdownContent.Parse(mod.Manifest.Description);
+                var lists = document.Where(node => node.Kind == "list").ToArray();
+                Assert(lists.Sum(list => list.Children.Count) == expectedCount);
+                Assert(document.Any(node => node.Kind == "heading" && node.Runs.Count > 0));
+                Assert(lists.SelectMany(list => list.Children).SelectMany(item => item.Children)
+                    .SelectMany(item => item.Runs).Any(run => run.Strong));
+            }
+
+            //逐个验证启用模组中的DDS并收集引擎实际使用的纹理路径哈希
+            foreach (var mod in plan.Ordered)
+            {
+                var resourceRoot = Path.Combine(mod.Directory, "resources");
+                if (!Directory.Exists(resourceRoot)) continue;
+                foreach (var file in Directory.EnumerateFiles(resourceRoot, "*.dds", SearchOption.AllDirectories))
+                {
+                    var relative = Path.GetRelativePath(resourceRoot, file).Replace('\\', '/');
+                    var texture = LiquidTexture.FromDds(File.ReadAllBytes(file));
+                    Assert(textures.Add(ResourceHash.Compute(Path.ChangeExtension(relative, ".texture"))));
+                    Assert(texture.Length > 144);
+                }
+            }
+
+            //逐件核对图标路径与编号确保所有新增物品都有自有贴图
+            var itemCount = 0;
+            foreach (var mod in plan.Ordered.Where(mod => mod.Manifest.NativeContentFile.Length > 0))
+            {
+                var content = NativeContent.Read(mod);
+                foreach (var item in content.Items)
+                {
+                    var hash = ResourceHash.Compute(item.IconTextureName[..^4] + ".texture");
+                    Assert(textures.Contains(hash));
+                    Assert(item.IconIndex is >= 0 and < 64);
+                    itemCount++;
+                }
+            }
+
+            //固定数量断言避免示例模组清单遗漏新增物品
+            Assert(itemCount == 50);
+        });
         Test("物品配方补丁只改直接属性且保留其他模板数据", () =>
         {
             //合成模板不含官方素材检查同名嵌套属性不会被误改
             var document = XDocument.Parse("""
                 <KosovoItemElementConfig><Properties><Prop Name="Name" Value="Machinegun"/><Prop Name="StringName" Value="old"/>
-                <Prop Name="StringDescription" Value="old"/><Prop Name="Value" Value="74"/><Prop Name="HP" Value="-1"/>
+                <Prop Name="StringDescription" Value="old"/><Prop Name="IconTextureName" Value="old.dds"/><Prop Name="IconIndex" Value="0"/>
+                <Prop Name="Value" Value="74"/><Prop Name="HP" Value="-1"/>
                 <Prop Name="PassiveMultipliers"><Entry><Properties><Prop Name="ParameterName" Value="DamageMultiplier"/>
                 <Prop Name="MultiplierValue" Value="50"/><Prop Name="Value" Value="keep"/></Properties></Entry></Prop>
                 <Prop Name="CraftingRecipes"><Entry>old</Entry></Prop></Properties></KosovoItemElementConfig>
                 """);
             var item = new NativeItem("MML_Test", "Machinegun", "测试", "介绍", new() { ["Value"] = "90" },
-                [new("MetalWorkshop3", 1.5, new() { ["WeaponParts"] = 4 })], 45);
+                [new("MetalWorkshop3", 1.5, new() { ["WeaponParts"] = 4 })], 45,
+                "UI/MaxyModLoader/Items/Test.dds", 17);
             NativeContentCompiler.ApplyItem(document, item, new HashSet<string> { "MetalWorkshop3", "WeaponParts" });
+            Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "IconTextureName").Attribute("Value")!.Value == item.IconTextureName);
+            Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "IconIndex").Attribute("Value")!.Value == "17");
             Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "HP").Attribute("Value")!.Value == "-1");
             Assert(document.Descendants("Prop").Any(node => (string?)node.Attribute("Value") == "keep"));
             Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "Count").Attribute("Value")!.Value == "4");

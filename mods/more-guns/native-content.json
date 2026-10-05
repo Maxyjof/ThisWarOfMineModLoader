@@ -4,7 +4,7 @@
       "id": "MML_AK74",
       "baseItem": "Machinegun",
       "name": "AK-74突击步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第1格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.22秒，射击间隔为0.075秒，伤害倍率为38，射程参数为11，交换价值为68。三级金工台制作，耗时3小时，消耗武器零件×6、材料×5。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "68.000000",
         "StackSize": "1",
@@ -26,13 +26,15 @@
       ],
       "damageMultiplier": 38,
       "englishName": "AK-74 assault rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 0. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.22 seconds; firing interval 0.075 seconds; damage multiplier: 38. Range parameter 11. Value: 68. Crafted at Metal Workshop level 3 in 3 hours using 6 WeaponParts and 5 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 0
     },
     {
       "id": "MML_M4A1",
       "baseItem": "Machinegun",
       "name": "M4A1卡宾枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第2格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.265秒，射击间隔为0.093秒，伤害倍率为45，射程参数为11，交换价值为75。三级金工台制作，耗时3.5小时，消耗武器零件×7、材料×6。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "75.000000",
         "StackSize": "1",
@@ -54,13 +56,15 @@
       ],
       "damageMultiplier": 45,
       "englishName": "M4A1 carbine",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 1. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.265 seconds; firing interval 0.093 seconds; damage multiplier: 45. Range parameter 11. Value: 75. Crafted at Metal Workshop level 3 in 3.5 hours using 7 WeaponParts and 6 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 1
     },
     {
       "id": "MML_FAMAS",
       "baseItem": "Machinegun",
       "name": "法玛斯突击步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第3格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.31秒，射击间隔为0.111秒，伤害倍率为52，射程参数为11，交换价值为82。三级金工台制作，耗时4小时，消耗武器零件×8、材料×7。搜刮表：LootGen_Map07。",
       "properties": {
         "Value": "82.000000",
         "StackSize": "1",
@@ -82,13 +86,15 @@
       ],
       "damageMultiplier": 52,
       "englishName": "FAMAS rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 2. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.31 seconds; firing interval 0.111 seconds; damage multiplier: 52. Range parameter 11. Value: 82. Crafted at Metal Workshop level 3 in 4 hours using 8 WeaponParts and 7 Materials. Loot generator: LootGen_Map07.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 2
     },
     {
       "id": "MML_G36",
       "baseItem": "Machinegun",
       "name": "G36突击步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第4格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.355秒，射击间隔为0.129秒，伤害倍率为59，射程参数为11，交换价值为89。三级金工台制作，耗时4.5小时，消耗武器零件×9、材料×8。搜刮表：LootGen_Map09_R_guns。",
       "properties": {
         "Value": "89.000000",
         "StackSize": "1",
@@ -110,13 +116,15 @@
       ],
       "damageMultiplier": 59,
       "englishName": "G36 rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 3. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.355 seconds; firing interval 0.129 seconds; damage multiplier: 59. Range parameter 11. Value: 89. Crafted at Metal Workshop level 3 in 4.5 hours using 9 WeaponParts and 8 Materials. Loot generator: LootGen_Map09_R_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 3
     },
     {
       "id": "MML_SCARH",
       "baseItem": "Machinegun",
       "name": "SCAR-H战斗步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第5格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.4秒，射击间隔为0.075秒，伤害倍率为66，射程参数为11，交换价值为96。三级金工台制作，耗时3小时，消耗武器零件×10、材料×9。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "96.000000",
         "StackSize": "1",
@@ -138,13 +146,15 @@
       ],
       "damageMultiplier": 66,
       "englishName": "SCAR-H rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 4. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.4 seconds; firing interval 0.075 seconds; damage multiplier: 66. Range parameter 11. Value: 96. Crafted at Metal Workshop level 3 in 3 hours using 10 WeaponParts and 9 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 4
     },
     {
       "id": "MML_FNFAL",
       "baseItem": "Machinegun",
       "name": "FN FAL步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第6格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.22秒，射击间隔为0.093秒，伤害倍率为73，射程参数为11，交换价值为103。三级金工台制作，耗时3.5小时，消耗武器零件×11、材料×5。搜刮表：LootGen_Map09_R_guns。",
       "properties": {
         "Value": "103.000000",
         "StackSize": "1",
@@ -166,13 +176,15 @@
       ],
       "damageMultiplier": 73,
       "englishName": "FN FAL rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 5. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.22 seconds; firing interval 0.093 seconds; damage multiplier: 73. Range parameter 11. Value: 103. Crafted at Metal Workshop level 3 in 3.5 hours using 11 WeaponParts and 5 Materials. Loot generator: LootGen_Map09_R_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 5
     },
     {
       "id": "MML_AUG",
       "baseItem": "Machinegun",
       "name": "AUG突击步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第7格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.265秒，射击间隔为0.111秒，伤害倍率为80，射程参数为11，交换价值为68。三级金工台制作，耗时4小时，消耗武器零件×6、材料×6。搜刮表：LootGen_Map13_SniperSquad。",
       "properties": {
         "Value": "68.000000",
         "StackSize": "1",
@@ -194,13 +206,15 @@
       ],
       "damageMultiplier": 80,
       "englishName": "Steyr AUG rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 6. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.265 seconds; firing interval 0.111 seconds; damage multiplier: 80. Range parameter 11. Value: 68. Crafted at Metal Workshop level 3 in 4 hours using 6 WeaponParts and 6 Materials. Loot generator: LootGen_Map13_SniperSquad.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 6
     },
     {
       "id": "MML_Galil",
       "baseItem": "Machinegun",
       "name": "加利尔步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第8格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.31秒，射击间隔为0.129秒，伤害倍率为87，射程参数为11，交换价值为75。三级金工台制作，耗时4.5小时，消耗武器零件×7、材料×7。搜刮表：LootGen_Map07。",
       "properties": {
         "Value": "75.000000",
         "StackSize": "1",
@@ -222,13 +236,15 @@
       ],
       "damageMultiplier": 87,
       "englishName": "Galil rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 7. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.31 seconds; firing interval 0.129 seconds; damage multiplier: 87. Range parameter 11. Value: 75. Crafted at Metal Workshop level 3 in 4.5 hours using 7 WeaponParts and 7 Materials. Loot generator: LootGen_Map07.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 7
     },
     {
       "id": "MML_SIG550",
       "baseItem": "Machinegun",
       "name": "SIG SG 550步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第9格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.355秒，射击间隔为0.075秒，伤害倍率为38，射程参数为11，交换价值为82。三级金工台制作，耗时3小时，消耗武器零件×8、材料×8。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "82.000000",
         "StackSize": "1",
@@ -250,13 +266,15 @@
       ],
       "damageMultiplier": 38,
       "englishName": "SIG SG 550 rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 8. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.355 seconds; firing interval 0.075 seconds; damage multiplier: 38. Range parameter 11. Value: 82. Crafted at Metal Workshop level 3 in 3 hours using 8 WeaponParts and 8 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 8
     },
     {
       "id": "MML_AN94",
       "baseItem": "Machinegun",
       "name": "AN-94突击步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第10格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.4秒，射击间隔为0.093秒，伤害倍率为45，射程参数为11，交换价值为89。三级金工台制作，耗时3.5小时，消耗武器零件×9、材料×9。搜刮表：LootGen_Map06_guns。",
       "properties": {
         "Value": "89.000000",
         "StackSize": "1",
@@ -278,13 +296,15 @@
       ],
       "damageMultiplier": 45,
       "englishName": "AN-94 rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 9. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.4 seconds; firing interval 0.093 seconds; damage multiplier: 45. Range parameter 11. Value: 89. Crafted at Metal Workshop level 3 in 3.5 hours using 9 WeaponParts and 9 Materials. Loot generator: LootGen_Map06_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 9
     },
     {
       "id": "MML_M16A4",
       "baseItem": "Machinegun",
       "name": "M16A4步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第11格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.22秒，射击间隔为0.111秒，伤害倍率为52，射程参数为11，交换价值为96。三级金工台制作，耗时4小时，消耗武器零件×10、材料×5。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "96.000000",
         "StackSize": "1",
@@ -306,13 +326,15 @@
       ],
       "damageMultiplier": 52,
       "englishName": "M16A4 rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 10. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.22 seconds; firing interval 0.111 seconds; damage multiplier: 52. Range parameter 11. Value: 96. Crafted at Metal Workshop level 3 in 4 hours using 10 WeaponParts and 5 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 10
     },
     {
       "id": "MML_AKM",
       "baseItem": "Machinegun",
       "name": "AKM突击步枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第12格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.265秒，射击间隔为0.129秒，伤害倍率为59，射程参数为11，交换价值为103。三级金工台制作，耗时4.5小时，消耗武器零件×11、材料×6。搜刮表：LootGen_Map06_guns。",
       "properties": {
         "Value": "103.000000",
         "StackSize": "1",
@@ -334,13 +356,15 @@
       ],
       "damageMultiplier": 59,
       "englishName": "AKM rifle",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 11. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.265 seconds; firing interval 0.129 seconds; damage multiplier: 59. Range parameter 11. Value: 103. Crafted at Metal Workshop level 3 in 4.5 hours using 11 WeaponParts and 6 Materials. Loot generator: LootGen_Map06_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 11
     },
     {
       "id": "MML_MP5",
       "baseItem": "Machinegun",
       "name": "MP5冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第13格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.22秒，射击间隔为0.075秒，伤害倍率为38，射程参数为11，交换价值为68。三级金工台制作，耗时3小时，消耗武器零件×6、材料×5。搜刮表：LootGen_Map06_guns。",
       "properties": {
         "Value": "68.000000",
         "StackSize": "1",
@@ -362,13 +386,15 @@
       ],
       "damageMultiplier": 38,
       "englishName": "MP5 submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 12. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.22 seconds; firing interval 0.075 seconds; damage multiplier: 38. Range parameter 11. Value: 68. Crafted at Metal Workshop level 3 in 3 hours using 6 WeaponParts and 5 Materials. Loot generator: LootGen_Map06_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 12
     },
     {
       "id": "MML_Uzi",
       "baseItem": "Machinegun",
       "name": "乌兹冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第14格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.265秒，射击间隔为0.093秒，伤害倍率为45，射程参数为11，交换价值为75。三级金工台制作，耗时3.5小时，消耗武器零件×7、材料×6。搜刮表：LootGen_Map03_bandits。",
       "properties": {
         "Value": "75.000000",
         "StackSize": "1",
@@ -390,13 +416,15 @@
       ],
       "damageMultiplier": 45,
       "englishName": "Uzi submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 13. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.265 seconds; firing interval 0.093 seconds; damage multiplier: 45. Range parameter 11. Value: 75. Crafted at Metal Workshop level 3 in 3.5 hours using 7 WeaponParts and 6 Materials. Loot generator: LootGen_Map03_bandits.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 13
     },
     {
       "id": "MML_PPSh41",
       "baseItem": "Machinegun",
       "name": "PPSh-41波波沙冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第15格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.31秒，射击间隔为0.111秒，伤害倍率为52，射程参数为11，交换价值为82。三级金工台制作，耗时4小时，消耗武器零件×8、材料×7。搜刮表：LootGen_Map03_bandits。",
       "properties": {
         "Value": "82.000000",
         "StackSize": "1",
@@ -418,13 +446,15 @@
       ],
       "damageMultiplier": 52,
       "englishName": "PPSh-41 submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 14. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.31 seconds; firing interval 0.111 seconds; damage multiplier: 52. Range parameter 11. Value: 82. Crafted at Metal Workshop level 3 in 4 hours using 8 WeaponParts and 7 Materials. Loot generator: LootGen_Map03_bandits.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 14
     },
     {
       "id": "MML_P90",
       "baseItem": "Machinegun",
       "name": "P90冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第16格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.355秒，射击间隔为0.129秒，伤害倍率为59，射程参数为11，交换价值为89。三级金工台制作，耗时4.5小时，消耗武器零件×9、材料×8。搜刮表：LootGen_Map13_SniperSquad。",
       "properties": {
         "Value": "89.000000",
         "StackSize": "1",
@@ -446,13 +476,15 @@
       ],
       "damageMultiplier": 59,
       "englishName": "P90 submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 15. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.355 seconds; firing interval 0.129 seconds; damage multiplier: 59. Range parameter 11. Value: 89. Crafted at Metal Workshop level 3 in 4.5 hours using 9 WeaponParts and 8 Materials. Loot generator: LootGen_Map13_SniperSquad.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 15
     },
     {
       "id": "MML_Vector",
       "baseItem": "Machinegun",
       "name": "KRISS Vector冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第17格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.4秒，射击间隔为0.075秒，伤害倍率为66，射程参数为11，交换价值为96。三级金工台制作，耗时3小时，消耗武器零件×10、材料×9。搜刮表：LootGen_Map12_loner。",
       "properties": {
         "Value": "96.000000",
         "StackSize": "1",
@@ -474,13 +506,15 @@
       ],
       "damageMultiplier": 66,
       "englishName": "KRISS Vector submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 16. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.4 seconds; firing interval 0.075 seconds; damage multiplier: 66. Range parameter 11. Value: 96. Crafted at Metal Workshop level 3 in 3 hours using 10 WeaponParts and 9 Materials. Loot generator: LootGen_Map12_loner.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 16
     },
     {
       "id": "MML_UMP45",
       "baseItem": "Machinegun",
       "name": "UMP-45冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第18格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.22秒，射击间隔为0.093秒，伤害倍率为73，射程参数为11，交换价值为103。三级金工台制作，耗时3.5小时，消耗武器零件×11、材料×5。搜刮表：LootGen_Map07。",
       "properties": {
         "Value": "103.000000",
         "StackSize": "1",
@@ -502,13 +536,15 @@
       ],
       "damageMultiplier": 73,
       "englishName": "UMP45 submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 17. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.22 seconds; firing interval 0.093 seconds; damage multiplier: 73. Range parameter 11. Value: 103. Crafted at Metal Workshop level 3 in 3.5 hours using 11 WeaponParts and 5 Materials. Loot generator: LootGen_Map07.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 17
     },
     {
       "id": "MML_MP7",
       "baseItem": "Machinegun",
       "name": "MP7冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第19格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.265秒，射击间隔为0.111秒，伤害倍率为80，射程参数为11，交换价值为68。三级金工台制作，耗时4小时，消耗武器零件×6、材料×6。搜刮表：LootGen_Map10_Trader。",
       "properties": {
         "Value": "68.000000",
         "StackSize": "1",
@@ -530,13 +566,15 @@
       ],
       "damageMultiplier": 80,
       "englishName": "MP7 submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 18. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.265 seconds; firing interval 0.111 seconds; damage multiplier: 80. Range parameter 11. Value: 68. Crafted at Metal Workshop level 3 in 4 hours using 6 WeaponParts and 6 Materials. Loot generator: LootGen_Map10_Trader.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 18
     },
     {
       "id": "MML_Thompson",
       "baseItem": "Machinegun",
       "name": "汤普森冲锋枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第20格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为2，冷却时间为0.31秒，射击间隔为0.129秒，伤害倍率为87，射程参数为11，交换价值为75。三级金工台制作，耗时4.5小时，消耗武器零件×7、材料×7。搜刮表：LootGen_Map16_market。",
       "properties": {
         "Value": "75.000000",
         "StackSize": "1",
@@ -558,13 +596,15 @@
       ],
       "damageMultiplier": 87,
       "englishName": "Thompson submachine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 19. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 2; cooldown: 0.31 seconds; firing interval 0.129 seconds; damage multiplier: 87. Range parameter 11. Value: 75. Crafted at Metal Workshop level 3 in 4.5 hours using 7 WeaponParts and 7 Materials. Loot generator: LootGen_Map16_market.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 19
     },
     {
       "id": "MML_Glock17",
       "baseItem": "Pistol",
       "name": "格洛克17手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第21格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.32秒，伤害倍率为24，射程参数为8，交换价值为34。三级金工台制作，耗时3小时，消耗武器零件×6、材料×5。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "34.000000",
         "StackSize": "1",
@@ -586,13 +626,15 @@
       ],
       "damageMultiplier": 24,
       "englishName": "Glock 17 pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 20. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.32 seconds; damage multiplier: 24. Range parameter 8. Value: 34. Crafted at Metal Workshop level 3 in 3 hours using 6 WeaponParts and 5 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 20
     },
     {
       "id": "MML_USP45",
       "baseItem": "Pistol",
       "name": "USP .45手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第22格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.39秒，伤害倍率为33，射程参数为8，交换价值为42。三级金工台制作，耗时3.5小时，消耗武器零件×7、材料×6。搜刮表：LootGen_Map07。",
       "properties": {
         "Value": "42.000000",
         "StackSize": "1",
@@ -614,13 +656,15 @@
       ],
       "damageMultiplier": 33,
       "englishName": "USP45 pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 21. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.39 seconds; damage multiplier: 33. Range parameter 8. Value: 42. Crafted at Metal Workshop level 3 in 3.5 hours using 7 WeaponParts and 6 Materials. Loot generator: LootGen_Map07.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 21
     },
     {
       "id": "MML_FiveSeven",
       "baseItem": "Pistol",
       "name": "FN Five-seveN手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第23格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.46秒，伤害倍率为42，射程参数为8，交换价值为50。三级金工台制作，耗时4小时，消耗武器零件×8、材料×7。搜刮表：LootGen_Map13_SniperSquad。",
       "properties": {
         "Value": "50.000000",
         "StackSize": "1",
@@ -642,13 +686,15 @@
       ],
       "damageMultiplier": 42,
       "englishName": "Five-seveN pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 22. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.46 seconds; damage multiplier: 42. Range parameter 8. Value: 50. Crafted at Metal Workshop level 3 in 4 hours using 8 WeaponParts and 7 Materials. Loot generator: LootGen_Map13_SniperSquad.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 22
     },
     {
       "id": "MML_DesertEagle",
       "baseItem": "Pistol",
       "name": "沙漠之鹰手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第24格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.53秒，伤害倍率为51，射程参数为8，交换价值为58。三级金工台制作，耗时4.5小时，消耗武器零件×9、材料×8。搜刮表：LootGen_Map09_R_guns。",
       "properties": {
         "Value": "58.000000",
         "StackSize": "1",
@@ -670,13 +716,15 @@
       ],
       "damageMultiplier": 51,
       "englishName": "Desert Eagle pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 23. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.53 seconds; damage multiplier: 51. Range parameter 8. Value: 58. Crafted at Metal Workshop level 3 in 4.5 hours using 9 WeaponParts and 8 Materials. Loot generator: LootGen_Map09_R_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 23
     },
     {
       "id": "MML_Beretta92",
       "baseItem": "Pistol",
       "name": "贝雷塔92手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第25格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.6秒，伤害倍率为60，射程参数为8，交换价值为66。三级金工台制作，耗时3小时，消耗武器零件×10、材料×9。搜刮表：LootGen_Map10_Trader。",
       "properties": {
         "Value": "66.000000",
         "StackSize": "1",
@@ -698,13 +746,15 @@
       ],
       "damageMultiplier": 60,
       "englishName": "Beretta 92 pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 24. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.6 seconds; damage multiplier: 60. Range parameter 8. Value: 66. Crafted at Metal Workshop level 3 in 3 hours using 10 WeaponParts and 9 Materials. Loot generator: LootGen_Map10_Trader.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 24
     },
     {
       "id": "MML_M1911",
       "baseItem": "Pistol",
       "name": "M1911手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第26格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.32秒，伤害倍率为69，射程参数为8，交换价值为74。三级金工台制作，耗时3.5小时，消耗武器零件×11、材料×5。搜刮表：LootGen_Map03_bandits。",
       "properties": {
         "Value": "74.000000",
         "StackSize": "1",
@@ -726,13 +776,15 @@
       ],
       "damageMultiplier": 69,
       "englishName": "M1911 pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 25. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.32 seconds; damage multiplier: 69. Range parameter 8. Value: 74. Crafted at Metal Workshop level 3 in 3.5 hours using 11 WeaponParts and 5 Materials. Loot generator: LootGen_Map03_bandits.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 25
     },
     {
       "id": "MML_P226",
       "baseItem": "Pistol",
       "name": "SIG P226手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第27格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.39秒，伤害倍率为78，射程参数为8，交换价值为82。三级金工台制作，耗时4小时，消耗武器零件×6、材料×6。搜刮表：LootGen_Map06_guns。",
       "properties": {
         "Value": "82.000000",
         "StackSize": "1",
@@ -754,13 +806,15 @@
       ],
       "damageMultiplier": 78,
       "englishName": "SIG P226 pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 26. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.39 seconds; damage multiplier: 78. Range parameter 8. Value: 82. Crafted at Metal Workshop level 3 in 4 hours using 6 WeaponParts and 6 Materials. Loot generator: LootGen_Map06_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 26
     },
     {
       "id": "MML_CZ75",
       "baseItem": "Pistol",
       "name": "CZ 75手枪",
-      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第28格。使用手枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.46秒，伤害倍率为24，射程参数为8，交换价值为34。三级金工台制作，耗时4.5小时，消耗武器零件×7、材料×7。搜刮表：LootGen_Map10_Trader。",
       "properties": {
         "Value": "34.000000",
         "StackSize": "1",
@@ -782,13 +836,15 @@
       ],
       "damageMultiplier": 24,
       "englishName": "CZ 75 pistol",
-      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 27. Uses the verified vanilla Pistol template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.46 seconds; damage multiplier: 24. Range parameter 8. Value: 34. Crafted at Metal Workshop level 3 in 4.5 hours using 7 WeaponParts and 7 Materials. Loot generator: LootGen_Map10_Trader.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 27
     },
     {
       "id": "MML_Remington870",
       "baseItem": "Shotgun",
       "name": "雷明顿870霰弹枪",
-      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第29格。使用霰弹枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.72秒，伤害倍率为68，射程参数为6，交换价值为58。三级金工台制作，耗时3小时，消耗武器零件×6、材料×5。搜刮表：LootGen_Map10_Trader。",
       "properties": {
         "Value": "58.000000",
         "StackSize": "1",
@@ -810,13 +866,15 @@
       ],
       "damageMultiplier": 68,
       "englishName": "Remington 870 shotgun",
-      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 28. Uses the verified vanilla Shotgun template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.72 seconds; damage multiplier: 68. Range parameter 6. Value: 58. Crafted at Metal Workshop level 3 in 3 hours using 6 WeaponParts and 5 Materials. Loot generator: LootGen_Map10_Trader.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 28
     },
     {
       "id": "MML_BenelliM4",
       "baseItem": "Shotgun",
       "name": "贝内利M4霰弹枪",
-      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第30格。使用霰弹枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.86秒，伤害倍率为80，射程参数为6，交换价值为69。三级金工台制作，耗时3.5小时，消耗武器零件×7、材料×6。搜刮表：LootGen_Map07。",
       "properties": {
         "Value": "69.000000",
         "StackSize": "1",
@@ -838,13 +896,15 @@
       ],
       "damageMultiplier": 80,
       "englishName": "Benelli M4 shotgun",
-      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 29. Uses the verified vanilla Shotgun template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.86 seconds; damage multiplier: 80. Range parameter 6. Value: 69. Crafted at Metal Workshop level 3 in 3.5 hours using 7 WeaponParts and 6 Materials. Loot generator: LootGen_Map07.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 29
     },
     {
       "id": "MML_SPAS12",
       "baseItem": "Shotgun",
       "name": "SPAS-12霰弹枪",
-      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第31格。使用霰弹枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为1秒，伤害倍率为92，射程参数为6，交换价值为80。三级金工台制作，耗时4小时，消耗武器零件×8、材料×7。搜刮表：LootGen_Map16_market。",
       "properties": {
         "Value": "80.000000",
         "StackSize": "1",
@@ -866,13 +926,15 @@
       ],
       "damageMultiplier": 92,
       "englishName": "SPAS-12 shotgun",
-      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 30. Uses the verified vanilla Shotgun template for its model, animation and handling. Projectiles per attack: 1; cooldown: 1 seconds; damage multiplier: 92. Range parameter 6. Value: 80. Crafted at Metal Workshop level 3 in 4 hours using 8 WeaponParts and 7 Materials. Loot generator: LootGen_Map16_market.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 30
     },
     {
       "id": "MML_Mossberg500",
       "baseItem": "Shotgun",
       "name": "莫斯伯格500霰弹枪",
-      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第32格。使用霰弹枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为1.14秒，伤害倍率为104，射程参数为6，交换价值为91。三级金工台制作，耗时4.5小时，消耗武器零件×9、材料×8。搜刮表：LootGen_Map06_guns。",
       "properties": {
         "Value": "91.000000",
         "StackSize": "1",
@@ -894,13 +956,15 @@
       ],
       "damageMultiplier": 104,
       "englishName": "Mossberg 500 shotgun",
-      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 31. Uses the verified vanilla Shotgun template for its model, animation and handling. Projectiles per attack: 1; cooldown: 1.14 seconds; damage multiplier: 104. Range parameter 6. Value: 91. Crafted at Metal Workshop level 3 in 4.5 hours using 9 WeaponParts and 8 Materials. Loot generator: LootGen_Map06_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 31
     },
     {
       "id": "MML_Saiga12",
       "baseItem": "Shotgun",
       "name": "赛加12霰弹枪",
-      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第33格。使用霰弹枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.72秒，伤害倍率为116，射程参数为6，交换价值为102。三级金工台制作，耗时3小时，消耗武器零件×10、材料×9。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "102.000000",
         "StackSize": "1",
@@ -922,13 +986,15 @@
       ],
       "damageMultiplier": 116,
       "englishName": "Saiga-12 shotgun",
-      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 32. Uses the verified vanilla Shotgun template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.72 seconds; damage multiplier: 116. Range parameter 6. Value: 102. Crafted at Metal Workshop level 3 in 3 hours using 10 WeaponParts and 9 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 32
     },
     {
       "id": "MML_DoubleBarrel",
       "baseItem": "Shotgun",
       "name": "双管霰弹枪",
-      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第34格。使用霰弹枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为0.86秒，伤害倍率为128，射程参数为6，交换价值为58。三级金工台制作，耗时3.5小时，消耗武器零件×11、材料×5。搜刮表：LootGen_Map03_bandits。",
       "properties": {
         "Value": "58.000000",
         "StackSize": "1",
@@ -950,13 +1016,15 @@
       ],
       "damageMultiplier": 128,
       "englishName": "Double-barrel shotgun",
-      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 33. Uses the verified vanilla Shotgun template for its model, animation and handling. Projectiles per attack: 1; cooldown: 0.86 seconds; damage multiplier: 128. Range parameter 6. Value: 58. Crafted at Metal Workshop level 3 in 3.5 hours using 11 WeaponParts and 5 Materials. Loot generator: LootGen_Map03_bandits.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 33
     },
     {
       "id": "MML_M14",
       "baseItem": "SniperRifle",
       "name": "M14精确步枪",
-      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第35格。使用狙击枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为1.15秒，射击间隔为0.34秒，伤害倍率为92，射程沿用原版狙击枪模板设置，交换价值为74。三级金工台制作，耗时3小时，消耗武器零件×6、材料×5。搜刮表：LootGen_Map06_guns。",
       "properties": {
         "Value": "74.000000",
         "StackSize": "1",
@@ -978,13 +1046,15 @@
       ],
       "damageMultiplier": 92,
       "englishName": "M14 rifle",
-      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 34. Uses the verified vanilla SniperRifle template for its model, animation and handling. Projectiles per attack: 1; cooldown: 1.15 seconds; firing interval 0.34 seconds; damage multiplier: 92. Range follows the verified vanilla sniper template. Value: 74. Crafted at Metal Workshop level 3 in 3 hours using 6 WeaponParts and 5 Materials. Loot generator: LootGen_Map06_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 34
     },
     {
       "id": "MML_DragunovSVD",
       "baseItem": "SniperRifle",
       "name": "德拉古诺夫SVD狙击步枪",
-      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第36格。使用狙击枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为1.4秒，射击间隔为0.44秒，伤害倍率为106，射程沿用原版狙击枪模板设置，交换价值为83。三级金工台制作，耗时3.5小时，消耗武器零件×7、材料×6。搜刮表：LootGen_Map09_R_guns。",
       "properties": {
         "Value": "83.000000",
         "StackSize": "1",
@@ -1006,13 +1076,15 @@
       ],
       "damageMultiplier": 106,
       "englishName": "Dragunov SVD rifle",
-      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 35. Uses the verified vanilla SniperRifle template for its model, animation and handling. Projectiles per attack: 1; cooldown: 1.4 seconds; firing interval 0.44 seconds; damage multiplier: 106. Range follows the verified vanilla sniper template. Value: 83. Crafted at Metal Workshop level 3 in 3.5 hours using 7 WeaponParts and 6 Materials. Loot generator: LootGen_Map09_R_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 35
     },
     {
       "id": "MML_VSSVintorez",
       "baseItem": "SniperRifle",
       "name": "VSS微声狙击步枪",
-      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第37格。使用狙击枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为1.65秒，射击间隔为0.54秒，伤害倍率为120，射程沿用原版狙击枪模板设置，交换价值为92。三级金工台制作，耗时4小时，消耗武器零件×8、材料×7。搜刮表：LootGen_Map13_SniperSquad。",
       "properties": {
         "Value": "92.000000",
         "StackSize": "1",
@@ -1034,13 +1106,15 @@
       ],
       "damageMultiplier": 120,
       "englishName": "VSS Vintorez rifle",
-      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 36. Uses the verified vanilla SniperRifle template for its model, animation and handling. Projectiles per attack: 1; cooldown: 1.65 seconds; firing interval 0.54 seconds; damage multiplier: 120. Range follows the verified vanilla sniper template. Value: 92. Crafted at Metal Workshop level 3 in 4 hours using 8 WeaponParts and 7 Materials. Loot generator: LootGen_Map13_SniperSquad.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 36
     },
     {
       "id": "MML_SKS",
       "baseItem": "SniperRifle",
       "name": "SKS半自动步枪",
-      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第38格。使用狙击枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为1，冷却时间为1.9秒，射击间隔为0.64秒，伤害倍率为134，射程沿用原版狙击枪模板设置，交换价值为101。三级金工台制作，耗时4.5小时，消耗武器零件×9、材料×8。搜刮表：LootGen_Map13_SniperSquad。",
       "properties": {
         "Value": "101.000000",
         "StackSize": "1",
@@ -1062,13 +1136,15 @@
       ],
       "damageMultiplier": 134,
       "englishName": "SKS rifle",
-      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 37. Uses the verified vanilla SniperRifle template for its model, animation and handling. Projectiles per attack: 1; cooldown: 1.9 seconds; firing interval 0.64 seconds; damage multiplier: 134. Range follows the verified vanilla sniper template. Value: 101. Crafted at Metal Workshop level 3 in 4.5 hours using 9 WeaponParts and 8 Materials. Loot generator: LootGen_Map13_SniperSquad.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 37
     },
     {
       "id": "MML_M249",
       "baseItem": "Machinegun",
       "name": "M249轻机枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第39格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.22秒，射击间隔为0.075秒，伤害倍率为38，射程参数为11，交换价值为68。三级金工台制作，耗时3小时，消耗武器零件×6、材料×5。搜刮表：LootGen_Map11。",
       "properties": {
         "Value": "68.000000",
         "StackSize": "1",
@@ -1090,13 +1166,15 @@
       ],
       "damageMultiplier": 38,
       "englishName": "M249 light machine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 38. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.22 seconds; firing interval 0.075 seconds; damage multiplier: 38. Range parameter 11. Value: 68. Crafted at Metal Workshop level 3 in 3 hours using 6 WeaponParts and 5 Materials. Loot generator: LootGen_Map11.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 38
     },
     {
       "id": "MML_RPK74",
       "baseItem": "Machinegun",
       "name": "RPK-74轻机枪",
-      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "description": "原创枪械图标位于枪械图集第40格。使用机枪模板，保留该模板的模型、动画和操作行为。每次攻击的弹丸数参数为3，冷却时间为0.265秒，射击间隔为0.093秒，伤害倍率为45，射程参数为11，交换价值为75。三级金工台制作，耗时3.5小时，消耗武器零件×7、材料×6。搜刮表：LootGen_Map09_R_guns。",
       "properties": {
         "Value": "75.000000",
         "StackSize": "1",
@@ -1118,7 +1196,9 @@
       ],
       "damageMultiplier": 45,
       "englishName": "RPK-74 light machine gun",
-      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made firearm icon in atlas slot 39. Uses the verified vanilla Machinegun template for its model, animation and handling. Projectiles per attack: 3; cooldown: 0.265 seconds; firing interval 0.093 seconds; damage multiplier: 45. Range parameter 11. Value: 75. Crafted at Metal Workshop level 3 in 3.5 hours using 7 WeaponParts and 6 Materials. Loot generator: LootGen_Map09_R_guns.",
+      "iconTextureName": "UI/MaxyModLoader/Items/MoreGuns.dds",
+      "iconIndex": 39
     }
   ],
   "loot": [

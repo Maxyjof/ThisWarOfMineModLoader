@@ -4,7 +4,7 @@
       "id": "MML_AmmoPack1",
       "baseItem": "PistolShells",
       "name": "9mm弹药",
-      "description": "独立制作的弹药补给物品，沿用原版PistolShells模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "description": "原创弹药图标位于弹药图集第1格。基于原版PistolShells物品模板，堆叠上限为60，交换价值为16。三级金工台制作，耗时1小时，消耗火药×16、武器零件×2。搜刮表：LootGen_Map11。与新增枪械的弹药消耗绑定尚未验证。",
       "properties": {
         "Value": "16.000000",
         "StackSize": "60"
@@ -21,13 +21,15 @@
         }
       ],
       "englishName": "9 mm ammunition pack",
-      "englishDescription": "Built from the vanilla PistolShells template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made ammunition icon in atlas slot 0. Uses the verified vanilla PistolShells item template, stack size 60 and value 16. Crafted at Metal Workshop level 3 in 1 hours using 16 GunPowder and 2 WeaponParts. Loot generator: LootGen_Map11. Ammunition consumption by added firearms is not verified.",
+      "iconTextureName": "UI/MaxyModLoader/Items/Ammunition.dds",
+      "iconIndex": 0
     },
     {
       "id": "MML_AmmoPack2",
       "baseItem": "ShotgunAmmo",
       "name": "12号霰弹",
-      "description": "独立制作的弹药补给物品，沿用原版ShotgunAmmo模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "description": "原创弹药图标位于弹药图集第2格。基于原版ShotgunAmmo物品模板，堆叠上限为60，交换价值为20。三级金工台制作，耗时1.25小时，消耗火药×18、武器零件×2。搜刮表：LootGen_Map06_guns。与新增枪械的弹药消耗绑定尚未验证。",
       "properties": {
         "Value": "20.000000",
         "StackSize": "60"
@@ -44,13 +46,15 @@
         }
       ],
       "englishName": "12-gauge shells",
-      "englishDescription": "Built from the vanilla ShotgunAmmo template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made ammunition icon in atlas slot 1. Uses the verified vanilla ShotgunAmmo item template, stack size 60 and value 20. Crafted at Metal Workshop level 3 in 1.25 hours using 18 GunPowder and 2 WeaponParts. Loot generator: LootGen_Map06_guns. Ammunition consumption by added firearms is not verified.",
+      "iconTextureName": "UI/MaxyModLoader/Items/Ammunition.dds",
+      "iconIndex": 1
     },
     {
       "id": "MML_AmmoPack3",
       "baseItem": "RifleAmmo",
       "name": "步枪弹药补给",
-      "description": "独立制作的弹药补给物品，沿用原版RifleAmmo模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "description": "原创弹药图标位于弹药图集第3格。基于原版RifleAmmo物品模板，堆叠上限为60，交换价值为18。三级金工台制作，耗时1.5小时，消耗火药×16、武器零件×2。搜刮表：LootGen_Map09_R_guns。与新增枪械的弹药消耗绑定尚未验证。",
       "properties": {
         "Value": "18.000000",
         "StackSize": "60"
@@ -67,13 +71,15 @@
         }
       ],
       "englishName": "Rifle ammunition pack",
-      "englishDescription": "Built from the vanilla RifleAmmo template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made ammunition icon in atlas slot 2. Uses the verified vanilla RifleAmmo item template, stack size 60 and value 18. Crafted at Metal Workshop level 3 in 1.5 hours using 16 GunPowder and 2 WeaponParts. Loot generator: LootGen_Map09_R_guns. Ammunition consumption by added firearms is not verified.",
+      "iconTextureName": "UI/MaxyModLoader/Items/Ammunition.dds",
+      "iconIndex": 2
     },
     {
       "id": "MML_AmmoPack4",
       "baseItem": "Ammo",
       "name": "混合弹药箱",
-      "description": "独立制作的弹药补给物品，沿用原版Ammo模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "description": "原创弹药图标位于弹药图集第4格。基于原版Ammo物品模板，堆叠上限为60，交换价值为30。三级金工台制作，耗时1.75小时，消耗火药×30、武器零件×3。搜刮表：LootGen_Map07。与新增枪械的弹药消耗绑定尚未验证。",
       "properties": {
         "Value": "30.000000",
         "StackSize": "60"
@@ -90,7 +96,9 @@
         }
       ],
       "englishName": "Mixed ammunition crate",
-      "englishDescription": "Built from the vanilla Ammo template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+      "englishDescription": "Original project-made ammunition icon in atlas slot 3. Uses the verified vanilla Ammo item template, stack size 60 and value 30. Crafted at Metal Workshop level 3 in 1.75 hours using 30 GunPowder and 3 WeaponParts. Loot generator: LootGen_Map07. Ammunition consumption by added firearms is not verified.",
+      "iconTextureName": "UI/MaxyModLoader/Items/Ammunition.dds",
+      "iconIndex": 3
     }
   ],
   "loot": [

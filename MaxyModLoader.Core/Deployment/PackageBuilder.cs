@@ -37,15 +37,21 @@ public static class PackageBuilder
         var outputBase = Path.Combine(outputDirectory, name);
         var originalIndex = Fingerprint(source.BasePath + ".idx");
         var originalData = Fingerprint(source.BasePath + ".dat");
-        //原生内容由本机官方工具编译成独立差异包不会覆盖主脚本资源
-        var native = NativeContentCompiler.Compile(Path.GetDirectoryName(source.BasePath)!, plan, outputDirectory);
-
         //编译后写入独立目录并确认源文件没有在构建期间发生变化
         var compiled = LuaBundle.Compile(source.Read(mainHash), plan);
         var resources = ReadBuiltinResources();
+        //只收集本次加载计划中已启用模组的自有资源
+        foreach (var mod in plan.Ordered)
+        {
+            var modResources = Path.Combine(mod.Directory, "resources");
+            if (Directory.Exists(modResources)) AddResources(resources, ReadResources(modResources));
+        }
+        //构建工具提供的附加资源与模组资源使用同一冲突校验
         if (resourceDirectory is not null)
-            foreach (var (hash, bytes) in ReadResources(resourceDirectory))
-                if (!resources.TryAdd(hash, bytes)) throw new InvalidDataException("外部资源与加载器内置资源哈希冲突");
+            AddResources(resources, ReadResources(resourceDirectory));
+        //原生内容由本机官方工具编译并确认每件物品的原创图标存在
+        var native = NativeContentCompiler.Compile(Path.GetDirectoryName(source.BasePath)!, plan, outputDirectory,
+            resources.Keys.ToHashSet());
         //原版纹理查找限定textures挂载点不能将图片追加到common脚本容器
         var textureBase = Path.Combine(Path.GetDirectoryName(source.BasePath)!, "textures-s3");
         var textureArchive = LiquidArchive.Open(textureBase);
@@ -68,6 +74,16 @@ public static class PackageBuilder
             plan.Ordered.Select(m => m.Manifest.Id).ToArray(), native);
         File.WriteAllText(Path.Combine(outputDirectory, "package.json"), JsonSerializer.Serialize(manifest, ModManifest.JsonOptions));
         return manifest;
+    }
+
+    /// <summary>
+    /// 合并纹理资源并拒绝路径哈希冲突
+    /// </summary>
+    private static void AddResources(Dictionary<uint, byte[]> resources, IReadOnlyDictionary<uint, byte[]> additions)
+    {
+        //同一游戏资源路径只能由一个来源提供
+        foreach (var (hash, bytes) in additions)
+            if (!resources.TryAdd(hash, bytes)) throw new InvalidDataException($"纹理资源路径重复：{hash:x8}");
     }
 
     /// <summary>
