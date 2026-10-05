@@ -28,37 +28,41 @@ dotnet run --project MaxyModLoader.Cli -- plan examples
 
 `plan` 检查清单、依赖、版本、冲突及循环，输出稳定的加载顺序。发现错误时返回非零退出码，并且不产生部分加载计划。
 
-## 使用第一版
+## 玩家安装与启动
 
-日常玩家包可先运行`./tools/prepare-player-mods.ps1 -Destination <新的模组目录>`，准备五个已实装验证的玩法模组，以及更多枪械、弹药补给、野战装备和军火交易四个原生内容模组，再把下方构建命令的`examples`替换为该目录。该脚本不覆盖已有目录，开发示例与故意失败探针不会混入玩家包。原生内容格式见[原生内容模组说明](docs/native-content.md)。
+玩家只需安装一次启动器。它读取游戏目录`Mods`文件夹根部的ZIP压缩包，每个压缩包对应一个模组，压缩包根部或唯一一级目录中必须有`mod.json`。启动时自动安全解包、检查依赖与冲突、生成并缓存部署包，然后启动游戏；退出游戏后自动恢复原版容器。Windows目录不区分大小写，游戏已有的`Mods`目录就是玩家放ZIP的位置，原版文件会保留。
 
-先退出游戏。在仓库根目录运行以下命令，将路径改为自己的安装目录。`artifacts/package-demo` 必须是尚不存在的目录。
-
-```powershell
-dotnet run --project MaxyModLoader.Cli -- build "D:\Steam\steamapps\common\This War of Mine\common" 5faa28a2 examples artifacts/package-demo
-dotnet run --project MaxyModLoader.Cli -- install "D:\Steam\steamapps\common\This War of Mine" artifacts/package-demo
-```
-
-通过 Steam 正常启动游戏。当前已验证版本的日志位于游戏根目录的 `MaxyModLoader/runtime.log`。工具也把日志输出到游戏控制台。日志文件依赖游戏开放 `io` 库以及启动时工作目录；本机 Steam 启动已验证能生成日志。
-
-退出游戏后恢复原容器：
+在仓库根目录发布自包含启动器并安装到已核验的游戏目录：
 
 ```powershell
-dotnet run --project MaxyModLoader.Cli -- restore "D:\Steam\steamapps\common\This War of Mine"
+dotnet publish MaxyModLoader.Cli -c Release -r win-x64 --self-contained true -o artifacts/loader-kit
+./tools/install-loader.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -PublishDirectory "$(Get-Location)\artifacts\loader-kit"
 ```
 
-安装器只接受与构建来源指纹完全一致的容器。更新游戏、其他模组修改文件或部署包损坏时拒绝安装。已安装时先恢复，再从原容器重新构建，避免把原始脚本包装多次。安装中断可用同一个 `restore` 命令恢复；如果其他工具再次改动文件，恢复器拒绝自动覆盖。恢复后保留备份。安装还会复制五个固定的.NET辅助运行文件和隐藏启动脚本，恢复时按所有权指纹移除这些文件，保留模式偏好和日志；第三方修改的辅助文件不会被自动删除。
+安装脚本把程序放在游戏目录`MaxyModLoader/app`，并创建`使用MaxyModLoader启动.cmd`。把模组ZIP放入游戏目录`Mods`，双击该启动脚本即可运行。也可在Steam启动选项中设置一次，让Steam按钮经过加载器启动：
 
-首版修改磁盘上的两个 `common` 文件，不修改 EXE 或存档。模组增删、更新和启用状态变化都需恢复、重新构建并安装。模组拥有游戏 Lua 全局环境访问能力，只运行可信模组。入口失败只撤销加载器管理的订阅与包装，无法回滚任意游戏副作用；包装回调的异常也由模组自行处理。
+```text
+"D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" play "D:\Steam\steamapps\common\This War of Mine" %command%
+```
 
-也可用发布工具直接运行相同命令：
+每次启动会检查ZIP内容并复用匹配的缓存；模组增删或更新后无需手工构建。启动器会在游戏退出后恢复原版容器。若系统意外结束了启动器，可先关闭游戏，再执行恢复命令：
+
+```powershell
+"D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" restore "D:\Steam\steamapps\common\This War of Mine"
+```
+
+启动器不会修改游戏EXE。原生LiquidEngine不提供读取ZIP或启动前加载插件的接口，因此Steam启动需使用上面的启动选项，或双击生成的启动脚本；直接启动原游戏EXE不会读取模组ZIP。原生内容模组仍须通过本机官方ModTools编译，并且只支持已核验的Steam游戏版本。模组代码以游戏Lua全局环境权限运行，只安装可信来源。
+
+`MaxyModLoader/runtime.log`记录游戏内模组入口日志。日常用户不需要手动调用`build`或`install`；开发者命令仍可用于独立构建部署包。
+
+## 开发者发布
 
 ```powershell
 dotnet publish MaxyModLoader.Cli -c Release -o artifacts/tool
 .\artifacts\tool\MaxyModLoader.exe plan examples
 ```
 
-这份发布产物依赖 .NET 10 运行时，未做自包含打包。不要分发带有游戏原资源的构建部署包，分发工具和模组源码即可让玩家本机生成。
+开发者发布目录依赖.NET10运行时。自包含Windows玩家启动器使用上方`-r win-x64 --self-contained true`命令生成。不要分发带有游戏原资源的构建部署包，分发工具和模组源码即可让玩家本机生成。
 
 ## 模组规范 v1
 

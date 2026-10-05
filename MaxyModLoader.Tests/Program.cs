@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
@@ -55,6 +56,35 @@ internal static class Program
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
         Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 3));
+        Test("模组ZIP支持根目录和一级目录布局", () => InWorkspace(root =>
+        {
+            //每个压缩包代表一个模组且包内文件会被展开到独立目录
+            var archives = Path.Combine(root, "Mods"); Directory.CreateDirectory(archives);
+            CreateModZip(Path.Combine(archives, "root.zip"), "", "zip.root");
+            CreateModZip(Path.Combine(archives, "wrapped.zip"), "Wrapped/", "zip.wrapped");
+            var staging = Path.Combine(root, "staging");
+            var imported = ModZipImporter.ExtractAll(archives, staging);
+            var plan = LoadPlanner.Create(ModCatalog.Discover(staging));
+            Assert(imported.Count == 2 && plan.IsValid && plan.Ordered.Count == 2);
+            Assert(File.Exists(Path.Combine(imported[0], "main.lua")) && File.Exists(Path.Combine(imported[1], "mod.json")));
+        }));
+        Test("模组ZIP拒绝目录穿越和混合模组", () => InWorkspace(root =>
+        {
+            //恶意路径在任何文件写入前被拒绝且不会创建目标目录之外的文件
+            var archives = Path.Combine(root, "Mods"); Directory.CreateDirectory(archives);
+            var zip = Path.Combine(archives, "unsafe.zip");
+            using (var file = File.Create(zip))
+            using (var archive = new ZipArchive(file, ZipArchiveMode.Create))
+            {
+                //先写入一个有效清单使路径穿越项成为实际触发条件
+                using (var manifest = new StreamWriter(archive.CreateEntry("mod.json").Open()))
+                    manifest.Write("{\"id\":\"unsafe\",\"name\":\"不安全\",\"version\":\"1.0.0\"}");
+                using (var escape = new StreamWriter(archive.CreateEntry("../escape.lua").Open()))
+                    escape.Write("return {}");
+            }
+            Reject<InvalidDataException>(() => ModZipImporter.ExtractAll(archives, Path.Combine(root, "staging")));
+            Assert(!File.Exists(Path.Combine(root, "escape.lua")));
+        }));
         Test("管理目录保留禁用模组且不加载入口", () => InWorkspace(root =>
         {
             //禁用模组仍有介绍静态加载顺序只包含启用项
@@ -184,6 +214,20 @@ internal static class Program
             DisplayHost.Uninstall(game);
             Assert(!File.Exists(binary) && !File.Exists(Path.Combine(game, "MaxyModLoader", "display-host.vbs")));
             Assert(File.Exists(Path.Combine(host, "other.txt")));
+        }));
+        Test("自包含设置辅助程序不依赖系统dotnet", () => InWorkspace(root =>
+        {
+            //玩家启动器直接运行自带运行时的应用入口不复制额外运行文件
+            var source = Path.Combine(root, "source"); Directory.CreateDirectory(source);
+            File.WriteAllText(Path.Combine(source, "MaxyModLoader.exe"), "apphost");
+            File.WriteAllText(Path.Combine(source, "coreclr.dll"), "runtime");
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(Path.Combine(game, "MaxyModLoader", "app"));
+            DisplayHost.Install(game, source);
+            var script = File.ReadAllText(Path.Combine(game, "MaxyModLoader", "display-host.vbs"));
+            Assert(script.Contains("app\\MaxyModLoader.exe") && !script.Contains("dotnet "));
+            Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "host", "MaxyModLoader.dll")));
+            DisplayHost.Uninstall(game);
+            Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "display-host.vbs")));
         }));
 
         //使用合成容器验证格式损坏、资源替换与长度限制
@@ -562,6 +606,20 @@ internal static class Program
             var allowed = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             if (root.StartsWith(allowed, StringComparison.OrdinalIgnoreCase)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// 创建根目录或一级包装目录布局的测试模组压缩包
+    /// </summary>
+    private static void CreateModZip(string path, string prefix, string id)
+    {
+        //测试包只含规范清单和Lua入口用于验证安全导入后的正式发现流程
+        using var file = File.Create(path);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Create);
+        using (var manifest = new StreamWriter(archive.CreateEntry(prefix + "mod.json").Open()))
+            manifest.Write(JsonSerializer.Serialize(new { id, name = id, version = "1.0.0" }));
+        using (var entry = new StreamWriter(archive.CreateEntry(prefix + "main.lua").Open()))
+            entry.Write("return {}\n");
     }
 
     /// <summary>

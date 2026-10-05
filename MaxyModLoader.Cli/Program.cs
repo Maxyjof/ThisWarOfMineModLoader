@@ -36,6 +36,7 @@ internal static class Program
                 case ["display", var game]: Console.WriteLine(JsonSerializer.Serialize(await GameDisplay.ReadAsync(game))); return 0;
                 case ["display", var game, var mode]: Console.WriteLine(JsonSerializer.Serialize(await DisplayHost.RequestAsync(game, mode))); return 0;
                 case ["display-host", var game]: await DisplayHost.RunAsync(game); return 0;
+                case ["play", var game, .. var forwarded]: return await GameLauncher.PlayAsync(game, forwarded);
                 case ["plan", var root]: return Plan(root);
                 case ["hash", var path]: Console.WriteLine($"{ResourceHash.Compute(path):x8}"); return 0;
                 case ["inspect", var container]: return Inspect(container);
@@ -53,11 +54,11 @@ internal static class Program
                     Console.WriteLine("已核验并恢复原容器备份仍保留在MaxyModLoader/backups");
                     return 0;
                 default:
-                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录> [DDS资源目录]\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>\ndisplay <游戏根目录> [borderless|windowed|fullscreen]");
+                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplay <游戏根目录> [Steam启动程序及参数]\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录> [DDS资源目录]\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>\ndisplay <游戏根目录> [borderless|windowed|fullscreen]");
                     return args.Length == 0 || args is ["--help"] ? 0 : 1;
             }
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException or TimeoutException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or DecoderFallbackException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             //预期的输入和文件错误不输出无关堆栈但保留明确退出码
             Console.Error.WriteLine($"错误：{exception.Message}");

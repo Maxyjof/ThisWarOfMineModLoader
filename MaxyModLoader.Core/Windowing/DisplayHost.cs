@@ -18,22 +18,26 @@ public static class DisplayHost
     /// </summary>
     public static void Install(string game, string source)
     {
-        //仅复制固定文件名不复制整个输出目录或本机配置
+        //自包含玩家启动器由VBS直接调用不依赖系统安装的dotnet运行时
+        source = Path.GetFullPath(source);
         var destination = Path.Combine(Path.GetFullPath(game), "MaxyModLoader", "host");
-        foreach (var name in RuntimeFiles)
-            if (!File.Exists(Path.Combine(source, name))) throw new IOException("缺少窗口辅助运行文件：" + name);
+        var selfContained = File.Exists(Path.Combine(source, "MaxyModLoader.exe")) && File.Exists(Path.Combine(source, "coreclr.dll"));
         Directory.CreateDirectory(destination);
-        foreach (var name in RuntimeFiles) File.Copy(Path.Combine(source, name), Path.Combine(destination, name), true);
+        if (!selfContained)
+        {
+            //开发环境兼容旧式框架依赖部署且只复制固定运行文件
+            foreach (var name in RuntimeFiles)
+                if (!File.Exists(Path.Combine(source, name))) throw new IOException("缺少窗口辅助运行文件：" + name);
+            foreach (var name in RuntimeFiles) File.Copy(Path.Combine(source, name), Path.Combine(destination, name), true);
+        }
+
         //启动脚本根据自身位置解析游戏目录不固化开发者路径且不显示控制台
-        var script = "Option Explicit\r\nDim fs, folder, game, shell\r\n" +
-            "Set fs = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
-            "folder = fs.GetParentFolderName(WScript.ScriptFullName)\r\n" +
-            "game = fs.GetParentFolderName(folder)\r\n" +
-            "Set shell = CreateObject(\"WScript.Shell\")\r\n" +
-            "shell.Run \"dotnet \"\"\" & folder & \"\\host\\MaxyModLoader.dll\"\" display-host \"\"\" & game & \"\"\"\", 0, False\r\n";
+        var script = StartupScript(selfContained);
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(destination)!, "display-host.vbs"), script, new UTF8Encoding(false));
-        //记录固定自有文件的指纹恢复时只移除未被第三方修改的辅助文件
-        var ownership = RuntimeFiles.ToDictionary(name => name, name => Fingerprint(Path.Combine(destination, name)));
+        //记录自有文件指纹恢复时只移除没有被第三方修改的辅助文件
+        var ownership = selfContained
+            ? new Dictionary<string, string> { ["mode"] = "self-contained" }
+            : RuntimeFiles.ToDictionary(name => name, name => Fingerprint(Path.Combine(destination, name)));
         ownership["display-host.vbs"] = Fingerprint(Path.Combine(Path.GetDirectoryName(destination)!, "display-host.vbs"));
         File.WriteAllText(Path.Combine(destination, "ownership.json"), JsonSerializer.Serialize(ownership));
     }
@@ -50,6 +54,18 @@ public static class DisplayHost
         if (!File.Exists(manifest)) return;
         var ownership = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(manifest))
             ?? throw new InvalidDataException("窗口辅助所有权记录无效");
+        if (ownership.TryGetValue("mode", out var mode) && mode == "self-contained")
+        {
+            //自包含启动器模式只拥有VBS入口不触碰应用目录或其他辅助文件
+            if (ownership.Count != 2 || !ownership.ContainsKey("display-host.vbs"))
+                throw new InvalidDataException("自包含窗口辅助所有权记录无效");
+            var scriptPath = Path.Combine(root, "display-host.vbs");
+            if (File.Exists(scriptPath) && Fingerprint(scriptPath) != ownership["display-host.vbs"])
+                throw new InvalidDataException("窗口辅助文件已被修改拒绝自动移除：display-host.vbs");
+            if (File.Exists(scriptPath)) File.Delete(scriptPath);
+            File.Delete(manifest);
+            return;
+        }
         var names = RuntimeFiles.Append("display-host.vbs").ToArray();
         //兼容升级前不包含Markdown解析器的固定运行文件集合
         if (!ownership.ContainsKey("MaxyModLoader.Core.dll") || ownership.Keys.Any(name => !names.Contains(name)) ||
@@ -63,6 +79,25 @@ public static class DisplayHost
                 throw new InvalidDataException("窗口辅助文件已被修改拒绝自动移除：" + names[index]);
         foreach (var path in paths) if (File.Exists(path)) File.Delete(path);
         File.Delete(manifest);
+    }
+
+    /// <summary>
+    /// 生成调用自包含程序或开发版运行时的隐藏脚本
+    /// </summary>
+    private static string StartupScript(bool selfContained)
+    {
+        //两种启动方式都从脚本位置推导游戏目录并使用隐藏窗口
+        var prefix = "Option Explicit\r\nDim fs, folder, game, shell\r\n" +
+            "Set fs = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
+            "folder = fs.GetParentFolderName(WScript.ScriptFullName)\r\n" +
+            "game = fs.GetParentFolderName(folder)\r\n" +
+            "Set shell = CreateObject(\"WScript.Shell\")\r\n";
+        if (selfContained)
+            return prefix + "Dim launcher, command\r\n" +
+                "launcher = fs.BuildPath(folder, \"app\\MaxyModLoader.exe\")\r\n" +
+                "command = Chr(34) & launcher & Chr(34) & \" display-host \" & Chr(34) & game & Chr(34)\r\n" +
+                "shell.Run command, 0, False\r\n";
+        return prefix + "shell.Run \"dotnet \"\"\" & folder & \"\\host\\MaxyModLoader.dll\"\" display-host \"\"\" & game & \"\"\"\", 0, False\r\n";
     }
 
     /// <summary>
