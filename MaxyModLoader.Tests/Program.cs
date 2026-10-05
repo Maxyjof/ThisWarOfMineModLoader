@@ -440,6 +440,10 @@ internal static class Program
             Directory.CreateDirectory(staleBackup);
             File.WriteAllText(Path.Combine(staleBackup, "stale.marker"), "obsolete session");
             Assert(Directory.Exists(backup));
+            //模拟游戏正常退出后仍保留模组部署和原版恢复点供下次启动复用
+            Assert(PackageInstaller.ReadInstalledState(game) is not null);
+            Assert(PackageInstaller.IsInstalledPackage(game, package));
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
             PackageInstaller.Restore(game);
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
             Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.Scripts.OriginalIndexSha256);
@@ -505,6 +509,8 @@ internal static class Program
             var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
             PackageInstaller.Install(game, package);
             File.WriteAllBytes(source + ".idx", originalIndex);
+            //不完整部署不得被识别为可复用状态启动器应进入原版恢复流程
+            Assert(!PackageInstaller.IsInstalledPackage(game, package));
             PackageInstaller.Restore(game);
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
         }));

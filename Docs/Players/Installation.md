@@ -19,7 +19,7 @@
 
 5. 安装成功后直接从Steam启动游戏。加载器会自动处理模组并启动原版游戏
 
-安装包自带.NET运行时。安装器把两个自包含程序放到`游戏目录\MaxyModLoader\app`，创建`游戏目录\Mods`并安装图形界面启动入口。不要删除`游戏目录\x64\MaxyModLoader.Original.exe`；游戏入口被加载器接管时，Steam通过此文件启动原版游戏。
+安装包自带.NET运行时。安装器把两个自包含程序放到`游戏目录\MaxyModLoader\app`，创建`游戏目录\Mods`并安装图形界面启动入口。不要删除`游戏目录\x64\MaxyModLoader.Original.exe`；游戏入口被加载器接管时，Steam通过此文件启动原版游戏。首次部署后，模组资源和原版恢复点会一直保留在游戏目录，下次启动只做指纹核验并直接复用，不会每次重新构建。
 
 ## 安装示例模组
 
@@ -37,7 +37,7 @@
 
 若要彻底卸载，在上述步骤基础上删除不再需要的`Mods`文件夹。更新加载器时可以保留需要的模组ZIP，但须确认它们符合当前规范。
 
-若游戏异常关闭，下一次Steam启动会先尝试恢复会话期间修改的原版资源。会话恢复备份在恢复成功后自动删除。也可从PowerShell显式恢复：
+模组变更时，加载器会使用`MaxyModLoader\backups`中的原版恢复点重建部署；恢复点由`install-state.json`管理。若要主动卸载模组并恢复游戏原版资源，可从PowerShell显式恢复：
 
 ```powershell
 & "D:\Steam\steamapps\common\This War of Mine\MaxyModLoader\app\MaxyModLoader.exe" restore "D:\Steam\steamapps\common\This War of Mine"

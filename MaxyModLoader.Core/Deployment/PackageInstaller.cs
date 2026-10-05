@@ -15,6 +15,62 @@ public sealed record InstallState(PackageManifest Package, string BackupDirector
 public static class PackageInstaller
 {
     /// <summary>
+    /// 读取并验证当前持久部署的原版恢复点
+    /// </summary>
+    public static InstallState? ReadInstalledState(string gameDirectory)
+    {
+        //没有安装状态表示当前游戏资源仍由游戏本身管理
+        gameDirectory = Path.GetFullPath(gameDirectory);
+        var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
+        if (!File.Exists(statePath)) return null;
+
+        //校验恢复点路径及原始容器指纹后才允许将其用于缓存键
+        var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(statePath), ModManifest.JsonOptions)
+            ?? throw new InvalidDataException("安装日志为空");
+        var containers = Containers(state.Package);
+        var backup = ResolveBackup(gameDirectory, state.BackupDirectory);
+        foreach (var item in containers)
+        {
+            Check(Path.Combine(backup, item.Container + ".idx"), item.OriginalIndexSha256);
+            Check(Path.Combine(backup, item.Container + ".dat"), item.OriginalDataSha256);
+        }
+        NativeContentInstaller.CheckRestore(gameDirectory, backup, state.Package.Native, state.Native);
+        return state;
+    }
+
+    /// <summary>
+    /// 判断候选部署包是否就是当前已持久安装的模组组合
+    /// </summary>
+    public static bool IsInstalledPackage(string gameDirectory, string packageDirectory)
+    {
+        //先读取经过恢复点和原生登记校验的活动安装状态
+        gameDirectory = Path.GetFullPath(gameDirectory);
+        var state = ReadInstalledState(gameDirectory);
+        if (state is null) return false;
+        var package = JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(Path.Combine(packageDirectory, "package.json")), ModManifest.JsonOptions)
+            ?? throw new InvalidDataException("部署包清单为空");
+
+        //逐项比较双容器指纹和当前模组标识避免引用相同但内容不同
+        var stateContainers = Containers(state.Package);
+        var packageContainers = Containers(package);
+        for (var index = 0; index < stateContainers.Length; index++)
+        {
+            var current = stateContainers[index];
+            var candidate = packageContainers[index];
+            if (current.Container != candidate.Container || current.OriginalIndexSha256 != candidate.OriginalIndexSha256 ||
+                current.OriginalDataSha256 != candidate.OriginalDataSha256 || current.BuiltIndexSha256 != candidate.BuiltIndexSha256 ||
+                current.BuiltDataSha256 != candidate.BuiltDataSha256) return false;
+            var target = Path.Combine(gameDirectory, current.Container);
+            //不完整安装返回不匹配交由恢复流程识别原版与已生成的中断状态
+            if (PackageBuilder.Fingerprint(target + ".idx") != current.BuiltIndexSha256 ||
+                PackageBuilder.Fingerprint(target + ".dat") != current.BuiltDataSha256) return false;
+        }
+        if (!state.Package.Mods.SequenceEqual(package.Mods, StringComparer.Ordinal)) return false;
+        return JsonSerializer.Serialize(state.Package.Native, ModManifest.JsonOptions) ==
+               JsonSerializer.Serialize(package.Native, ModManifest.JsonOptions);
+    }
+
+    /// <summary>
     /// 校验原版身份并备份后安装部署包
     /// </summary>
     public static void Install(string gameDirectory, string packageDirectory, bool allowCurrentBootstrap = false)
@@ -87,9 +143,8 @@ public static class PackageInstaller
         var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(statePath), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("安装日志为空。");
         var containers = Containers(state.Package);
-        var backup = Path.GetFullPath(Path.Combine(gameDirectory, state.BackupDirectory));
+        var backup = ResolveBackup(gameDirectory, state.BackupDirectory);
         var backupRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(statePath)!, "backups")) + Path.DirectorySeparatorChar;
-        if (!backup.StartsWith(backupRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("备份路径超出本次游戏安装目录。");
         NativeContentInstaller.CheckRestore(gameDirectory, backup, state.Package.Native, state.Native);
         //全部容器校验通过才恢复任意文件中断状态允许各文件仍然是原版
         foreach (var item in containers)
@@ -125,6 +180,23 @@ public static class PackageInstaller
         {
             //权限限制不应把已成功恢复的游戏伪装成恢复失败
         }
+    }
+
+    /// <summary>
+    /// 解析并限制原版恢复点位于加载器专属备份目录
+    /// </summary>
+    private static string ResolveBackup(string gameDirectory, string relativeBackup)
+    {
+        //恢复点不能通过清单路径指向游戏目录以外的位置
+        var backup = Path.GetFullPath(Path.Combine(gameDirectory, relativeBackup));
+        var backupRootPath = Path.GetFullPath(Path.Combine(gameDirectory, "MaxyModLoader", "backups"));
+        if ((File.GetAttributes(backupRootPath) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("原版恢复点目录是链接");
+        var backupRoot = backupRootPath + Path.DirectorySeparatorChar;
+        if (!backup.StartsWith(backupRoot, StringComparison.OrdinalIgnoreCase) ||
+            (File.GetAttributes(backup) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("备份路径超出本次游戏安装目录或是链接");
+        return backup;
     }
 
     /// <summary>

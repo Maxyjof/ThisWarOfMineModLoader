@@ -8,12 +8,12 @@ using MaxyModLoader.Windowing;
 namespace MaxyModLoader.Cli;
 
 /// <summary>
-/// 根据游戏目录中的模组ZIP自动构建、安装、启动并恢复加载器
+/// 根据游戏目录中的模组ZIP持久部署并启动加载器
 /// </summary>
 internal static class GameLauncher
 {
     /// <summary>
-    /// 构建当前模组包并启动游戏退出后恢复原版资源
+    /// 按需构建或复用持久模组部署并启动游戏
     /// </summary>
     public static async Task<int> PlayAsync(string gameDirectory, string[] forwardedArguments, bool executableBootstrap = false)
     {
@@ -35,35 +35,46 @@ internal static class GameLauncher
         Directory.CreateDirectory(cacheDirectory);
         Directory.CreateDirectory(workDirectory);
 
-        //上次被强制结束时先使用持久化恢复日志还原游戏文件
-        var statePath = Path.Combine(loaderDirectory, "install-state.json");
-        if (File.Exists(statePath))
-            PackageInstaller.Restore(gameDirectory, true);
-
         //清理上次异常退出留下的请求后进入可恢复的运行循环
         var staleRestart = Path.Combine(loaderDirectory, "restart-request.txt");
         if (File.Exists(staleRestart)) File.Delete(staleRestart);
         while (true)
         {
-            //模组压缩包和启用状态共同决定缓存键值
-            var packageKey = ComputePackageKey(modsDirectory, gameDirectory);
+            //校验并读取活动部署的原版恢复点作为稳定缓存身份
+            var installedState = PackageInstaller.ReadInstalledState(gameDirectory);
+            var packageKey = ComputePackageKey(modsDirectory, gameDirectory, installedState?.Package);
             var packageDirectory = Path.Combine(cacheDirectory, packageKey);
             TraceStartup(gameDirectory, "检查模组包", packageDirectory);
+            var packageInstalled = installedState is not null && Directory.Exists(packageDirectory) &&
+                                   PackageInstaller.IsInstalledPackage(gameDirectory, packageDirectory);
+
+            //模组组合发生变化时先回到受校验的原版基线再构建新部署包
+            if (installedState is not null && !packageInstalled)
+            {
+                PackageInstaller.Restore(gameDirectory, true);
+                installedState = null;
+            }
+
+            //缓存缺失时只在原版容器上重建并拒绝复用不完整缓存
             if (!Directory.Exists(packageDirectory)) BuildPackage(gameDirectory, modsDirectory, workDirectory, packageDirectory);
             else ValidateCachedPackage(packageDirectory);
             TraceStartup(gameDirectory, "模组包准备完成", packageDirectory);
 
-            //安装和游戏进程置于同一恢复边界内退出或启动失败都会尝试还原
+            //模组容器仅首次或配置变更时替换且正常退出后持续保留
             var displayHostInstalled = false;
             var exitCode = -1;
             try
             {
-                PackageInstaller.Install(gameDirectory, packageDirectory, true);
+                if (!packageInstalled) PackageInstaller.Install(gameDirectory, packageDirectory, true);
+                //部署已经具备可恢复状态后仅保留当前缓存包避免旧组合长期占用空间
+                PruneOldPackages(cacheDirectory, packageDirectory);
                 DisplayHost.Install(gameDirectory, Path.Combine(gameDirectory, "MaxyModLoader", "app"));
                 displayHostInstalled = true;
                 var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments, executableBootstrap);
                 TraceStartup(gameDirectory, "启动原版程序", start.FileName);
-                Console.WriteLine("MaxyModLoader部署完成正在启动游戏退出后会自动恢复原版文件");
+                Console.WriteLine(packageInstalled
+                    ? "MaxyModLoader已复用持久模组部署正在启动游戏"
+                    : "MaxyModLoader模组部署完成正在启动游戏并保留部署结果");
                 using var process = Process.Start(start) ?? throw new IOException("无法启动游戏进程");
                 TraceStartup(gameDirectory, "原版进程已启动", "PID=" + process.Id + " EXE=" + start.FileName);
                 await process.WaitForExitAsync();
@@ -71,24 +82,15 @@ internal static class GameLauncher
             }
             finally
             {
-                //只在本次加载器状态日志存在时执行恢复避免触碰未安装的游戏
+                //显示设置辅助入口仍按单次运行管理而模组部署与恢复点保持不变
                 try
                 {
-                    if (File.Exists(statePath)) PackageInstaller.Restore(gameDirectory, true);
+                    if (displayHostInstalled) DisplayHost.Uninstall(gameDirectory);
                 }
                 finally
                 {
-                    //原版资源恢复后再移除仅属于本次启动的设置辅助文件
-                    try
-                    {
-                        if (displayHostInstalled) DisplayHost.Uninstall(gameDirectory);
-                    }
-                    finally
-                    {
-                        //恢复失败时保留部署缓存供用户排查但仍清理解包工作区
-                        if (!File.Exists(statePath)) PruneOldPackages(cacheDirectory, packageDirectory);
-                        DeleteOwnedTree(workDirectory, loaderDirectory);
-                    }
+                    //工作区仅保存本次临时解包内容不承担持久部署职责
+                    DeleteOwnedTree(workDirectory, loaderDirectory);
                 }
             }
 
@@ -136,15 +138,28 @@ internal static class GameLauncher
     /// <summary>
     /// 根据压缩包内容和游戏容器指纹生成缓存键
     /// </summary>
-    private static string ComputePackageKey(string modsDirectory, string gameDirectory)
+    private static string ComputePackageKey(string modsDirectory, string gameDirectory, PackageManifest? installedPackage)
     {
         //哈希输入包含规范版本、游戏容器和按名称排序的所有ZIP字节
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(Encoding.UTF8.GetBytes("MaxyModLoaderZipPackageV1\0"));
         hash.AppendData(typeof(Program).Assembly.ManifestModule.ModuleVersionId.ToByteArray());
         hash.AppendData(typeof(PackageBuilder).Assembly.ManifestModule.ModuleVersionId.ToByteArray());
-        foreach (var name in new[] { "common.idx", "common.dat", "textures-s3.idx", "textures-s3.dat" })
-            hash.AppendData(Encoding.ASCII.GetBytes(PackageBuilder.Fingerprint(Path.Combine(gameDirectory, name))));
+        //持久部署期间游戏容器是模组版本哈希必须改用恢复点中的原版指纹
+        var originalContainers = installedPackage is null
+            ? null
+            : new[] { installedPackage.Scripts, installedPackage.Textures };
+        foreach (var name in new[] { "common", "textures-s3" })
+        {
+            var container = originalContainers?.SingleOrDefault(item => item.Container == name);
+            foreach (var extension in new[] { ".idx", ".dat" })
+            {
+                var fingerprint = container is null
+                    ? PackageBuilder.Fingerprint(Path.Combine(gameDirectory, name + extension))
+                    : extension == ".idx" ? container.OriginalIndexSha256 : container.OriginalDataSha256;
+                hash.AppendData(Encoding.ASCII.GetBytes(fingerprint));
+            }
+        }
         foreach (var path in Directory.EnumerateFiles(modsDirectory, "*.zip", SearchOption.TopDirectoryOnly).Order(StringComparer.OrdinalIgnoreCase))
         {
             //文件名参与哈希避免不同ZIP顺序或命名产生缓存歧义
