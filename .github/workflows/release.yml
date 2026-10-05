@@ -47,6 +47,12 @@ jobs:
             foreach ($name in $required) {
               if ($name -notin $names) { throw "加载器包缺少文件：$name" }
             }
+            $versionEntry = $loaderArchive.GetEntry('版本.txt')
+            if (!$versionEntry) { throw '加载器包缺少版本标记' }
+            $versionReader = [IO.StreamReader]::new($versionEntry.Open(), [Text.Encoding]::UTF8)
+            try { $packagedVersion = $versionReader.ReadToEnd().Trim() } finally { $versionReader.Dispose() }
+            $expectedVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+            if ($packagedVersion -ne $expectedVersion) { throw "压缩包版本标记与Release标签不一致：$packagedVersion" }
           } finally { $loaderArchive.Dispose() }
           $sampleArchive = [IO.Compression.ZipFile]::OpenRead($samples.FullName)
           try {

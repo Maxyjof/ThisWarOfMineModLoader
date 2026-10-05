@@ -84,7 +84,6 @@ public static class GameExecutableInstaller
         gameDirectory = Path.GetFullPath(gameDirectory);
         var statePath = StatePath(gameDirectory);
         if (!File.Exists(statePath)) return;
-        EnsureGameStopped();
 
         //备份和当前目标必须处于安装日志明确记录的状态
         var state = ReadState(statePath);
@@ -95,6 +94,9 @@ public static class GameExecutableInstaller
         if (state.OriginalSha256 != GameFingerprint ||
             currentHash != state.BootstrapSha256 && currentHash != state.PreviousBootstrapSha256 && currentHash != state.OriginalSha256)
             throw new InvalidDataException("启动程序已被其他程序修改拒绝自动恢复");
+
+        //完成只读指纹校验后再阻止游戏运行期间的文件替换或清理
+        EnsureGameStopped();
 
         //仅在当前不是原版时用同目录临时文件原子恢复
         if (currentHash != state.OriginalSha256) Replace(backup, target, state.OriginalSha256);

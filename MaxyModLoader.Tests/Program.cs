@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Xml.Linq;
 using MaxyModLoader.Archives;
 using MaxyModLoader.Deployment;
+using MaxyModLoader.Mcp;
 using MaxyModLoader.Mods;
 using MaxyModLoader.Runtime;
 using MaxyModLoader.Windowing;
@@ -639,7 +640,12 @@ internal static class Program
         {
             var plan = LoadPlanner.Create(ModCatalog.Discover(Path.Combine(Repository, "examples")));
             var output = Path.Combine(Repository, "artifacts", "tests"); Directory.CreateDirectory(output);
-            File.WriteAllBytes(Path.Combine(output, "bundle.lua"), LuaBundle.Compile(Encoding.UTF8.GetBytes("original_ran = true; return 'done'"), plan));
+            var bundle = Encoding.UTF8.GetString(LuaBundle.Compile(Encoding.UTF8.GetBytes("original_ran = true; return 'done'"), plan));
+            var assemblyVersion = typeof(LuaBundle).Assembly.GetName().Version ?? throw new InvalidOperationException("测试程序集缺少版本号");
+            var currentVersion = $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
+            Assert(bundle.Contains($"--由MaxyModLoader{currentVersion}生成", StringComparison.Ordinal));
+            Assert(bundle.Contains($"version = \"{currentVersion}\"", StringComparison.Ordinal));
+            File.WriteAllBytes(Path.Combine(output, "bundle.lua"), Encoding.UTF8.GetBytes(bundle));
             Reject<InvalidDataException>(() => LuaBundle.Compile([0x1b, 0x4c], plan));
             //额外导出实际多模组包供独立解释器执行每个内部模块
             var playtestMods = ModCatalog.Discover(Path.Combine(Repository, "playtests", "mods"));
@@ -648,6 +654,21 @@ internal static class Program
             Assert(playtestPlan.IsValid);
             File.WriteAllBytes(Path.Combine(output, "playtest-bundle.lua"), LuaBundle.Compile(Encoding.UTF8.GetBytes("return true"), playtestPlan));
         });
+        Test("MCP服务版本与Lua运行库一致", () => InWorkspace(root =>
+        {
+            //使用临时游戏目录初始化服务无需启动游戏桥接
+            var server = new McpServer(new GameBridgeClient(root));
+            var input = new StringReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}\n");
+            var output = new StringWriter();
+            server.RunAsync(input, output).GetAwaiter().GetResult();
+
+            //读取MCP握手中的版本并与运行时程序集版本对照
+            using var response = JsonDocument.Parse(output.ToString());
+            var reportedVersion = response.RootElement.GetProperty("result").GetProperty("serverInfo").GetProperty("version").GetString();
+            var assemblyVersion = typeof(LuaBundle).Assembly.GetName().Version ?? throw new InvalidOperationException("测试程序集缺少版本号");
+            var expectedVersion = $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
+            Assert(reportedVersion == expectedVersion);
+        }));
 
         //逐项记录结果任何失败都返回非零退出码
         var failed = 0;

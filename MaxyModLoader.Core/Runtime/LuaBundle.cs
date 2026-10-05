@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using MaxyModLoader;
 using MaxyModLoader.Mods;
 
 namespace MaxyModLoader.Runtime;
@@ -23,13 +24,17 @@ public static class LuaBundle
             throw new InvalidDataException("Main 是 Lua 字节码，需要分析具体 Lua 版本；当前只接受 UTF-8 Lua 源码。");
         //严格读取UTF8原脚本并去除不参与Lua语法的字节顺序标记
         var original = Utf8.GetString(originalMain).TrimStart('\ufeff');
-        var text = new StringBuilder("--由MaxyModLoader0.4.2生成\nlocal compile = loadstring\n");
+        var loaderVersion = LoaderVersion.GetCurrent();
+        var text = new StringBuilder("--由MaxyModLoader").Append(loaderVersion).Append("生成\nlocal compile = loadstring\n");
         //单独编译原Main以保留其return语句和局部作用域
         text.Append("local original, err = compile(").Append(Quote(original)).Append(", '@common/scripts/Main.lua')\nif not original then error(err) end\noriginal()\n");
         //加载嵌入式运行库确保分发工具无需携带额外源码文件
         using var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.bootstrap.lua")!;
         using var reader = new StreamReader(resource, Utf8);
-        text.Append(reader.ReadToEnd()).Append('\n');
+        var bootstrap = reader.ReadToEnd();
+        if (!bootstrap.Contains("@MML_VERSION@", StringComparison.Ordinal))
+            throw new InvalidDataException("内置Lua引导脚本缺少当前版本标记");
+        text.Append(bootstrap.Replace("@MML_VERSION@", loaderVersion, StringComparison.Ordinal)).Append('\n');
         //结构化Markdown排版器在管理界面读取文档之前初始化
         using var markdownResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.markdown.lua")!;
         using var markdownReader = new StreamReader(markdownResource, Utf8);

@@ -5,7 +5,7 @@ local listeners = {}
 local services = {}
 local rules = {}
 local actions = {}
-local api = { name = "MaxyModLoader", version = "0.4.2", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
+local api = { name = "MaxyModLoader", version = "@MML_VERSION@", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
 api.actions = {}
 MaxyModLoader = api
 

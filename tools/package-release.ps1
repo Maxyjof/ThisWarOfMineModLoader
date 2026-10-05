@@ -28,13 +28,26 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $cliOutput = Join-Path $repository 'MaxyModLoader.Cli\bin\Release\net10.0\win-x64\publish'
 $bootstrapOutput = Join-Path $repository 'MaxyModLoader.Bootstrap\bin\Release\net10.0\win-x64\publish'
 dotnet publish (Join-Path $repository 'MaxyModLoader.Cli') -c Release -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false `
+    "-p:Version=$versionNumber" -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false `
     -o $cliOutput
 if ($LASTEXITCODE -ne 0) { throw '模组加载器自包含发布失败' }
 dotnet publish (Join-Path $repository 'MaxyModLoader.Bootstrap') -c Release -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false `
+    "-p:Version=$versionNumber" -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false `
     -o $bootstrapOutput
 if ($LASTEXITCODE -ne 0) { throw '游戏入口自包含发布失败' }
+
+#发布前确认两个程序的文件版本与发行标签完全一致
+$expectedFileVersion = "$versionNumber.0"
+foreach ($binary in @(
+    (Join-Path $cliOutput 'MaxyModLoader.exe'),
+    (Join-Path $bootstrapOutput 'MaxyModLoader.Bootstrap.exe')
+)) {
+    if (!(Test-Path -LiteralPath $binary -PathType Leaf)) { throw "发布程序缺失：$binary" }
+    $actualFileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($binary).FileVersion
+    if ($actualFileVersion -ne $expectedFileVersion) {
+        throw "程序版本与发行标签不一致：$binary（$actualFileVersion）"
+    }
+}
 
 #发行加载器ZIP只收纳启动程序、安装器、说明和许可
 $loaderZip = Join-Path $output "MaxyModLoader-$versionNumber-Windows-x64.zip"
