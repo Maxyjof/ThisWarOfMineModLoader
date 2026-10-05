@@ -4,19 +4,30 @@ if not LuaGameDelegate or not UIButton or not UITextBox or not Vector then retur
 local manager = {open = false, selection = 1, buttons = {}, pending_states = {}, confirm_open = false}
 api.manager = manager
 local statuses = {loaded = '已加载', failed = '加载失败', skipped = '依赖失败', disabled = '已禁用', pending = '等待加载', loading = '加载中'}
-local fade_wait_frames = 90
+local fade_wait_seconds = 2.5
 
 --<summary>
 --等待原版菜单首轮淡入结束后再创建加载器入口
 --</summary>
-function manager.menu_fade_complete(frame)
-    --首次看到原版菜单时记录游戏帧不依赖每帧重建的界面代理对象
+function manager.menu_fade_complete(now)
+    --首次看到原版菜单时记录高分辨率计时避免不同帧率改变等待时长
     if not manager.fade_start then
-        manager.fade_start = frame
+        manager.fade_start = now
         return false
     end
-    --固定帧界限覆盖低帧率启动场景且菜单切换仍由游戏帧自然推进
-    return frame - manager.fade_start >= fade_wait_frames
+    --等待覆盖实测原版菜单淡入时长避免入口提前以完整亮度出现
+    return now - manager.fade_start >= fade_wait_seconds
+end
+
+--<summary>
+--只在原版菜单真正可见后开始计算渐入等待
+--</summary>
+function manager.menu_fade_ready(menu, now)
+    --隐藏菜单可能在模式选择期间提前创建不能把隐藏时长算作渐入
+    if manager.fade_owner ~= menu then manager.fade_owner, manager.fade_start = menu, nil end
+    if not menu:IsVisible() then manager.fade_start = nil; return false end
+    --菜单进入可见状态后等待渐入后段再使用原生按钮补间
+    return manager.menu_fade_complete(now)
 end
 
 --<summary>
@@ -659,10 +670,10 @@ function manager.attach()
         manager.layout_width = nil
         manager.screen, manager.open, manager.pressed = screen, false, nil
     end
-    if not menu then manager.fade_start = nil; return end
+    if not menu then manager.fade_start, manager.fade_owner = nil, nil; return end
     if manager.frame then return end
-    --原版用屏幕淡入遮罩逐步显现按钮延后入口避免新控件提前呈现完整亮度
-    if not manager.menu_fade_complete(gGame:GetCurrentFrame()) then return end
+    --隐藏的经典菜单可能先于模式切换建立仅在真实显示后等待渐入
+    if not manager.menu_fade_ready(menu, os.clock()) then return end
     --游戏界面以720逻辑高度缩放横坐标根据当前宽高比计算
     manager.menu, manager.screen, manager.buttons = menu, screen, {}
     manager.template = menu:FindElementByName('BUTTON_STARTNEW')
@@ -677,7 +688,9 @@ function manager.attach()
     entry:SetPosition(vector(720 * gGame:GetScreenAspect() * 0.79 - 330, 466))
     entry:RaiseFlag(UIFLAG_FOCUSABLEWITHMOUSE)
     entry:FindElementByName('BUTTON_NAME'):SetText(unicode('模组管理'))
+    entry:Hide()
     menu:AddChild(entry)
+    entry:ShowAndBlendIn()
     manager.buttons.BUTTON_MAXY_MODS = {element = entry, handler = function() manager.show(true) end}
     manager.frame = screen:FindElementByName('MML_MANAGER')
     local attached = manager.frame ~= nil
