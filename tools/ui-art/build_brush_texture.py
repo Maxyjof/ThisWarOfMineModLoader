@@ -5,20 +5,17 @@ import struct
 from PIL import Image
 
 
-def prepare_texture(source, preview, destination):
+def prepare_texture(source, destination):
     """
     <summary>
-    保留生成素材的像素和透明度并写出PNG预览与BGRA格式DDS源纹理
+    保留生成素材的像素和透明度并写出BGRA格式DDS源纹理
     </summary>
     """
     #读取生成素材并保留透明边缘
     image = Image.open(source).convert("RGBA")
-    #写出适合预览的压缩PNG并创建资源目录
-    preview = pathlib.Path(preview)
+    #创建运行时纹理的目标目录
     destination = pathlib.Path(destination)
-    preview.parent.mkdir(parents=True, exist_ok=True)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    image.save(preview, format="PNG", optimize=True)
 
     #DDS像素按蓝绿红透明度排列与头部通道掩码保持一致
     raw = bytearray()
@@ -43,10 +40,9 @@ def main():
     #参数显式指定源图与两个输出路径便于从其他工作目录重建
     parser = argparse.ArgumentParser()
     parser.add_argument("source")
-    parser.add_argument("preview")
     parser.add_argument("dds")
     arguments = parser.parse_args()
-    prepare_texture(arguments.source, arguments.preview, arguments.dds)
+    prepare_texture(arguments.source, arguments.dds)
 
 
 if __name__ == "__main__":

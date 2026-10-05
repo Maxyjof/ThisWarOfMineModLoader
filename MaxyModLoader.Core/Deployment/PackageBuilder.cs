@@ -84,7 +84,7 @@ public static class PackageBuilder
             using var input = assembly.GetManifestResourceStream(name)!;
             using var buffer = new MemoryStream();
             input.CopyTo(buffer);
-            var path = "UI/MaxyModLoader/" + Path.ChangeExtension(name[prefix.Length..], ".texture");
+            var path = "UI/MaxyModLoader/ModManager/" + Path.ChangeExtension(name[prefix.Length..], ".texture");
             result.Add(ResourceHash.Compute(path), LiquidTexture.FromDds(buffer.ToArray()));
         }
         return result;

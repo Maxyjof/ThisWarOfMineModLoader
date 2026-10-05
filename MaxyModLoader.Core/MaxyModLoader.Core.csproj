@@ -1,16 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup><RootNamespace>MaxyModLoader</RootNamespace></PropertyGroup>
+    <PropertyGroup>
+        <RootNamespace>MaxyModLoader</RootNamespace>
+    </PropertyGroup>
     <ItemGroup>
         <EmbeddedResource Include="Runtime/bootstrap.lua" />
         <EmbeddedResource Include="Runtime/manager.lua" />
         <EmbeddedResource Include="Runtime/markdown.lua" />
         <EmbeddedResource Include="Runtime/mcp.lua" />
         <EmbeddedResource Include="Runtime/display.lua" />
-        <EmbeddedResource Include="../tools/ui-art/resources/UI/MaxyModLoader/*.dds" LogicalName="MaxyModLoader.Assets.%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Assets/UI/*.dds" LogicalName="MaxyModLoader.Assets.%(Filename)%(Extension)" />
     </ItemGroup>
     <ItemGroup>
-      <PackageReference Include="Markdig" Version="1.3.2" />
+        <PackageReference Include="Markdig" Version="1.3.2" />
     </ItemGroup>
 
 </Project>

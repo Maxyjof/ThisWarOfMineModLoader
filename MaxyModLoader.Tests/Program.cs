@@ -366,8 +366,8 @@ internal static class Program
             var plainPackage = Path.Combine(root, "plain-package");
             PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), plainPackage);
             var builtin = LiquidArchive.Open(Path.Combine(plainPackage, "textures-s3"));
-            Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/BrushList.texture")).Length > 144);
-            Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/BrushDetail.texture")).Length > 144);
+            Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/ModManager/BrushList.texture")).Length > 144);
+            Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/ModManager/BrushDetail.texture")).Length > 144);
             Reject<InvalidDataException>(() => LiquidTexture.FromDds(dds[..^1]));
             var unsupported = (byte[])dds.Clone();
             BinaryPrimitives.WriteUInt32LittleEndian(unsupported.AsSpan(28, 4), 2);

@@ -21,3 +21,4 @@
 - [构建和发行](Maintainers/BuildAndRelease.md)：回归、玩家包与GitHub工作流
 - [游戏实测矩阵](Testing/ModTestMatrix.md)：当前模组的实际验证结果和未完成项
 - [历史验证记录](Testing/ValidationHistory.md)：先前阶段的证据；不能替代当前构建的测试
+- [实机测试准备](Testing/PlaytestPreparation.md)：构建隔离的基线与组合测试部署包

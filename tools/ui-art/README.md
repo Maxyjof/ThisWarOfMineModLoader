@@ -2,7 +2,7 @@
 
 左侧列表使用`brush-list.png`，右侧介绍使用`brush-detail.png`。两张素材通过内置ImageGen工具生成，背景保留透明度，中央保留深灰纸张颗粒和炭笔纹理。它们属于项目自制素材，不包含游戏解包图片。
 
-`resources/UI/MaxyModLoader/BrushList.dds`和`BrushDetail.dds`是对应的无损BGRA32位源纹理。核心程序集嵌入这两张素材，普通`build`命令自动携带，不要求使用者另行指定素材目录。
+`MaxyModLoader.Core/Assets/UI/BrushList.dds`和`BrushDetail.dds`是对应的无损BGRA32位运行时纹理。核心程序集嵌入这两张素材，普通`build`命令自动携带，不要求使用者另行指定素材目录。运行时纹理登记在`UI/MaxyModLoader/ModManager/`命名空间，避开原版纹理哈希。PNG文件是可预览和编辑的设计源文件，DDS文件是游戏运行时资源。
 
 ## 游戏资源转换
 
@@ -17,8 +17,8 @@
 需要Python和Pillow，编码脚本不重绘或裁剪素材：
 
 ```powershell
-python tools/ui-art/build_brush_texture.py tools/ui-art/brush-list.png tools/ui-art/brush-list.png tools/ui-art/resources/UI/MaxyModLoader/BrushList.dds
-python tools/ui-art/build_brush_texture.py tools/ui-art/brush-detail.png tools/ui-art/brush-detail.png tools/ui-art/resources/UI/MaxyModLoader/BrushDetail.dds
+python tools/ui-art/build_brush_texture.py tools/ui-art/brush-list.png MaxyModLoader.Core/Assets/UI/BrushList.dds
+python tools/ui-art/build_brush_texture.py tools/ui-art/brush-detail.png MaxyModLoader.Core/Assets/UI/BrushDetail.dds
 ```
 
 ## 生成提示词
