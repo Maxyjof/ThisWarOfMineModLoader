@@ -134,22 +134,6 @@ local function decoration(parent, source, recipe, name, x, y, width, height)
 end
 
 --<summary>
---按文字宽度估计拆行避免长介绍覆盖控件
---</summary>
-local function wrap(value)
-    local lines, current, width = {}, {}, 0
-    for _, item in ipairs(characters(value)) do
-        local weight = item.code < 128 and 1 or 2
-        if item.code == 10 or width + weight > 58 then
-            table.insert(lines, table.concat(current)); current, width = {}, 0
-        end
-        if item.code ~= 10 then table.insert(current, item.text); width = width + weight end
-    end
-    table.insert(lines, table.concat(current))
-    return lines
-end
-
---<summary>
 --将列表标题按显示宽度截断完整名称仍保留在模组介绍中
 --</summary>
 local function caption(value, limit)
@@ -167,25 +151,118 @@ end
 --整理所选模组的完整介绍而不是只显示模组ID
 --</summary>
 function manager.details(mod)
-    local lines = {'版本' .. mod.version .. '，状态：' .. (statuses[mod.status] or mod.status),
-        '作者：' .. (mod.author ~= '' and mod.author or '未提供'), '', '内容介绍',
-        mod.description ~= '' and mod.description or '作者尚未提供内容介绍', '', '功能说明：'}
-    for _, feature in ipairs(mod.features or {}) do table.insert(lines, '* ' .. feature) end
+    --说明文件首标题若与面板标题相同则省略避免重复占用滚动空间
+    local description = mod.description ~= '' and mod.description or '作者尚未提供内容介绍'
+    local heading = description:match('^%s*#%s+([^\r\n]+)')
+    if heading == mod.name then description = description:gsub('^%s*#%s+[^\r\n]*\r?\n*', '', 1) end
+    local lines = {'## 版本信息', '**版本：**' .. mod.version .. '　**状态：**' .. (statuses[mod.status] or mod.status),
+        '**作者：**' .. (mod.author ~= '' and mod.author or '未提供'), '', '## 内容介绍',
+        description, '', '## 功能说明'}
+    for _, feature in ipairs(mod.features or {}) do table.insert(lines, '- ' .. feature) end
     table.insert(lines, '')
-    table.insert(lines, '技术信息')
-    table.insert(lines, '完整名称：' .. mod.name)
-    table.insert(lines, '标识：' .. mod.id)
-    table.insert(lines, '兼容说明：' .. (mod.compatibility or '未提供'))
+    table.insert(lines, '## 技术信息')
+    table.insert(lines, '**完整名称：**' .. mod.name)
+    table.insert(lines, '**标识：**`' .. mod.id .. '`')
+    table.insert(lines, '**兼容说明：**' .. (mod.compatibility or '未提供'))
     --依赖排序显示使不同运行时的介绍顺序保持一致
     local dependencies = {}
     for id, version in pairs(mod.dependencies or {}) do table.insert(dependencies, id .. '，最低版本' .. version) end
     table.sort(dependencies)
-    table.insert(lines, '依赖：' .. (#dependencies > 0 and table.concat(dependencies, '，') or '无'))
-    table.insert(lines, '冲突：' .. (#(mod.conflicts or {}) > 0 and table.concat(mod.conflicts, '，') or '无'))
-    table.insert(lines, '主页：' .. (mod.website ~= '' and mod.website or '未提供'))
-    table.insert(lines, '许可：' .. (mod.license ~= '' and mod.license or '未指定'))
-    if mod.error and mod.error ~= '' then table.insert(lines, '错误详情：' .. mod.error) end
-    return wrap(table.concat(lines, '\n'))
+    table.insert(lines, '**依赖：**' .. (#dependencies > 0 and table.concat(dependencies, '，') or '无'))
+    table.insert(lines, '**冲突：**' .. (#(mod.conflicts or {}) > 0 and table.concat(mod.conflicts, '，') or '无'))
+    table.insert(lines, '**主页：**' .. (mod.website ~= '' and mod.website or '未提供'))
+    table.insert(lines, '**许可：**' .. (mod.license ~= '' and mod.license or '未指定'))
+    if mod.error and mod.error ~= '' then table.insert(lines, '### 错误详情\n' .. mod.error) end
+    return manager.markdown(table.concat(lines, '\n'))
+end
+
+--<summary>
+--将安全的Markdown块和行内标记转换为带样式的文字行
+--</summary>
+function manager.markdown(value)
+    local rows, current, units, fenced = {}, {}, 0, false
+    --按有限的Markdown子集读取标题列表引用代码和普通段落
+    local function flush()
+        if #current > 0 then table.insert(rows, {runs = current}); current, units = {}, 0 end
+    end
+    --同一行按标记拆成有独立颜色的文本段不把说明交给脚本执行
+    local function inline(source, style)
+        local runs, index = {}, 1
+        local function add(text_value, kind)
+            if text_value == '' then return end
+            local previous = runs[#runs]
+            if previous and previous.style == kind then previous.text = previous.text .. text_value
+            else table.insert(runs, {text = text_value, style = kind}) end
+        end
+        while index <= #source do
+            local matched, next_index
+            local link = source:sub(index):match('^%[([^%]]+)%]%((https?://[^%s%)]+)%)')
+            if link then
+                local whole = source:sub(index):match('^(%[[^%]]+%]%(%w+://[^%s%)]+%))')
+                if whole then matched, next_index = whole, index + #whole; add(link, 'link') end
+            end
+            if not matched then
+                for _, marker in ipairs({{'**', 'strong'}, {'__', 'strong'}, {'`', 'code'}, {'*', 'emphasis'}, {'_', 'emphasis'}}) do
+                    if source:sub(index, index + #marker[1] - 1) == marker[1] then
+                        local close = source:find(marker[1], index + #marker[1], true)
+                        if close and close > index + #marker[1] then
+                            matched, next_index = source:sub(index, close + #marker[1] - 1), close + #marker[1]
+                            add(source:sub(index + #marker[1], close - 1), marker[2])
+                            break
+                        end
+                    end
+                end
+            end
+            if not matched then add(source:sub(index, index), style); index = index + 1
+            else index = next_index end
+        end
+        return runs
+    end
+    --逐行识别块级标记并保留代码块中的字面内容
+    for raw in (tostring(value or ''):gsub('[\r\n]+$', '') .. '\n'):gmatch('(.-)\r?\n') do
+        if raw:match('^%s*```') then
+            flush()
+            fenced = not fenced
+        else
+            local content, style = raw, fenced and 'code' or 'body'
+            if not fenced then
+                local heading, heading_text = raw:match('^%s*(#+)%s+(.+)$')
+                if heading and #heading <= 3 then content, style = heading_text, 'heading' end
+                if content == raw then
+                    local marker, rest = raw:match('^%s*([%-%*%+])%s+(.+)$')
+                    if marker then content, style = '• ' .. rest, 'bullet' end
+                end
+                if content == raw then
+                    local number, rest = raw:match('^%s*(%d+[%.%)])%s+(.+)$')
+                    if number then content, style = number .. ' ' .. rest, 'bullet' end
+                end
+                if content == raw and raw:match('^%s*>%s*') then content, style = raw:gsub('^%s*>%s*', '› '), 'quote' end
+                if content == raw and raw:match('^%s*[-*_][-*_][-*_]+%s*$') then content, style = '────────', 'rule' end
+            end
+            if content == '' then
+                flush()
+                --保留段落空行形成Markdown标题和正文间距
+                if #rows > 0 and not rows[#rows].blank then table.insert(rows, {runs = {}, blank = true}) end
+            else
+                if style == 'heading' or style == 'rule' then flush() end
+                for _, run in ipairs(inline(content, style)) do
+                    for _, item in ipairs(characters(run.text)) do
+                        local weight = item.code < 128 and 1 or 2
+                        if units + weight > 58 then flush() end
+                        local previous = current[#current]
+                        if previous and previous.style == run.style then previous.text = previous.text .. item.text
+                        else table.insert(current, {text = item.text, style = run.style}) end
+                        units = units + weight
+                    end
+                end
+                --每个Markdown原始段落独立成行保留换行语义和列表缩进
+                flush()
+                if style == 'heading' or style == 'rule' then flush() end
+            end
+        end
+    end
+    flush()
+    return rows
 end
 
 --<summary>
@@ -202,15 +279,46 @@ function manager.refresh()
         end
     end
     local mod = api.mods[manager.selection]
-    local lines = mod and manager.details(mod) or {'当前没有发现模组'}
-    manager.visible_text = table.concat(lines, '\n')
+    local lines = mod and manager.details(mod) or manager.markdown('当前没有发现模组')
+    local visible = {}
+    for _, row in ipairs(lines) do
+        local fragments = {}
+        for _, run in ipairs(row.runs) do table.insert(fragments, run.text) end
+        table.insert(visible, table.concat(fragments))
+    end
+    manager.visible_text = table.concat(visible, '\n')
     --介绍按行放入原生滚动区域旧控件删除后立即丢弃引用避免访问释放对象
     manager.detail_pane:DeleteChildren()
     manager.detail_anchor = nil
     manager.detail_lines = {}
-    for index, value in ipairs(lines) do
-        manager.detail_lines[index] = text(manager.detail_pane, 'MML_DETAIL_LINE_' .. index,
-            value, 0, (index - 1) * 25, 625, 26, 18)
+    for index, row in ipairs(lines) do
+        --每个逻辑行拥有独立滚动坐标内部文本段只负责呈现强调色
+        local container = UIElement:new()
+        container:SetName('MML_DETAIL_LINE_' .. index)
+        container:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
+        container:SetAnchor(vector(0, 0))
+        container:SetSize(vector(625, 26))
+        container:SetColorMode(UICOLOR_STATIC)
+        container:SetColor(1, 1, 1, 0)
+        manager.detail_pane:AddChild(container)
+        manager.detail_lines[index] = container
+        local x, height = 0, 18
+        for span, run in ipairs(row.runs) do
+            local size, color = 18, {1, 1, 1, 1}
+            if run.style == 'heading' then size, color = 22, {1, 0.45, 0, 1}
+            elseif run.style == 'strong' then color = {1, 0.62, 0.2, 1}
+            elseif run.style == 'emphasis' then color = {0.82, 0.82, 0.82, 1}
+            elseif run.style == 'code' then color = {0.85, 0.72, 0.54, 1}
+            elseif run.style == 'link' then color = {0.72, 0.82, 0.86, 1}
+            elseif run.style == 'quote' then color = {0.78, 0.78, 0.78, 1}
+            elseif run.style == 'rule' then color = {0.55, 0.55, 0.55, 1} end
+            local rendered = text(container, 'MML_DETAIL_SPAN_' .. index .. '_' .. span,
+                run.text, x, 0, 625 - x, 26, size)
+            rendered:SetColor(unpack(color))
+            height = math.max(height, size)
+            for _, item in ipairs(characters(run.text)) do x = x + (item.code < 128 and 1 or 2) * 10.75 end
+        end
+        container:SetSize(vector(625, height + 4))
     end
     --介绍更换后从顶部显示列表仍保留自己的滚动位置
     manager.offsets = manager.offsets or {}
@@ -511,30 +619,26 @@ function manager.skin()
     decoration(background, top, 'white paint', 'MML_NATIVE_HEADER', 0, 0, 640, 85):SetColor(0.84, 0.82, 0.78, 0.82)
     decoration(background, top, 'black paint', 'MML_NATIVE_BRAND', 655, 0, 445, 75)
     --<summary>
-    --黑色底板保证每行文字的对比度刷痕只处理边缘避免纵向拉伸破坏笔触比例
+    --用完整炭笔纹理绘制内容板不叠加纯黑底板或重复笔触
     --</summary>
-    local function panel(name, x, y, panel_width, panel_height)
-        local matte = UIElement:new()
-        matte:SetName(name)
-        matte:ClearFlag(UIFLAG_FOCUSABLEWITHMOUSE)
-        matte:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
-        matte:SetPosition(vector(x + 24, y + 24))
-        matte:SetSize(vector(panel_width - 48, panel_height - 48))
-        matte:SetColorMode(UICOLOR_STATIC)
-        matte:SetColor(0, 0, 0, 1)
-        background:AddChild(matte)
-        --左右成对的水平笔触交错覆盖使末端透明区不会露出文字背后的森林
-        for index = 0, math.ceil((panel_height - 70) / 24) do
-            local offset = math.min(index * 24, panel_height - 70)
-            decoration(background, top, 'black paint', name .. '_EDGE_' .. index, x, y + offset, panel_width, 70):SetColor(0, 0, 0, 1)
-            local mirrored = decoration(background, top, 'black paint', name .. '_MIRROR_' .. index,
-                x + panel_width, y + offset, panel_width, 70)
-            mirrored:SetScale(Vector:Instance(-1, 1, 1, 1))
-            mirrored:SetColor(0, 0, 0, 1)
-        end
+    local function panel(name, texture, x, y, panel_width, panel_height)
+        --新图片使用完整UV不继承原版图集裁剪范围素材随普通部署包加入
+        local picture = UIPicture:new()
+        picture:SetName(name)
+        picture:ClearFlag(UIFLAG_FOCUSABLEWITHMOUSE)
+        picture:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
+        picture:SetAnchor(vector(0, 0))
+        picture:SetAspectScaling(UIWINDOWASPECTSCALING_NONE)
+        picture:SetRenderGatheringChannel(0)
+        picture:SetTexture('UI/MaxyModLoader/' .. texture .. '.dds')
+        picture:SetPosition(vector(x, y))
+        picture:SetSize(vector(panel_width, panel_height))
+        picture:SetColorMode(UICOLOR_STATIC)
+        picture:SetColor(1, 1, 1, 1)
+        background:AddChild(picture)
     end
-    panel('MML_NATIVE_LIST', 10, 95, 365, 440)
-    panel('MML_NATIVE_DETAIL', 380, 95, 710, 440)
+    panel('MML_NATIVE_LIST', 'BrushList', -6, 78, 398, 474)
+    panel('MML_NATIVE_DETAIL', 'BrushDetail', 371, 78, 728, 474)
     --沿用原版刷痕按钮背景但使用自有交互容器不复制原版创意工坊回调
     for index, bounds in ipairs({{845, 535, 225, 64}}) do
         decoration(background, top, 'black paint', 'MML_NATIVE_BUTTONS_' .. index, bounds[1], bounds[2], bounds[3], bounds[4]):SetColor(0, 0, 0, 1)
@@ -660,7 +764,7 @@ function manager.pointer(down, up, element)
         if name == 'BUTTON_MAXY_MODS' then item.element:SetHighlight(item == pointed, false) end
         local label = item.element:FindElementByName(name .. '_TEXT')
         if label then
-            local row = name:match('^MML_ROW_(%d+)$')
+            local row = name:match('^MML_ROW_(%d+)_TEXT$')
             local selected = row and tonumber(row) == manager.selection
             if item == pointed or selected then label:SetColor(1, 0.55, 0.16, 1)
             else label:SetColor(1, 1, 1, 1) end
@@ -745,7 +849,8 @@ function manager.state()
     return {available = manager.frame ~= nil, open = manager.frame and manager.frame:IsVisible() or false,
         selected = api.mods[manager.selection] and api.mods[manager.selection].id or '',
         list_count = #api.mods, detail_lines = #(manager.detail_lines or {}), text = manager.visible_text or '',
-        font_height = manager.detail_lines and manager.detail_lines[1] and manager.detail_lines[1]:GetFontHeight() or 0,
+        font_height = manager.detail_lines and manager.detail_lines[1] and manager.detail_lines[1]:GetFirstChild() and
+            manager.detail_lines[1]:GetFirstChild():GetFontHeight() or 0,
         entry_font_height = manager.buttons.BUTTON_MAXY_MODS and manager.buttons.BUTTON_MAXY_MODS.element:FindElementByName('BUTTON_NAME'):GetFontHeight() or 0,
         original_font_height = manager.template and manager.template:FindElementByName('BUTTON_NAME'):GetFontHeight() or 0,
         clicks = manager.click_count or 0, input = manager.input or {}, last_input = manager.last_input or {},

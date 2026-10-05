@@ -89,50 +89,90 @@ public sealed class LiquidArchive
     /// <summary>
     /// 保留源容器字节和索引顺序并在末尾追加替代资源
     /// </summary>
-    public void WriteReplacement(uint hash, byte[] replacement, string outputBase)
+    public void WriteReplacement(uint hash, byte[] replacement, string outputBase,
+        IReadOnlyDictionary<uint, byte[]>? additions = null)
+    {
+        //脚本替换入口保持原有调用方式新增资源由同一个写入流程处理
+        WriteContents(hash, replacement, outputBase, additions);
+    }
+
+    /// <summary>
+    /// 仅追加新资源保留纹理容器内全部原版条目
+    /// </summary>
+    public void WriteAdditions(IReadOnlyDictionary<uint, byte[]> additions, string outputBase)
+    {
+        //纹理追加不需要选择或重新压缩任何原版资源
+        WriteContents(null, [], outputBase, additions);
+    }
+
+    /// <summary>
+    /// 统一写入可选替换资源和新增资源并复读验证
+    /// </summary>
+    private void WriteContents(uint? hash, byte[] replacement, string outputBase,
+        IReadOnlyDictionary<uint, byte[]>? additions)
     {
         //拒绝原路径和已有输出避免覆盖原版或先前实验结果
-        if (!Entries.Any(e => e.Hash == hash)) throw new InvalidDataException("只能替换存在的资源哈希。");
+        if (hash.HasValue && !Entries.Any(e => e.Hash == hash)) throw new InvalidDataException("只能替换存在的资源哈希。");
+        //新资源必须使用未占用哈希并限制每项解压后大小
+        var extra = (additions ?? new Dictionary<uint, byte[]>()).OrderBy(item => item.Key).ToArray();
+        if (Entries.Count + extra.Length > 1_000_000) throw new InvalidDataException("自定义资源数量超出容器上限。");
+        foreach (var (addedHash, bytes) in extra)
+            if (addedHash == hash || Entries.Any(entry => entry.Hash == addedHash) || bytes.Length is 0 or > 64 * 1024 * 1024)
+                throw new InvalidDataException($"自定义资源哈希冲突或文件长度无效：{addedHash:x8}");
         outputBase = Path.GetFullPath(outputBase);
         if (string.Equals(outputBase, BasePath, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("输出不能覆盖原容器。");
         if (File.Exists(outputBase + ".idx") || File.Exists(outputBase + ".dat")) throw new IOException("输出容器已存在，请使用新的输出目录。");
         //生成符合游戏已测格式的gzip压缩数据
-        using var packed = new MemoryStream();
-        using (var gzip = new GZipStream(packed, CompressionLevel.Optimal, leaveOpen: true)) gzip.Write(replacement);
-        var bytes = packed.ToArray();
+        var packed = new List<(uint Hash, uint Size, byte[] Bytes)>();
+        if (hash.HasValue) packed.Add((hash.Value, checked((uint)replacement.Length), Compress(replacement)));
+        packed.AddRange(extra.Select(item => (item.Key, checked((uint)item.Value.Length), Compress(item.Value))));
+        var resourceOffsets = new Dictionary<uint, uint>();
         Directory.CreateDirectory(Path.GetDirectoryName(outputBase)!);
         var createdData = false; var createdIndex = false;
         try
         {
-            //复制源数据后追加新内容32位偏移必须能够表示完整结果
-            uint offset;
+            //复制源数据后逐项追加压缩资源并验证32位偏移边界
             using (var output = new FileStream(outputBase + ".dat", FileMode.CreateNew))
             {
                 createdData = true;
                 using var source = File.OpenRead(BasePath + ".dat");
-                if (source.Length + bytes.Length > uint.MaxValue) throw new InvalidDataException("输出超出 32 位容器范围。");
-                offset = checked((uint)source.Length);
                 source.CopyTo(output);
-                output.Write(bytes);
+                foreach (var resource in packed)
+                {
+                    if (output.Position + resource.Bytes.Length > uint.MaxValue) throw new InvalidDataException("输出超出 32 位容器范围。");
+                    resourceOffsets.Add(resource.Hash, checked((uint)output.Position));
+                    output.Write(resource.Bytes);
+                }
             }
-            //保持原头部和全部非目标条目只改变目标资源的存储信息
+            //原版索引按哈希递增供引擎二分查找新增条目必须插入正确顺序
             using (var output = new FileStream(outputBase + ".idx", FileMode.CreateNew))
             {
                 createdIndex = true;
                 using var writer = new BinaryWriter(output);
-                writer.Write(Header);
-                foreach (var entry in Entries)
+                var header = Header.ToArray();
+                BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(3), checked((uint)(Entries.Count + extra.Length)));
+                writer.Write(header);
+                var entries = Entries.Select(entry => entry.Hash == hash
+                    ? new ArchiveEntry(entry.Hash, checked((uint)packed[0].Bytes.Length), packed[0].Size,
+                        resourceOffsets[entry.Hash], true) : entry)
+                    .Concat(packed.Skip(hash.HasValue ? 1 : 0).Select(resource => new ArchiveEntry(resource.Hash,
+                        checked((uint)resource.Bytes.Length), resource.Size, resourceOffsets[resource.Hash], true)))
+                    .OrderBy(entry => entry.Hash);
+                foreach (var entry in entries)
                 {
                     writer.Write(entry.Hash);
-                    writer.Write(entry.Hash == hash ? checked((uint)bytes.Length) : entry.StoredSize);
-                    writer.Write(entry.Hash == hash ? checked((uint)replacement.Length) : entry.Size);
-                    writer.Write(entry.Hash == hash ? offset : entry.Offset);
-                    writer.Write(entry.Hash == hash || entry.Compressed ? (byte)1 : (byte)0);
+                    writer.Write(entry.StoredSize);
+                    writer.Write(entry.Size);
+                    writer.Write(entry.Offset);
+                    writer.Write(entry.Compressed ? (byte)1 : (byte)0);
                 }
             }
-            //复读输出验证容器结构和目标资源的完整内容
-            var verify = Open(outputBase).Read(hash);
-            if (!verify.AsSpan().SequenceEqual(replacement)) throw new InvalidDataException("输出复读验证失败。");
+            //复读输出验证替换资源与每个新增资源的完整内容
+            var archive = Open(outputBase);
+            if (hash.HasValue && !archive.Read(hash.Value).AsSpan().SequenceEqual(replacement))
+                throw new InvalidDataException("输出复读验证失败。");
+            foreach (var (addedHash, bytes) in extra)
+                if (!archive.Read(addedHash).AsSpan().SequenceEqual(bytes)) throw new InvalidDataException($"新增资源复读验证失败：{addedHash:x8}");
         }
         catch
         {
@@ -141,5 +181,16 @@ public sealed class LiquidArchive
             if (createdData) File.Delete(outputBase + ".dat");
             throw;
         }
+    }
+
+    /// <summary>
+    /// 将单个资源压缩为容器使用的gzip数据
+    /// </summary>
+    private static byte[] Compress(byte[] resource)
+    {
+        //压缩缓冲区独立于输入数组以便后续统一写入索引
+        using var packed = new MemoryStream();
+        using (var gzip = new GZipStream(packed, CompressionLevel.Optimal, leaveOpen: true)) gzip.Write(resource);
+        return packed.ToArray();
     }
 }

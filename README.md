@@ -2,9 +2,9 @@
 
 《这是我的战争》的社区模组加载器项目，目标是建立可组合的模组规范、Lua 扩展接口和原生引擎适配层。
 
-解决方案为`MaxyModLoader.sln`，仅保留核心库`MaxyModLoader.Core`、命令行入口`MaxyModLoader.Cli`和验证项目`MaxyModLoader.Tests`。核心库包含资源部署、模组运行库、管理界面和内置MCP桥，CLI负责构建、安装、恢复及MCP服务。0.3版的模组管理界面展示禁用、加载失败和依赖失败条目，介绍包括名称、标识、版本、作者、内容、功能、兼容性、依赖、冲突、主页、许可和错误详情。管理界面复用本机原版刷痕与森林背景，列表和完整介绍采用独立滚动区域，支持鼠标滚轮、滑块拖动和轨道点击。主菜单入口复用原版按钮的字体、箭头和悬停配方动作。
+解决方案为`MaxyModLoader.sln`，仅保留核心库`MaxyModLoader.Core`、命令行入口`MaxyModLoader.Cli`和验证项目`MaxyModLoader.Tests`。核心库包含资源部署、模组运行库、管理界面和内置MCP桥，CLI负责构建、安装、恢复及MCP服务。0.3版的模组管理界面展示禁用、加载失败和依赖失败条目，介绍包括名称、标识、版本、作者、内容、功能、兼容性、依赖、冲突、主页、许可和错误详情。管理界面复用本机原版森林与标题刷痕，列表和介绍使用自制透明炭笔纹理，列表和完整介绍采用独立滚动区域，支持鼠标滚轮、滑块拖动和轨道点击。主菜单入口复用原版按钮的字体、箭头和悬停配方动作。
 
-加载器[内置游戏MCP控制桥](docs/mcp.md)，安装时自动接入游戏Lua主线程，不需要额外MCP模组或独立MCP项目。统一CLI通过`mcp --game`启动服务，提供十五项工具，包括原生命中诊断、坐标点击、自有界面调整和只读游戏截图。`MaxyModLoader`为游戏内API名称，`TWOMLoader`保留旧模组兼容；`MaxyModLoader.mods`包含完整目录与实际加载状态，`MaxyModLoader.loaded`记录成功加载的模组。
+加载器[内置游戏MCP控制桥](docs/mcp.md)，安装时自动接入游戏Lua主线程，不需要额外MCP模组或独立MCP项目。统一CLI通过`mcp --game`启动服务，提供十五项已部署工具，包括原生命中诊断、坐标点击、自有界面调整和只读游戏截图。模组清单可引用模组目录内的Markdown说明，管理界面当前呈现有限的Markdown子集，包括标题、列表、引用、代码和行内强调，尚不支持完整CommonMark排版。`MaxyModLoader`为游戏内API名称，`TWOMLoader`保留旧模组兼容；`MaxyModLoader.mods`包含完整目录与实际加载状态，`MaxyModLoader.loaded`记录成功加载的模组。
 
 ## 技术前提
 
@@ -106,3 +106,7 @@ python -X utf8 tests/test_runtime.py
 ```
 
 `.github/workflows/verify.yml` 在 Windows 上运行构建、C# 测试和 Lua 测试。
+
+## 管理面板自制纹理
+
+两块内容背景使用[自制炭笔素材](tools/ui-art/README.md)，保留透明边缘与纸张纹理。普通构建自动转换并追加到`textures-s3`，安装与恢复同时校验、备份和处理`common`及纹理容器。部署包包含完整原版纹理容器，约2GB，构建产物和游戏资源不会提交到Git。旧版单容器安装日志仍能恢复。

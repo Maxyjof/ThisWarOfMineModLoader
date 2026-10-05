@@ -10,12 +10,13 @@
     "tired": 0
   },
   "author": "MaxyModLoader",
-  "description": "在玩家角色的原生初始化回调之后设置饥饿和疲劳，再运行参数依赖求解并读取设置结果。默认饥饿为负10，疲劳为0。存档恢复或后续剧情可能再次覆盖状态，实装记录必须对照场景快照判断。",
+  "description": "在玩家角色初始化回调完成后调整饥饿和疲劳，并请求原生参数依赖求解。",
   "features": [
     "在真实角色对象上设置状态",
     "调用游戏参数依赖求解",
     "记录设置前后的原生读值"
   ],
   "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
-  "license": "未指定"
+  "license": "未指定",
+  "descriptionFile": "README.md"
 }

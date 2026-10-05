@@ -2,8 +2,12 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'local/tools'))
-from lupa.lua51 import LuaRuntime
+try:
+    from lupa.lua51 import LuaRuntime
+except ImportError:
+    #本机附带的Lupa二进制按Python小版本编译系统依赖不可用时再回退
+    sys.path.insert(0, str(ROOT / 'local/tools'))
+    from lupa.lua51 import LuaRuntime
 
 
 def main():
@@ -40,6 +44,16 @@ assert(not manager.activate('old'))
 local value = manager.unicode('中文A😀').values
 assert(#value == 5 and value[1] == 20013 and value[2] == 25991 and value[3] == 65)
 assert(value[4] == 55357 and value[5] == 56832)
+--Markdown标题列表和行内强调转换为有样式的安全文本段
+local markdown = manager.markdown('# 标题' .. string.char(10) .. string.char(10) .. '- **重点**与`代码` [主页](https://example.com)')
+assert(#markdown == 3 and markdown[1].runs[1].text == '标题' and markdown[1].runs[1].style == 'heading')
+assert(markdown[2].blank and markdown[3].runs[1].text == '• ')
+assert(markdown[3].runs[2].text == '重点' and markdown[3].runs[2].style == 'strong')
+assert(markdown[3].runs[#markdown[3].runs].text == '主页' and markdown[3].runs[#markdown[3].runs].style == 'link')
+local detail = manager.details({id = 'twom.example', name = '示例模组', version = '1.0.0', status = 'loaded', author = 'Maxy',
+    description = '# 示例模组' .. string.char(10) .. string.char(10) .. '正文段落', features = {},
+    dependencies = {}, conflicts = {}, website = '', license = '', compatibility = ''})
+assert(detail[5].runs[1].text == '内容介绍' and detail[6].runs[1].text == '正文段落')
 
 --创建可见层级验证点击文字子控件也能激活其按钮
 local function element(name, parent)
@@ -65,6 +79,20 @@ assert(not manager.pointer(false, true, other) and calls == 0)
 manager.pointer(true, false, label)
 assert(manager.pointer(false, true, label) and calls == 1)
 assert(not manager.pointer(false, true, label) and calls == 1)
+--被选中的模组行保持橙色提示且未选中行恢复白色
+manager.open = true
+local list_label = element('MML_ROW_2_TEXT', manager.frame)
+local list_button = element('MML_ROW_2', manager.frame)
+local label_color
+list_button.FindElementByName = function(self, name)
+    if name == 'MML_ROW_2_TEXT' then return {SetColor = function(_, r, g, b, a) label_color = {r, g, b, a} end} end
+end
+manager.buttons = {MML_ROW_2 = {element = list_button, handler = function() end}}
+manager.selection = 2
+manager.pointer(false, false, list_button)
+assert(label_color[1] == 1 and label_color[2] == 0.55 and label_color[3] == 0.16)
+manager.open = false
+manager.buttons = {test = {element = button, handler = function() calls = calls + 1 end}}
 manager.open = true
 assert(manager.pointed_button(label) == nil)
 

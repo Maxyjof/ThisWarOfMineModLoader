@@ -1,9 +1,12 @@
 import pathlib
 import sys
 
-#允许使用本机忽略目录中的测试依赖持续集成直接安装依赖即可
-sys.path.insert(0, str(pathlib.Path("local/tools").resolve()))
-from lupa.lua51 import LuaRuntime
+#优先使用当前Python兼容的Lupa仅在缺少依赖时回退到本机测试包
+try:
+    from lupa.lua51 import LuaRuntime
+except ImportError:
+    sys.path.insert(0, str(pathlib.Path("local/tools").resolve()))
+    from lupa.lua51 import LuaRuntime
 
 #使用Lua5.1执行实际运行库覆盖入口、依赖失败、事件与包装链
 runtime = LuaRuntime()

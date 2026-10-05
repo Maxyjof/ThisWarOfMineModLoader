@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "author": "MaxyModLoader",
   "description": "包装游戏已有的logEvent函数并广播game.diary事件。只覆盖经过该Lua函数的记录，不代表完整原生日记系统，也不改写玩家日记。",
+  "descriptionFile": "README.md",
   "entry": "main.lua",
   "enabled": true,
   "dependencies": {},

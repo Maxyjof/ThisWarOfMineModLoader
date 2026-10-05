@@ -14,6 +14,7 @@ public sealed record ModManifest
     public required string Version { get; init; }
     public string Author { get; init; } = "";
     public string Description { get; init; } = "";
+    public string DescriptionFile { get; init; } = "";
     public string[] Features { get; init; } = [];
     public string Compatibility { get; init; } = "";
     public string Website { get; init; } = "";
@@ -45,7 +46,11 @@ public sealed record ModManifest
         if (Dependencies is null || Conflicts is null || Modules is null || Settings is null)
             throw new InvalidDataException("依赖、冲突、模块和配置不能为null");
         //管理界面读取原始UTF8文本不允许空引用或无效网页协议
-        if (Author is null || Description is null || Features is null || Features.Any(string.IsNullOrWhiteSpace) ||
+        if (Author is null || Description is null || Description.Length > 16384 || DescriptionFile is null ||
+            DescriptionFile.Length > 240 || DescriptionFile.Length > 0 &&
+            !Path.GetExtension(DescriptionFile).Equals(".md", StringComparison.OrdinalIgnoreCase) &&
+            !Path.GetExtension(DescriptionFile).Equals(".markdown", StringComparison.OrdinalIgnoreCase) ||
+            Features is null || Features.Any(string.IsNullOrWhiteSpace) ||
             Compatibility is null || Website is null || License is null)
             throw new InvalidDataException("模组介绍字段不能为null功能列表不能包含空项");
         if (Website.Length > 0 && (!Uri.TryCreate(Website, UriKind.Absolute, out var website) ||

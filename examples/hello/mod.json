@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "author": "MaxyModLoader",
   "description": "最小欢迎示例，演示入口协议、模组日志以及所有模组加载结束后的loader.ready事件。只输出日志，不改变游戏玩法。",
+  "descriptionFile": "README.md",
   "entry": "main.lua",
   "enabled": true,
   "dependencies": {},

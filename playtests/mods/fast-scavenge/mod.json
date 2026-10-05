@@ -9,12 +9,13 @@
     "duration_factor": 0.5
   },
   "author": "MaxyModLoader",
-  "description": "把原生搜刮配置的动作时长乘以0.5，使轻度、普通、重度和垃圾搜刮更快。动作仍由游戏原来的搜刮流程执行，不直接生成战利品。事件桥记录动作实际采用的时长和完成回调。",
+  "description": "将原版搜刮动作配置时长乘以可调整系数，保留原生搜刮回调和战利品计算。",
   "features": [
     "默认搜刮时长减少50%",
     "支持四类原生搜刮配置",
     "保留原版战利品和完成逻辑"
   ],
   "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
-  "license": "未指定"
+  "license": "未指定",
+  "descriptionFile": "README.md"
 }

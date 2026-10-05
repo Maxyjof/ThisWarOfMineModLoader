@@ -69,6 +69,21 @@ internal static class Program
             Reject<InvalidDataException>(() => manifest.Validate());
             Reject<InvalidDataException>(() => (manifest with { Website = "", Features = null! }).Validate());
         });
+        Test("Markdown介绍只从模组目录内读取有效UTF8文件", () => InWorkspace(root =>
+        {
+            //模组清单引用的Markdown在打包时读取并成为游戏内展示文本
+            var folder = Path.Combine(root, "markdown"); Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "main.lua"), "return {}");
+            File.WriteAllText(Path.Combine(folder, "README.md"), "# 介绍\n\n- **重点** `代码`\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"README.md\"}");
+            var mod = ModCatalog.Discover(root).Single();
+            Assert(mod.Manifest.Description.StartsWith("# 介绍", StringComparison.Ordinal));
+            var bundle = Encoding.UTF8.GetString(LuaBundle.Compile([], LoadPlanner.Create([mod])));
+            Assert(bundle.Contains(LuaBundle.Quote(mod.Manifest.Description)));
+            Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(folder, "../README.md"));
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"../README.md\"}");
+            Reject<InvalidDataException>(() => ModCatalog.Discover(root));
+        }));
         Test("中型模组模块禁止目录逃逸", () => InWorkspace(root =>
         {
             //入口合法而内部模块非法时必须在扫描阶段拒绝整个模组
@@ -94,12 +109,70 @@ internal static class Program
             var before = PackageBuilder.Fingerprint(source + ".dat");
             var archive = LiquidArchive.Open(source);
             var output = Path.Combine(root, "output");
-            archive.WriteReplacement(MainHash, Encoding.UTF8.GetBytes("replacement"), output);
-            Assert(Encoding.UTF8.GetString(LiquidArchive.Open(output).Read(MainHash)) == "replacement");
-            Assert(LiquidArchive.Open(output).Read(1).SequenceEqual(new byte[] { 1, 2, 3 }));
+            var addedHash = ResourceHash.Compute("UI/MaxyModLoader/fixture.dds");
+            var asset = Encoding.UTF8.GetBytes("fixture-texture");
+            archive.WriteReplacement(MainHash, Encoding.UTF8.GetBytes("replacement"), output, new Dictionary<uint, byte[]> { [addedHash] = asset });
+            var written = LiquidArchive.Open(output);
+            Assert(written.Entries.Count == 3);
+            Assert(written.Entries.Select(entry => entry.Hash).SequenceEqual(written.Entries.Select(entry => entry.Hash).Order()));
+            Assert(Encoding.UTF8.GetString(written.Read(MainHash)) == "replacement");
+            Assert(written.Read(addedHash).SequenceEqual(asset));
+            Assert(written.Read(1).SequenceEqual(new byte[] { 1, 2, 3 }));
             Assert(before == PackageBuilder.Fingerprint(source + ".dat"));
             Reject<InvalidDataException>(() => archive.WriteReplacement(MainHash, [], source));
             Reject<IOException>(() => archive.WriteReplacement(MainHash, [], output));
+            Reject<InvalidDataException>(() => archive.WriteReplacement(MainHash, [], Path.Combine(root, "collision"),
+                new Dictionary<uint, byte[]> { [MainHash] = asset }));
+        }));
+        Test("DDS转换原生纹理并随普通部署包加入界面素材", () => InWorkspace(root =>
+        {
+            var source = CreateFixture(root);
+            var resources = Path.Combine(root, "resources", "UI", "MaxyModLoader");
+            Directory.CreateDirectory(resources);
+            var dds = new byte[132];
+            Encoding.ASCII.GetBytes("DDS ").CopyTo(dds, 0);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(4, 4), 124);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(12, 4), 1);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(16, 4), 1);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(20, 4), 4);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(76, 4), 32);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(80, 4), 0x41);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(88, 4), 32);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(92, 4), 0x00FF0000);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(96, 4), 0x0000FF00);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(100, 4), 0x000000FF);
+            BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(104, 4), 0xFF000000);
+            dds[128] = 7; dds[129] = 11; dds[130] = 19; dds[131] = 127;
+            var native = LiquidTexture.FromDds(dds);
+            Assert(native.Length == 148 && native.AsSpan(144).SequenceEqual(dds.AsSpan(128)));
+            Assert(BinaryPrimitives.ReadUInt32LittleEndian(native.AsSpan(8)) == 21);
+            Assert(BinaryPrimitives.ReadUInt32LittleEndian(native.AsSpan(12)) == 1);
+            Assert(BinaryPrimitives.ReadUInt32LittleEndian(native.AsSpan(16)) == 0x00010001);
+            Assert(BinaryPrimitives.ReadUInt32LittleEndian(native.AsSpan(20)) == 4);
+            Assert(native.AsSpan(24, 120).ToArray().All(value => value == 0));
+            File.WriteAllBytes(Path.Combine(resources, "probe.dds"), dds);
+            var package = Path.Combine(root, "package");
+            PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package, Path.Combine(root, "resources"));
+            var archive = LiquidArchive.Open(Path.Combine(package, "textures-s3"));
+            var hash = ResourceHash.Compute("UI/MaxyModLoader/probe.texture");
+            Assert(archive.Read(hash).SequenceEqual(native));
+            Assert(archive.Entries.Select(entry => entry.Hash).SequenceEqual(archive.Entries.Select(entry => entry.Hash).Order()));
+            Assert(!archive.Entries.Any(entry => entry.Hash == ResourceHash.Compute("UI/MaxyModLoader/probe.dds")));
+            var plainPackage = Path.Combine(root, "plain-package");
+            PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), plainPackage);
+            var builtin = LiquidArchive.Open(Path.Combine(plainPackage, "textures-s3"));
+            Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/BrushList.texture")).Length > 144);
+            Assert(builtin.Read(ResourceHash.Compute("UI/MaxyModLoader/BrushDetail.texture")).Length > 144);
+            Reject<InvalidDataException>(() => LiquidTexture.FromDds(dds[..^1]));
+            var unsupported = (byte[])dds.Clone();
+            BinaryPrimitives.WriteUInt32LittleEndian(unsupported.AsSpan(28, 4), 2);
+            Reject<InvalidDataException>(() => LiquidTexture.FromDds(unsupported));
+            unsupported = (byte[])dds.Clone();
+            BinaryPrimitives.WriteUInt32LittleEndian(unsupported.AsSpan(88, 4), 24);
+            Reject<InvalidDataException>(() => LiquidTexture.FromDds(unsupported));
+            File.WriteAllBytes(Path.Combine(resources, "invalid.dds"), [1, 2, 3]);
+            Reject<InvalidDataException>(() => PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"),
+                Path.Combine(root, "bad-package"), Path.Combine(root, "resources")));
         }));
         Test("错误版本和索引数量被拒绝", () => InWorkspace(root =>
         {
@@ -200,6 +273,32 @@ internal static class Program
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
             Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
         }));
+        Test("纹理篡改在安装前拒绝且多容器中断完整恢复", () => InWorkspace(root =>
+        {
+            //合成两个容器核验预校验不会先修改脚本目标
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
+            var source = CreateFixture(game);
+            var package = Path.Combine(root, "package");
+            var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
+            var texturePath = Path.Combine(package, "textures-s3.dat");
+            var originalBuilt = File.ReadAllBytes(texturePath);
+            File.AppendAllText(texturePath, "tampered");
+            Reject<InvalidDataException>(() => PackageInstaller.Install(game, package));
+            Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
+            File.WriteAllBytes(texturePath, originalBuilt);
+            PackageInstaller.Install(game, package);
+            //模拟纹理索引尚未替换以及脚本数据已经恢复的混合中断状态
+            var statePath = Path.Combine(game, "MaxyModLoader", "install-state.json");
+            var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(statePath), ModManifest.JsonOptions)!;
+            var backup = Path.Combine(game, state.BackupDirectory);
+            File.Copy(Path.Combine(backup, "textures-s3.idx"), Path.Combine(game, "textures-s3.idx"), true);
+            File.Copy(Path.Combine(backup, "common.dat"), source + ".dat", true);
+            PackageInstaller.Restore(game);
+            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
+            Assert(PackageBuilder.Fingerprint(Path.Combine(game, "textures-s3.dat")) == manifest.Textures!.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(Path.Combine(game, "textures-s3.idx")) == manifest.Textures.OriginalIndexSha256);
+        }));
 
         //输出可由独立Lua5.1解释器执行的完整引导脚本
         Test("导出Lua集成验证入口", () =>
@@ -298,6 +397,10 @@ internal static class Program
         index.Write(new byte[] { 0, 3, 1 }); index.Write((uint)2); index.Write((uint)0);
         index.Write((uint)1); index.Write((uint)3); index.Write((uint)3); index.Write((uint)0); index.Write((byte)0);
         index.Write(MainHash); index.Write((uint)main.Length); index.Write((uint)main.Length); index.Write((uint)3); index.Write((byte)0);
+        index.Dispose();
+        //同时提供独立纹理容器以测试原版条目保留和多容器安装恢复
+        File.Copy(source + ".idx", Path.Combine(directory, "textures-s3.idx"));
+        File.Copy(source + ".dat", Path.Combine(directory, "textures-s3.dat"));
         return source;
     }
 }

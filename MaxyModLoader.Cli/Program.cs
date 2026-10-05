@@ -36,6 +36,7 @@ internal static class Program
                 case ["inspect", var container]: return Inspect(container);
                 case ["extract", var source, var hash, var destination]: return Extract(source, hash, destination);
                 case ["build", var source, var hash, var mods, var output]: return Build(source, hash, mods, output);
+                case ["build", var source, var hash, var mods, var output, var resources]: return Build(source, hash, mods, output, resources);
                 case ["install", var game, var package]:
                     PackageInstaller.Install(game, package);
                     Console.WriteLine("已备份原容器并安装加载器可使用restore恢复");
@@ -45,7 +46,7 @@ internal static class Program
                     Console.WriteLine("已核验并恢复原容器备份仍保留在MaxyModLoader/backups");
                     return 0;
                 default:
-                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录>\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>");
+                    Console.WriteLine("MaxyModLoader《这是我的战争》模组加载器\nplan <模组目录>\nhash <容器内相对路径>\ninspect <容器路径不含扩展名>\nextract <容器路径> <八位十六进制哈希> <输出文件>\nbuild <容器路径> <Main哈希> <模组目录> <新输出目录> [DDS资源目录]\ninstall <游戏根目录> <部署包目录>\nrestore <游戏根目录>\nmcp --game <游戏根目录>\nrpc <游戏根目录> <游戏命令> [参数]\nscreenshot <游戏根目录>");
                     return args.Length == 0 || args is ["--help"] ? 0 : 1;
             }
         }
@@ -108,10 +109,10 @@ internal static class Program
     /// <summary>
     /// 构建包含原始指纹与生成指纹的离线部署包
     /// </summary>
-    private static int Build(string source, string hash, string mods, string output)
+    private static int Build(string source, string hash, string mods, string output, string? resources = null)
     {
         //构建阶段不修改游戏安装目录
-        var manifest = PackageBuilder.Build(source, ParseHash(hash), mods, output);
+        var manifest = PackageBuilder.Build(source, ParseHash(hash), mods, output, resources);
         Console.WriteLine($"已生成部署包：{Path.GetFullPath(output)}\n模组数量：{manifest.Mods.Length}\n此命令不会安装或修改游戏");
         return 0;
     }

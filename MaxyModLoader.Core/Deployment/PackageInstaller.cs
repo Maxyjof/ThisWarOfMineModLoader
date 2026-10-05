@@ -27,31 +27,43 @@ public static class PackageInstaller
             throw new IOException("加载器已有安装或待恢复操作请先执行restore。");
         var package = JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(Path.Combine(packageDirectory, "package.json")), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("部署包清单为空。");
-        ValidateContainer(package.Container);
+        var containers = Containers(package);
 
-        //只允许指纹与构建来源完全相符的目标安装
-        var target = Path.Combine(gameDirectory, package.Container);
-        var built = Path.Combine(packageDirectory, package.Container);
-        Check(target + ".idx", package.OriginalIndexSha256);
-        Check(target + ".dat", package.OriginalDataSha256);
-        Check(built + ".idx", package.BuiltIndexSha256);
-        Check(built + ".dat", package.BuiltDataSha256);
+        //先校验全部来源与目标再开始备份防止第二个容器损坏时部分安装
+        foreach (var item in containers)
+        {
+            var target = Path.Combine(gameDirectory, item.Container);
+            var built = Path.Combine(packageDirectory, item.Container);
+            Check(target + ".idx", item.OriginalIndexSha256);
+            Check(target + ".dat", item.OriginalDataSha256);
+            Check(built + ".idx", item.BuiltIndexSha256);
+            Check(built + ".dat", item.BuiltDataSha256);
+        }
 
         //先备份两份原文件并写入恢复日志再开始任何目标替换
         var backup = Path.Combine(gameDirectory, "MaxyModLoader", "backups", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(backup);
-        File.Copy(target + ".idx", Path.Combine(backup, package.Container + ".idx"));
-        File.Copy(target + ".dat", Path.Combine(backup, package.Container + ".dat"));
-        Check(Path.Combine(backup, package.Container + ".idx"), package.OriginalIndexSha256);
-        Check(Path.Combine(backup, package.Container + ".dat"), package.OriginalDataSha256);
+        foreach (var item in containers)
+        {
+            var target = Path.Combine(gameDirectory, item.Container);
+            File.Copy(target + ".idx", Path.Combine(backup, item.Container + ".idx"));
+            File.Copy(target + ".dat", Path.Combine(backup, item.Container + ".dat"));
+            Check(Path.Combine(backup, item.Container + ".idx"), item.OriginalIndexSha256);
+            Check(Path.Combine(backup, item.Container + ".dat"), item.OriginalDataSha256);
+        }
         using (var state = new FileStream(statePath, FileMode.CreateNew))
             JsonSerializer.Serialize(state, new InstallState(package, Path.GetRelativePath(gameDirectory, backup)), ModManifest.JsonOptions);
 
         //游戏已停止单文件替换使用临时文件后重命名中断时保留恢复日志
-        Replace(built + ".dat", target + ".dat");
-        Replace(built + ".idx", target + ".idx");
-        Check(target + ".dat", package.BuiltDataSha256);
-        Check(target + ".idx", package.BuiltIndexSha256);
+        foreach (var item in containers)
+        {
+            var target = Path.Combine(gameDirectory, item.Container);
+            var built = Path.Combine(packageDirectory, item.Container);
+            Replace(built + ".dat", target + ".dat");
+            Replace(built + ".idx", target + ".idx");
+            Check(target + ".dat", item.BuiltDataSha256);
+            Check(target + ".idx", item.BuiltIndexSha256);
+        }
     }
 
     /// <summary>
@@ -67,34 +79,43 @@ public static class PackageInstaller
         if (!File.Exists(statePath)) statePath = Path.Combine(gameDirectory, "TWOMLoader", "install-state.json");
         var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(statePath), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("安装日志为空。");
-        ValidateContainer(state.Package.Container);
+        var containers = Containers(state.Package);
         var backup = Path.GetFullPath(Path.Combine(gameDirectory, state.BackupDirectory));
         var backupRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(statePath)!, "backups")) + Path.DirectorySeparatorChar;
         if (!backup.StartsWith(backupRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("备份路径超出本次游戏安装目录。");
-        var package = state.Package;
-        var target = Path.Combine(gameDirectory, package.Container);
-
-        //校验备份和当前目标身份中断状态允许目标仍然是原文件
-        Check(Path.Combine(backup, package.Container + ".idx"), package.OriginalIndexSha256);
-        Check(Path.Combine(backup, package.Container + ".dat"), package.OriginalDataSha256);
-        CheckCurrent(target + ".idx", package.OriginalIndexSha256, package.BuiltIndexSha256);
-        CheckCurrent(target + ".dat", package.OriginalDataSha256, package.BuiltDataSha256);
+        //全部容器校验通过才恢复任意文件中断状态允许各文件仍然是原版
+        foreach (var item in containers)
+        {
+            var target = Path.Combine(gameDirectory, item.Container);
+            Check(Path.Combine(backup, item.Container + ".idx"), item.OriginalIndexSha256);
+            Check(Path.Combine(backup, item.Container + ".dat"), item.OriginalDataSha256);
+            CheckCurrent(target + ".idx", item.OriginalIndexSha256, item.BuiltIndexSha256);
+            CheckCurrent(target + ".dat", item.OriginalDataSha256, item.BuiltDataSha256);
+        }
 
         //恢复后复读指纹仅在两份原文件全部恢复成功后删除日志
-        Replace(Path.Combine(backup, package.Container + ".dat"), target + ".dat");
-        Replace(Path.Combine(backup, package.Container + ".idx"), target + ".idx");
-        Check(target + ".dat", package.OriginalDataSha256);
-        Check(target + ".idx", package.OriginalIndexSha256);
+        foreach (var item in containers)
+        {
+            var target = Path.Combine(gameDirectory, item.Container);
+            Replace(Path.Combine(backup, item.Container + ".dat"), target + ".dat");
+            Replace(Path.Combine(backup, item.Container + ".idx"), target + ".idx");
+            Check(target + ".dat", item.OriginalDataSha256);
+            Check(target + ".idx", item.OriginalIndexSha256);
+        }
         File.Delete(statePath);
     }
 
     /// <summary>
-    /// 拒绝含路径段或设备名称的容器名称
+    /// 校验脚本主容器及可选纹理容器并兼容旧单容器日志
     /// </summary>
-    private static void ValidateContainer(string name)
+    private static PackageManifest[] Containers(PackageManifest package)
     {
-        //实验版本只部署已有验证的common脚本容器
-        if (name != "common") throw new InvalidDataException("当前安装器只支持common脚本容器。");
+        //只允许已核验的两种固定名称拒绝递归清单和重复容器
+        if (package.Container != "common") throw new InvalidDataException("主容器必须是common");
+        if (package.Textures is null) return [package];
+        if (package.Textures.Container != "textures-s3" || package.Textures.Textures is not null)
+            throw new InvalidDataException("附加容器必须是单个textures-s3纹理容器");
+        return [package, package.Textures];
     }
 
     /// <summary>

@@ -6,12 +6,13 @@
     "twom.play.failure": "0.1.0"
   },
   "author": "MaxyModLoader",
-  "description": "故意依赖失败探针的测试模组。当上游入口失败时，它必须显示因依赖失败而跳过，自己的入口不得执行。用于验证管理界面状态和运行时依赖隔离。",
+  "description": "依赖故意失败的隔离探针，用于确认依赖入口失败后下游模组不会执行。",
   "features": [
     "依赖故意失败的测试探针",
     "入口必须被跳过",
     "验证失败原因可查询"
   ],
   "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
-  "license": "未指定"
+  "license": "未指定",
+  "descriptionFile": "README.md"
 }

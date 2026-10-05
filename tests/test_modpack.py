@@ -2,8 +2,12 @@ import pathlib
 import sys
 
 #独立解释器中的宿主替身只验证模组组合逻辑实际游戏证据单独记录
-sys.path.insert(0, str(pathlib.Path("local/tools").resolve()))
-from lupa.lua51 import LuaRuntime
+try:
+    from lupa.lua51 import LuaRuntime
+except ImportError:
+    #优先使用当前Python兼容的Lupa仅在缺少依赖时回退到本机测试包
+    sys.path.insert(0, str(pathlib.Path("local/tools").resolve()))
+    from lupa.lua51 import LuaRuntime
 
 runtime = LuaRuntime()
 messages = []
