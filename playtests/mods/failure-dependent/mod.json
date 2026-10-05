@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "id": "twom.play.failure-dependent",
   "name": "失败依赖跳过探针",
   "version": "0.1.0",

@@ -23,7 +23,7 @@ public static class NativeContentInstaller
     /// </summary>
     public static NativeInstallState? Prepare(string game, string package, NativePackage? native)
     {
-        //旧版Lua包没有原生登记和附加文件
+        //仅含Lua的模组组合不需要原生登记和附加文件
         if (native is null) return null;
         Validate(native);
         Directory.CreateDirectory(Path.Combine(game, "Mods"));

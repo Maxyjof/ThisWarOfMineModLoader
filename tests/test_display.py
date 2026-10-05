@@ -1,13 +1,7 @@
 import pathlib
-import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-try:
-    from lupa.lua51 import LuaRuntime
-except ImportError:
-    #本机依赖回退仅用于验证不随加载器分发
-    sys.path.insert(0, str(ROOT / 'local/tools'))
-    from lupa.lua51 import LuaRuntime
+from lupa.lua51 import LuaRuntime
 
 
 def main():

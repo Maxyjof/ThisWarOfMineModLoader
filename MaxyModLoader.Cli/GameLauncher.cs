@@ -37,7 +37,7 @@ internal static class GameLauncher
 
         //上次被强制结束时先使用持久化恢复日志还原游戏文件
         var statePath = Path.Combine(loaderDirectory, "install-state.json");
-        if (File.Exists(statePath) || File.Exists(Path.Combine(gameDirectory, "TWOMLoader", "install-state.json")))
+        if (File.Exists(statePath))
             PackageInstaller.Restore(gameDirectory, true);
 
         //清理上次异常退出留下的请求后进入可恢复的运行循环
@@ -108,7 +108,7 @@ internal static class GameLauncher
         try
         {
             _ = ModZipImporter.ExtractAll(modsDirectory, stagingDirectory);
-            //状态文件覆盖模组清单默认值未知旧标识会自然忽略
+            //状态文件覆盖模组清单默认值已移除模组的标识不参与当前加载
             var states = ModStartupState.Read(Path.Combine(gameDirectory, "MaxyModLoader", "mod-state.txt"));
             var plan = LoadPlanner.Create(ModCatalog.Discover(stagingDirectory, states));
             if (!plan.IsValid) throw new InvalidDataException(string.Join(Environment.NewLine, plan.Errors));

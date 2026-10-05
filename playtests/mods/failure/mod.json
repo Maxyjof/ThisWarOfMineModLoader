@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "id": "twom.play.failure",
   "name": "故意失败的包装隔离探针",
   "version": "0.1.0",

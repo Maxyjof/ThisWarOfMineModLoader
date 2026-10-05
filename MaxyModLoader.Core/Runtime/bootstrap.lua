@@ -1,5 +1,5 @@
---在游戏既有Lua虚拟机内运行并兼容Lua5.1与Lua5.2
-local compile = loadstring or load
+--在已核验的游戏Lua5.1虚拟机内运行
+local compile = loadstring
 local loaded = {}
 local listeners = {}
 local services = {}
@@ -8,8 +8,6 @@ local actions = {}
 local api = { name = "MaxyModLoader", version = "0.4.2", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
 api.actions = {}
 MaxyModLoader = api
---保留旧API名称使已经发布的模组继续兼容
-TWOMLoader = api
 
 --<summary>
 --执行加载器自身校验避免游戏重定义全局assert后失去校验能力
@@ -41,7 +39,8 @@ api.log = log
 --</summary>
 function api.register_mod(metadata)
     --禁用模组保留介绍但不会编译或执行其入口
-    require_condition(type(metadata) == "table" and type(metadata.id) == "string", "invalid mod metadata")
+    require_condition(type(metadata) == "table" and type(metadata.id) == "string" and
+        type(metadata.description_document) == "table", "invalid mod metadata")
     require_condition(api.mod_by_id[metadata.id] == nil, "duplicate mod metadata")
     metadata.status = metadata.enabled == false and "disabled" or "pending"
     metadata.error = ""
@@ -62,7 +61,7 @@ end
 --隔离模组入口或事件回调的异常并记录诊断
 --</summary>
 local function guarded(id, callback)
-    --使用无参数闭包兼容Lua5.1的xpcall约定
+    --Lua5.1的xpcall只接受无参数闭包
     local ok, result = xpcall(callback, traceback)
     if not ok then log(id, result) end
     return ok, result
@@ -74,10 +73,10 @@ end
 local function context_for(id, dependencies, options)
     --记录模组拥有的注册项以便入口失败后撤销
     local context = { id = id, api_version = api.api_version, loader_version = api.version }
-    context.config = options.config or {}
+    context.config = options.config
     local module_cache = {}
     local module_loading = {}
-    local module_sources = options.modules or {}
+    local module_sources = options.modules
     local allowed_services = { [id] = true }
     for _, dependency in ipairs(dependencies) do allowed_services[dependency] = true end
     services[id] = {}
@@ -87,7 +86,7 @@ local function context_for(id, dependencies, options)
     local owned_rule_changes = {}
     local owned_actions = {}
     local allowed_capabilities = {}
-    for _, capability in ipairs(options.capabilities or {}) do allowed_capabilities[capability] = true end
+    for _, capability in ipairs(options.capabilities) do allowed_capabilities[capability] = true end
     context.log = function(message) log(id, message) end
 
     --<summary>
@@ -98,7 +97,7 @@ local function context_for(id, dependencies, options)
         if module_cache[name] ~= nil then return module_cache[name] end
         require_condition(not module_loading[name], "cyclic module: " .. tostring(name))
         require_condition(type(module_sources[name]) == "string", "unknown module: " .. tostring(name))
-        local chunk, err = compile(module_sources[name], "@twom/mods/" .. id .. "/" .. name)
+        local chunk, err = compile(module_sources[name], "@MaxyModLoader/mods/" .. id .. "/" .. name)
         require_condition(chunk, err)
         module_loading[name] = true
         local ok, value = pcall(chunk, context)
@@ -381,13 +380,12 @@ end
 function api.emit(name, ...)
     --显式保存参数数量使末尾nil也可以正确传递
     local args = { n = select("#", ...), ... }
-    local unpack_args = unpack or table.unpack
     --复制订阅快照避免回调中注册新订阅造成无限遍历
     local snapshot = {}
     for _, item in ipairs(listeners[name] or {}) do table.insert(snapshot, item) end
     for _, item in ipairs(snapshot) do
         if item.active then
-            guarded(item.id, function() item.callback(unpack_args(args, 1, args.n)) end)
+            guarded(item.id, function() item.callback(unpack(args, 1, args.n)) end)
         end
     end
 end
@@ -396,8 +394,11 @@ end
 --加载单个模组并跳过运行时加载失败的依赖
 --</summary>
 function api.load_mod(id, source, dependencies, options)
-    --直接调用旧加载API的模组也有可查询状态
-    if not api.mod_by_id[id] then api.register_mod({id = id, name = id, enabled = true}) end
+    --打包入口必须先注册完整元数据不自动补全缺失的加载阶段
+    require_condition(api.mod_by_id[id] ~= nil, "mod metadata must be registered before loading")
+    require_condition(type(dependencies) == 'table' and type(options) == 'table' and
+        type(options.config) == 'table' and type(options.modules) == 'table' and
+        type(options.capabilities) == 'table', 'invalid mod loading contract')
     local metadata = api.mod_by_id[id]
     --静态依赖检查通过后仍需确认依赖入口实际成功执行
     for _, dependency in ipairs(dependencies) do
@@ -409,10 +410,10 @@ function api.load_mod(id, source, dependencies, options)
         end
     end
     --编译入口并要求返回带on_load方法的模组表
-    local context, rollback = context_for(id, dependencies, options or {})
+    local context, rollback = context_for(id, dependencies, options)
     metadata.status = "loading"
     local ok, failure = guarded(id, function()
-        local chunk, err = compile(source, "@twom/mods/" .. id)
+        local chunk, err = compile(source, "@MaxyModLoader/mods/" .. id)
         require_condition(chunk, err)
         local mod = chunk()
         require_condition(type(mod) == "table" and type(mod.on_load) == "function", "entry must return { on_load = function(context) ... end }")

@@ -11,101 +11,104 @@ namespace MaxyModLoader.Windowing;
 /// </summary>
 public static class DisplayHost
 {
-    private static readonly string[] RuntimeFiles = ["MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll", "Markdig.dll", "ThirdPartyNotices.txt"];
+    private static readonly JsonSerializerOptions OwnershipOptions = new()
+    {
+        UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+    };
 
     /// <summary>
-    /// 将当前加载器的运行文件和隐藏启动入口安装到游戏目录
+    /// 为当前单文件自包含应用安装隐藏启动入口
     /// </summary>
     public static void Install(string game, string source)
     {
-        //自包含玩家启动器由VBS直接调用不依赖系统安装的dotnet运行时
-        source = Path.GetFullPath(source);
-        var destination = Path.Combine(Path.GetFullPath(game), "MaxyModLoader", "host");
-        var ownershipPath = Path.Combine(destination, "ownership.json");
-        if (File.Exists(ownershipPath))
-        {
-            //升级旧版辅助程序时按所有权指纹移除之前复制的运行库
-            var previous = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(ownershipPath))
-                ?? throw new InvalidDataException("窗口辅助所有权记录无效");
-            if (!previous.TryGetValue("mode", out var previousMode) || previousMode != "self-contained") Uninstall(game);
-        }
-        var selfContained = File.Exists(Path.Combine(source, "MaxyModLoader.exe")) && File.Exists(Path.Combine(source, ".self-contained"));
-        Directory.CreateDirectory(destination);
-        if (!selfContained)
-        {
-            //开发环境兼容旧式框架依赖部署且只复制固定运行文件
-            foreach (var name in RuntimeFiles)
-                if (!File.Exists(Path.Combine(source, name))) throw new IOException("缺少窗口辅助运行文件：" + name);
-            foreach (var name in RuntimeFiles) File.Copy(Path.Combine(source, name), Path.Combine(destination, name), true);
-        }
+        //写入前完整验证当前发行结构和入口归属
+        ValidateInstall(game, source);
+        var root = Path.Combine(Path.GetFullPath(game), "MaxyModLoader");
+        var host = Path.Combine(root, "host");
+        var scriptPath = Path.Combine(root, "display-host.vbs");
 
-        //启动脚本根据自身位置解析游戏目录不固化开发者路径且不显示控制台
-        var script = StartupScript(selfContained);
-        File.WriteAllText(Path.Combine(Path.GetDirectoryName(destination)!, "display-host.vbs"), script, new UTF8Encoding(false));
-        //记录自有文件指纹恢复时只移除没有被第三方修改的辅助文件
-        var ownership = selfContained
-            ? new Dictionary<string, string> { ["mode"] = "self-contained" }
-            : RuntimeFiles.ToDictionary(name => name, name => Fingerprint(Path.Combine(destination, name)));
-        ownership["display-host.vbs"] = Fingerprint(Path.Combine(Path.GetDirectoryName(destination)!, "display-host.vbs"));
-        File.WriteAllText(Path.Combine(destination, "ownership.json"), JsonSerializer.Serialize(ownership));
+        //脚本从自身位置推导游戏路径不固化开发机器目录
+        Directory.CreateDirectory(host);
+        File.WriteAllText(scriptPath, StartupScript(), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(host, "ownership.json"), JsonSerializer.Serialize(new HostOwnership(Fingerprint(scriptPath))));
     }
 
     /// <summary>
-    /// 按安装指纹移除自有辅助文件并保留玩家偏好和原容器备份
+    /// 在修改游戏资源前验证辅助发行结构与现有入口所有权
+    /// </summary>
+    public static void ValidateInstall(string game, string source)
+    {
+        //只接受当前发行结构不复制框架依赖运行库或迁移历史部署
+        source = Path.GetFullPath(source);
+        if (!File.Exists(Path.Combine(source, "MaxyModLoader.exe")) ||
+            !File.Exists(Path.Combine(source, ".self-contained")) ||
+            File.ReadAllText(Path.Combine(source, ".self-contained")) != "single-file\n")
+            throw new InvalidDataException("窗口辅助服务需要当前单文件自包含发行包");
+        var root = Path.Combine(Path.GetFullPath(game), "MaxyModLoader");
+        var host = Path.Combine(root, "host");
+        var ownershipPath = Path.Combine(host, "ownership.json");
+        var scriptPath = Path.Combine(root, "display-host.vbs");
+
+        //覆盖入口前核验现有所有权拒绝未知格式或第三方修改
+        if (File.Exists(ownershipPath))
+        {
+            var previous = ReadOwnership(ownershipPath);
+            if (File.Exists(scriptPath) && Fingerprint(scriptPath) != previous.StartupSha256)
+                throw new InvalidDataException("窗口辅助入口已被修改拒绝覆盖");
+        }
+        else if (File.Exists(scriptPath)) throw new InvalidDataException("窗口辅助入口缺少当前所有权记录");
+    }
+
+    /// <summary>
+    /// 按当前所有权指纹移除隐藏入口并保留玩家偏好
     /// </summary>
     public static void Uninstall(string game)
     {
-        //缺少所有权记录时不推测现存文件归属
+        //缺少记录时不推测现存文件归属也不查找历史目录
         var root = Path.Combine(Path.GetFullPath(game), "MaxyModLoader");
-        var host = Path.Combine(root, "host");
-        var manifest = Path.Combine(host, "ownership.json");
+        var manifest = Path.Combine(root, "host", "ownership.json");
         if (!File.Exists(manifest)) return;
-        var ownership = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(manifest))
-            ?? throw new InvalidDataException("窗口辅助所有权记录无效");
-        if (ownership.TryGetValue("mode", out var mode) && mode == "self-contained")
-        {
-            //自包含启动器模式只拥有VBS入口不触碰应用目录或其他辅助文件
-            if (ownership.Count != 2 || !ownership.ContainsKey("display-host.vbs"))
-                throw new InvalidDataException("自包含窗口辅助所有权记录无效");
-            var scriptPath = Path.Combine(root, "display-host.vbs");
-            if (File.Exists(scriptPath) && Fingerprint(scriptPath) != ownership["display-host.vbs"])
-                throw new InvalidDataException("窗口辅助文件已被修改拒绝自动移除：display-host.vbs");
-            if (File.Exists(scriptPath)) File.Delete(scriptPath);
-            File.Delete(manifest);
-            return;
-        }
-        var names = RuntimeFiles.Append("display-host.vbs").ToArray();
-        //兼容升级前不包含Markdown解析器的固定运行文件集合
-        if (!ownership.ContainsKey("MaxyModLoader.Core.dll") || ownership.Keys.Any(name => !names.Contains(name)) ||
-            names.Where(name => name is not ("Markdig.dll" or "ThirdPartyNotices.txt")).Any(name => !ownership.ContainsKey(name)))
-            throw new InvalidDataException("窗口辅助所有权记录包含未知文件");
-        names = names.Where(ownership.ContainsKey).ToArray();
-        var paths = names.Select(name => Path.Combine(name == "display-host.vbs" ? root : host, name)).ToArray();
-        //全部预校验完成后才删除任何文件避免篡改时留下半卸载状态
-        for (var index = 0; index < names.Length; index++)
-            if (File.Exists(paths[index]) && Fingerprint(paths[index]) != ownership[names[index]])
-                throw new InvalidDataException("窗口辅助文件已被修改拒绝自动移除：" + names[index]);
-        foreach (var path in paths) if (File.Exists(path)) File.Delete(path);
+        var ownership = ReadOwnership(manifest);
+        var scriptPath = Path.Combine(root, "display-host.vbs");
+
+        //全部核验完成后只删除当前记录拥有的入口和记录本身
+        if (File.Exists(scriptPath) && Fingerprint(scriptPath) != ownership.StartupSha256)
+            throw new InvalidDataException("窗口辅助文件已被修改拒绝自动移除：display-host.vbs");
+        if (File.Exists(scriptPath)) File.Delete(scriptPath);
         File.Delete(manifest);
     }
 
     /// <summary>
-    /// 生成调用自包含程序或开发版运行时的隐藏脚本
+    /// 读取唯一的当前所有权格式并拒绝缺失或未知字段
     /// </summary>
-    private static string StartupScript(bool selfContained)
+    private static HostOwnership ReadOwnership(string path)
     {
-        //两种启动方式都从脚本位置推导游戏目录并使用隐藏窗口
-        var prefix = "Option Explicit\r\nDim fs, folder, game, shell\r\n" +
+        //旧部署的运行库清单和模式字典不是当前契约
+        var ownership = JsonSerializer.Deserialize<HostOwnership>(File.ReadAllText(path), OwnershipOptions);
+        if (ownership?.StartupSha256 is not { Length: 64 } || !ownership.StartupSha256.All(char.IsAsciiHexDigit))
+            throw new InvalidDataException("窗口辅助所有权记录无效");
+        return ownership;
+    }
+
+    /// <summary>
+    /// 保存隐藏启动入口的唯一所有权指纹
+    /// </summary>
+    private sealed record HostOwnership([property: System.Text.Json.Serialization.JsonRequired] string StartupSha256);
+
+    /// <summary>
+    /// 生成调用当前自包含程序的隐藏脚本
+    /// </summary>
+    private static string StartupScript()
+    {
+        //程序和游戏路径都由脚本位置决定启动时隐藏控制台
+        return "Option Explicit\r\nDim fs, folder, game, shell, launcher, command\r\n" +
             "Set fs = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
             "folder = fs.GetParentFolderName(WScript.ScriptFullName)\r\n" +
             "game = fs.GetParentFolderName(folder)\r\n" +
-            "Set shell = CreateObject(\"WScript.Shell\")\r\n";
-        if (selfContained)
-            return prefix + "Dim launcher, command\r\n" +
-                "launcher = fs.BuildPath(folder, \"app\\MaxyModLoader.exe\")\r\n" +
-                "command = Chr(34) & launcher & Chr(34) & \" display-host \" & Chr(34) & game & Chr(34)\r\n" +
-                "shell.Run command, 0, False\r\n";
-        return prefix + "shell.Run \"dotnet \"\"\" & folder & \"\\host\\MaxyModLoader.dll\"\" display-host \"\"\" & game & \"\"\"\", 0, False\r\n";
+            "Set shell = CreateObject(\"WScript.Shell\")\r\n" +
+            "launcher = fs.BuildPath(folder, \"app\\MaxyModLoader.exe\")\r\n" +
+            "command = Chr(34) & launcher & Chr(34) & \" display-host \" & Chr(34) & game & Chr(34)\r\n" +
+            "shell.Run command, 0, False\r\n";
     }
 
     /// <summary>

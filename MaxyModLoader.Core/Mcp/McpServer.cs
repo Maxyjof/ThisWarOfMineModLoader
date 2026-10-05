@@ -18,7 +18,7 @@ internal sealed record ModGameTool(string Name, string ActionId, string Descript
     bool ReadOnly, bool Destructive);
 
 /// <summary>
-/// 提供兼容初始化握手的本地标准输入输出MCP工具服务
+/// 提供标准初始化握手的本地标准输入输出MCP工具服务
 /// </summary>
 public sealed class McpServer(GameBridgeClient bridge)
 {
@@ -97,7 +97,13 @@ public sealed class McpServer(GameBridgeClient bridge)
         if (name == "tools/list")
         {
             //将固定工具与已加载模组提供的结构化工具合并
-            var modTools = await ReadModToolsAsync();
+            IReadOnlyList<ModGameTool> modTools;
+            try { modTools = await ReadModToolsAsync(); }
+            catch (Exception exception) when (exception is InvalidDataException or JsonException or InvalidOperationException or KeyNotFoundException)
+            {
+                //桥接契约损坏必须显式报告不能静默退回固定工具列表
+                return Error(id, -32001, "游戏模组工具契约无效：" + exception.Message);
+            }
             var tools = Tools.Select(tool => (object)new { name = tool.Name, description = tool.Description,
                 inputSchema = new { type = "object", properties = tool.Parameter is null ? new Dictionary<string, object>() :
                     new Dictionary<string, object> { [tool.Parameter] = new { type = tool.ParameterType } },
@@ -113,10 +119,11 @@ public sealed class McpServer(GameBridgeClient bridge)
         if (!request.TryGetProperty("params", out var parameters) || !parameters.TryGetProperty("name", out var toolName))
             return Error(id, -32602, "工具调用缺少名称");
         var selected = Tools.FirstOrDefault(tool => tool.Name == toolName.GetString());
-        var modTool = selected is null ? (await ReadModToolsAsync()).FirstOrDefault(tool => tool.Name == toolName.GetString()) : null;
-        if (selected is null && modTool is null) return Error(id, -32602, "未知工具");
         try
         {
+            //模组工具发现失败属于当前调用错误不接受旧桥接协议
+            var modTool = selected is null ? (await ReadModToolsAsync()).FirstOrDefault(tool => tool.Name == toolName.GetString()) : null;
+            if (selected is null && modTool is null) return Error(id, -32602, "未知工具");
             //再次验证参数而不是仅依赖客户端遵守输入模式
             var argument = "";
             var arguments = parameters.TryGetProperty("arguments", out var suppliedArguments) ? suppliedArguments : default;
@@ -154,7 +161,7 @@ public sealed class McpServer(GameBridgeClient bridge)
             var success = reply.GetProperty("ok").GetBoolean();
             return Result(id, new { content = new[] { new { type = "text", text = reply.GetRawText() } }, isError = !success });
         }
-        catch (Exception exception) when (exception is IOException or TimeoutException or ArgumentException or InvalidOperationException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or ArgumentException or InvalidOperationException or JsonException or KeyNotFoundException)
         {
             //游戏失败属于工具结果使模型能读取错误并修正操作
             return Result(id, new { content = new[] { new { type = "text", text = exception.Message } }, isError = true });
@@ -168,12 +175,12 @@ public sealed class McpServer(GameBridgeClient bridge)
     {
         try
         {
-            //游戏未启动或旧版桥接不可用时保留固定工具服务
+            //仅传输不可用时保留离线固定工具服务有效响应必须遵守当前契约
             var reply = await bridge.CallAsync("mod_actions_list", timeout: TimeSpan.FromSeconds(2));
-            if (!reply.GetProperty("ok").GetBoolean()) return Array.Empty<ModGameTool>();
+            if (!reply.GetProperty("ok").GetBoolean()) throw new InvalidDataException("游戏拒绝当前模组动作发现命令");
             using var document = JsonDocument.Parse(reply.GetProperty("result").GetRawText());
             if (!document.RootElement.TryGetProperty("actions", out var actions) || actions.ValueKind != JsonValueKind.Array)
-                return Array.Empty<ModGameTool>();
+                throw new InvalidDataException("游戏响应缺少当前actions列表");
             var result = new List<ModGameTool>();
             var names = Tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
             foreach (var action in actions.EnumerateArray())
@@ -184,9 +191,10 @@ public sealed class McpServer(GameBridgeClient bridge)
                 var actionName = action.GetProperty("name").GetString();
                 if (actionId is null || owner is null || actionName is null || actionId.Length > 192 ||
                     !Regex.IsMatch(actionId, "^[a-z][a-z0-9._-]*:[a-z][a-z0-9_]*$") ||
-                    !Regex.IsMatch(owner, "^[a-z][a-z0-9._-]*$") || !Regex.IsMatch(actionName, "^[a-z][a-z0-9_]*$")) continue;
+                    !Regex.IsMatch(owner, "^[a-z][a-z0-9._-]*$") || !Regex.IsMatch(actionName, "^[a-z][a-z0-9_]*$"))
+                    throw new InvalidDataException("游戏模组动作标识格式无效");
                 var schema = action.GetProperty("inputSchema");
-                if (!IsSupportedActionSchema(schema)) continue;
+                if (!IsSupportedActionSchema(schema)) throw new InvalidDataException("游戏模组动作参数模式无效");
                 var ownerName = owner.Replace('.', '_').Replace('-', '_');
                 if (ownerName.Length > 48) ownerName = ownerName[..48];
                 var suffix = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(actionId)))[..12].ToLowerInvariant();
@@ -198,10 +206,9 @@ public sealed class McpServer(GameBridgeClient bridge)
             }
             return result;
         }
-        catch (Exception exception) when (exception is IOException or TimeoutException or JsonException or
-            InvalidOperationException or KeyNotFoundException or ArgumentException)
+        catch (Exception exception) when (exception is TimeoutException or IOException)
         {
-            //动作发现失败不影响内置固定工具的使用
+            //游戏未响应时仍允许查询内置工具协议错误不在此处吞掉
             return Array.Empty<ModGameTool>();
         }
     }

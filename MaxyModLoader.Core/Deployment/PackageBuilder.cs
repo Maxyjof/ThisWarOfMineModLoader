@@ -9,12 +9,13 @@ namespace MaxyModLoader.Deployment;
 /// <summary>
 /// 保存离线构建容器的原始和生成文件指纹
 /// </summary>
-public sealed record PackageManifest(string Container, string OriginalIndexSha256, string OriginalDataSha256,
-    string BuiltIndexSha256, string BuiltDataSha256, string[] Mods)
-{
-    public PackageManifest? Textures { get; init; }
-    public NativePackage? Native { get; init; }
-}
+public sealed record ContainerManifest(string Container, string OriginalIndexSha256, string OriginalDataSha256,
+    string BuiltIndexSha256, string BuiltDataSha256);
+
+/// <summary>
+/// 保存当前部署包必需的双容器与模组清单
+/// </summary>
+public sealed record PackageManifest(ContainerManifest Scripts, ContainerManifest Textures, string[] Mods, NativePackage? Native);
 
 /// <summary>
 /// 将模组加载计划编译为可验证的实验部署包
@@ -59,14 +60,12 @@ public static class PackageBuilder
             throw new IOException("原版纹理容器在构建期间发生变化");
 
         //记录全部文件指纹供安装与恢复时检查身份
-        var manifest = new PackageManifest(name, originalIndex, originalData,
-            Fingerprint(outputBase + ".idx"), Fingerprint(outputBase + ".dat"),
-            plan.Ordered.Select(m => m.Manifest.Id).ToArray())
-        {
-            Textures = new PackageManifest("textures-s3", originalTextureIndex, originalTextureData,
-                Fingerprint(textureOutput + ".idx"), Fingerprint(textureOutput + ".dat"), []),
-            Native = native
-        };
+        var manifest = new PackageManifest(
+            new ContainerManifest(name, originalIndex, originalData,
+                Fingerprint(outputBase + ".idx"), Fingerprint(outputBase + ".dat")),
+            new ContainerManifest("textures-s3", originalTextureIndex, originalTextureData,
+                Fingerprint(textureOutput + ".idx"), Fingerprint(textureOutput + ".dat")),
+            plan.Ordered.Select(m => m.Manifest.Id).ToArray(), native);
         File.WriteAllText(Path.Combine(outputDirectory, "package.json"), JsonSerializer.Serialize(manifest, ModManifest.JsonOptions));
         return manifest;
     }

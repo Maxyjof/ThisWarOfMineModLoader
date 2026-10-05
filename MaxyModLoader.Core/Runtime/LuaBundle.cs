@@ -23,7 +23,7 @@ public static class LuaBundle
             throw new InvalidDataException("Main 是 Lua 字节码，需要分析具体 Lua 版本；当前只接受 UTF-8 Lua 源码。");
         //严格读取UTF8原脚本并去除不参与Lua语法的字节顺序标记
         var original = Utf8.GetString(originalMain).TrimStart('\ufeff');
-        var text = new StringBuilder("--由MaxyModLoader0.4.2生成\nlocal compile = loadstring or load\n");
+        var text = new StringBuilder("--由MaxyModLoader0.4.2生成\nlocal compile = loadstring\n");
         //单独编译原Main以保留其return语句和局部作用域
         text.Append("local original, err = compile(").Append(Quote(original)).Append(", '@common/scripts/Main.lua')\nif not original then error(err) end\noriginal()\n");
         //加载嵌入式运行库确保分发工具无需携带额外源码文件
@@ -58,7 +58,7 @@ public static class LuaBundle
         foreach (var mod in plan.Ordered)
         {
             var source = Utf8.GetString(File.ReadAllBytes(ModCatalog.ResolveEntry(mod.Directory, mod.Manifest.Entry))).TrimStart('\ufeff');
-            text.Append("TWOMLoader.load_mod(").Append(Quote(mod.Manifest.Id)).Append(", ").Append(Quote(source)).Append(", {");
+            text.Append("MaxyModLoader.load_mod(").Append(Quote(mod.Manifest.Id)).Append(", ").Append(Quote(source)).Append(", {");
             text.AppendJoin(", ", mod.Manifest.Dependencies.Keys.Order(StringComparer.Ordinal).Select(Quote));
             text.Append("}, {modules = {");
             foreach (var (name, path) in mod.Manifest.Modules.OrderBy(pair => pair.Key, StringComparer.Ordinal))
@@ -74,7 +74,7 @@ public static class LuaBundle
             text.Append("}})\n");
         }
         //所有模组尝试加载后广播就绪事件
-        text.Append("TWOMLoader.emit('loader.ready')\n");
+        text.Append("MaxyModLoader.emit('loader.ready')\n");
         return Utf8.GetBytes(text.ToString());
     }
 

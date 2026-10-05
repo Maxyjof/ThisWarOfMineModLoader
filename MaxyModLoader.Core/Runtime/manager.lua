@@ -159,7 +159,7 @@ function manager.details(mod)
     block('heading', '版本信息', 2)
     block('paragraph', '版本：' .. mod.version .. '  |  状态：' .. manager.status_for(mod))
     block('paragraph', '作者：' .. (mod.author ~= '' and mod.author or '未提供'))
-    local document = mod.description_document or {{kind = 'paragraph', runs = {{text = mod.description or '作者尚未提供内容介绍'}}}}
+    local document = mod.description_document
     for index, node in ipairs(document) do
         local title = {}
         for _, run in ipairs(node.runs or {}) do table.insert(title, run.text) end
@@ -324,11 +324,11 @@ function manager.discard_and_return()
 end
 
 --<summary>
---将缺少语法树的兼容文本作为普通段落显示
+--生成没有发现模组时的空列表提示
 --</summary>
-function manager.markdown(value)
-    --正式描述全部由打包阶段的标准解析器生成不再运行简化的正则替代解析器
-    return api.markdown.layout({{kind = 'paragraph', runs = {{text = tostring(value or '')}}}}, 595, characters)
+function manager.empty_details()
+    --空列表提示独立于模组描述契约不接受未解析的作者文本
+    return api.markdown.layout({{kind = 'paragraph', runs = {{text = '当前没有发现模组'}}}}, 595, characters)
 end
 
 --<summary>
@@ -348,7 +348,7 @@ function manager.refresh()
         end
     end
     local mod = api.mods[manager.selection]
-    local lines = mod and manager.details(mod) or manager.markdown('当前没有发现模组')
+    local lines = mod and manager.details(mod) or manager.empty_details()
     local visible = {}
     for _, row in ipairs(lines) do
         local fragments = {}

@@ -23,7 +23,7 @@ public static class PackageInstaller
         gameDirectory = Path.GetFullPath(gameDirectory);
         EnsureGameStopped(gameDirectory, allowCurrentBootstrap);
         var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
-        if (File.Exists(statePath) || File.Exists(Path.Combine(gameDirectory, "TWOMLoader", "install-state.json")))
+        if (File.Exists(statePath))
             throw new IOException("加载器已有安装或待恢复操作请先执行restore。");
         var package = JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(Path.Combine(packageDirectory, "package.json")), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("部署包清单为空。");
@@ -41,7 +41,7 @@ public static class PackageInstaller
         }
         var nativeState = NativeContentInstaller.Prepare(gameDirectory, packageDirectory, package.Native);
 
-        //确认没有活动安装状态后清理旧版遗留的孤立会话备份
+        //确认没有活动安装状态后清理异常退出留下的孤立会话备份
         var backupRoot = Path.Combine(gameDirectory, "MaxyModLoader", "backups");
         PruneOrphanedBackups(backupRoot + Path.DirectorySeparatorChar);
 
@@ -82,8 +82,6 @@ public static class PackageInstaller
         gameDirectory = Path.GetFullPath(gameDirectory);
         EnsureGameStopped(gameDirectory, allowCurrentBootstrap);
         var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
-        //旧版恢复日志保持可读不能因品牌目录更名而丢失原文件恢复能力
-        if (!File.Exists(statePath)) statePath = Path.Combine(gameDirectory, "TWOMLoader", "install-state.json");
         var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(statePath), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("安装日志为空。");
         var containers = Containers(state.Package);
@@ -128,16 +126,15 @@ public static class PackageInstaller
     }
 
     /// <summary>
-    /// 校验脚本主容器及可选纹理容器并兼容旧单容器日志
+    /// 校验当前部署契约要求的脚本和纹理容器
     /// </summary>
-    private static PackageManifest[] Containers(PackageManifest package)
+    private static ContainerManifest[] Containers(PackageManifest package)
     {
-        //只允许已核验的两种固定名称拒绝递归清单和重复容器
-        if (package.Container != "common") throw new InvalidDataException("主容器必须是common");
-        if (package.Textures is null) return [package];
-        if (package.Textures.Container != "textures-s3" || package.Textures.Textures is not null)
-            throw new InvalidDataException("附加容器必须是单个textures-s3纹理容器");
-        return [package, package.Textures];
+        //两个容器都必须存在不接受单容器部署包或递归容器清单
+        if (package.Scripts is null || package.Scripts.Container != "common" ||
+            package.Textures is null || package.Textures.Container != "textures-s3")
+            throw new InvalidDataException("部署包必须包含common脚本容器和textures-s3纹理容器");
+        return [package.Scripts, package.Textures];
     }
 
     /// <summary>

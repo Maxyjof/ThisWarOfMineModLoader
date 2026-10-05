@@ -39,7 +39,7 @@ public sealed class LiquidArchive
         using var data = File.OpenRead(basePath + ".dat");
         if (index.Length < 11 || (index.Length - 11) % 17 != 0) throw new InvalidDataException("索引长度不符合 11 + n × 17。");
         if (index.Length > 11 + 17L * 1_000_000) throw new InvalidDataException("索引条目过多。");
-        //保留原始头部只允许公开旧版本与本机实测版本包含官方编译器的未压缩输出
+        //只接受已核验的游戏容器头部与官方编译器的未压缩输出
         var header = new byte[11];
         index.ReadExactly(header);
         if (header[0] != 0 || !(header[1] == 3 && header[2] is 0 or 1 || header[1] == 6 && header[2] == 1))

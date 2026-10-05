@@ -71,12 +71,9 @@ function markdown.layout(blocks, width, decode)
                 rows, top = {}, 0
                 --单元格可有多行正文表头样式只影响当前列
                 local runs = {}
-                local cell_runs = cell.runs or {}
-                if #cell_runs == 0 then
-                    cell_runs = {}
-                    for _, child in ipairs(cell.children or {}) do
-                        for _, run in ipairs(child.runs or {}) do table.insert(cell_runs, run) end
-                    end
+                local cell_runs = {}
+                for _, child in ipairs(cell.children) do
+                    for _, run in ipairs(child.runs) do table.insert(cell_runs, run) end
                 end
                 for _, run in ipairs(cell_runs) do
                     local copy = {}

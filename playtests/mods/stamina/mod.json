@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "id": "twom.play.stamina",
   "name": "节省移动体力",
   "version": "0.1.0",

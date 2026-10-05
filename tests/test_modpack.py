@@ -1,13 +1,7 @@
 import pathlib
-import sys
 
 #独立解释器中的宿主替身只验证模组组合逻辑实际游戏证据单独记录
-try:
-    from lupa.lua51 import LuaRuntime
-except ImportError:
-    #优先使用当前Python兼容的Lupa仅在缺少依赖时回退到本机测试包
-    sys.path.insert(0, str(pathlib.Path("local/tools").resolve()))
-    from lupa.lua51 import LuaRuntime
+from lupa.lua51 import LuaRuntime
 
 runtime = LuaRuntime()
 messages = []
@@ -46,10 +40,10 @@ runtime.execute(pathlib.Path("artifacts/tests/playtest-bundle.lua").read_text(en
 #运行宿主边界回调检验九模组组合后的真实状态读写路径与缓存
 runtime.execute(r'''
 local check = function(value) if not value then error("test assertion failed") end end
-check(TWOMLoader.loaded["twom.play.survival-camp"])
-check(TWOMLoader.loaded["twom.play.chronicle"])
-check(not TWOMLoader.loaded["twom.play.failure"])
-check(not TWOMLoader.loaded["twom.play.failure-dependent"])
+check(MaxyModLoader.loaded["twom.play.survival-camp"])
+check(MaxyModLoader.loaded["twom.play.chronicle"])
+check(not MaxyModLoader.loaded["twom.play.failure"])
+check(not MaxyModLoader.loaded["twom.play.failure-dependent"])
 check(not TWOMPlaytestUnexpectedDependent)
 check(igParams.ScavengeConfig.NormalScavenge.Duration == 3)
 check(igStaminaRunConsumption == 15 and igStaminaWalkConsumption == 5)

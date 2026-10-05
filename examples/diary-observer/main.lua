@@ -12,7 +12,7 @@ return {
         --先保留原版日记记录行为再通知订阅者只覆盖经此函数记录的事件
         context.wrap(_G, "logEvent", function(previous, event_name)
             previous(event_name)
-            TWOMLoader.emit("game.diary", event_name)
+            MaxyModLoader.emit("game.diary", event_name)
         end)
 
         --记录订阅收到的事件供开发者观察实际游戏回调

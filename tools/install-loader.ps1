@@ -20,11 +20,7 @@ if (!(Test-Path -LiteralPath (Join-Path $bootstrapPublish 'MaxyModLoader.Bootstr
 #将启动器放入专属子目录并保留现有日志与运行记录
 $app = Join-Path $game 'MaxyModLoader\app'
 New-Item -ItemType Directory -Path $app -Force | Out-Null
-#旧版多文件自包含部署只保留新入口所需的应用文件
-Get-ChildItem -LiteralPath $app -File | Where-Object {
-    $_.Extension -in @('.dll', '.pdb', '.json') -or $_.Name -eq 'createdump.exe'
-} | Remove-Item -Force
-#只复制单文件程序和第三方许可避免把调试文件或旧运行时带进游戏
+#只复制单文件程序和第三方许可避免把调试文件带进游戏
 Copy-Item -LiteralPath (Join-Path $publish 'MaxyModLoader.exe') -Destination (Join-Path $app 'MaxyModLoader.exe') -Force
 Copy-Item -LiteralPath (Join-Path $bootstrapPublish 'MaxyModLoader.Bootstrap.exe') -Destination (Join-Path $app 'MaxyModLoader.Bootstrap.exe') -Force
 if (Test-Path -LiteralPath (Join-Path $publish 'ThirdPartyNotices.txt')) {
@@ -43,10 +39,6 @@ if ($LASTEXITCODE -ne 0) { throw "窗口辅助入口安装失败退出码：$LAS
 & $loader install-wrapper $game
 if ($LASTEXITCODE -ne 0) { throw "游戏入口安装失败退出码：$LASTEXITCODE" }
 
-#只移除旧版安装器生成且内容完全一致的脚本
-$launcher = Join-Path $game '使用MaxyModLoader启动.cmd'
-$content = "@echo off`r`n`"%~dp0MaxyModLoader\app\MaxyModLoader.exe`" play `"%~dp0`"`r`nif errorlevel 1 pause`r`n"
-if ((Test-Path -LiteralPath $launcher) -and [IO.File]::ReadAllText($launcher) -ceq $content) { Remove-Item -LiteralPath $launcher -Force }
 Write-Output "已安装启动器：$app"
 Write-Output "请将模组ZIP放入：$mods"
 Write-Output '之后直接从Steam或原游戏入口启动'

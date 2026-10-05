@@ -1,13 +1,7 @@
 import pathlib
-import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-try:
-    from lupa.lua51 import LuaRuntime
-except ImportError:
-    #本机附带的Lupa二进制按Python小版本编译系统依赖不可用时再回退
-    sys.path.insert(0, str(ROOT / 'local/tools'))
-    from lupa.lua51 import LuaRuntime
+from lupa.lua51 import LuaRuntime
 
 
 def main():

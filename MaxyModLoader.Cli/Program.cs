@@ -62,13 +62,20 @@ public static class Program
                 case ["build", var source, var hash, var mods, var output]: return Build(source, hash, mods, output);
                 case ["build", var source, var hash, var mods, var output, var resources]: return Build(source, hash, mods, output, resources);
                 case ["install", var game, var package]:
+                    //先验证辅助发行结构与归属再修改游戏容器
+                    DisplayHost.ValidateInstall(game, AppContext.BaseDirectory);
                     PackageInstaller.Install(game, package);
-                    DisplayHost.Install(game, AppContext.BaseDirectory);
+                    try { DisplayHost.Install(game, AppContext.BaseDirectory); }
+                    catch
+                    {
+                        //入口写入失败时恢复本次容器不删除原有辅助入口
+                        PackageInstaller.Restore(game);
+                        throw;
+                    }
                     Console.WriteLine("已备份原容器并安装加载器可使用restore恢复");
                     return 0;
                 case ["restore", var game]:
-                    if (File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")) ||
-                        File.Exists(Path.Combine(game, "TWOMLoader", "install-state.json")))
+                    if (File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")))
                         PackageInstaller.Restore(game);
                     DisplayHost.Uninstall(game);
                     GameExecutableInstaller.Restore(game);

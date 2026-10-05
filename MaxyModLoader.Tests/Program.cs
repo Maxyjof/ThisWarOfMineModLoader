@@ -64,11 +64,32 @@ internal static class Program
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
         Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 3));
+        Test("模组清单必须明确声明当前规范", () =>
+        {
+            //缺失规范号不能默认为历史格式当前规范仍验证数值本身
+            Reject<JsonException>(() => JsonSerializer.Deserialize<ModManifest>("{\"id\":\"sample\",\"name\":\"测试\",\"version\":\"1.0.0\"}", ModManifest.JsonOptions));
+            var manifest = new ModManifest { SchemaVersion = 1, Id = "sample", Name = "测试", Version = "1.0.0" };
+            manifest.Validate();
+            Reject<InvalidDataException>(() => (manifest with { SchemaVersion = 0 }).Validate());
+        });
+        Test("原生入口不读取历史副本或不完整安装状态", () => InWorkspace(root =>
+        {
+            //只有历史副本时仍要求当前原生运行路径不自动搬迁文件
+            var directory = Path.Combine(root, "MaxyModLoader", "original"); Directory.CreateDirectory(directory);
+            var legacyFile = Path.Combine(directory, "This War of Mine.exe"); File.WriteAllText(legacyFile, "fixture");
+            Reject<InvalidDataException>(() => GameExecutableInstaller.ResolveOriginalExecutablePath(root));
+            Assert(File.ReadAllText(legacyFile) == "fixture");
+
+            //缺失当前事务字段的安装记录不能用于恢复
+            var statePath = Path.Combine(root, "MaxyModLoader", "executable-install.json"); File.WriteAllText(statePath, "{}");
+            Reject<JsonException>(() => GameExecutableInstaller.Restore(root));
+            Assert(File.ReadAllText(statePath) == "{}");
+        }));
         Test("模组暂存状态覆盖默认值并允许禁用损坏入口", () => InWorkspace(root =>
         {
             //暂存开关在校验Lua入口前应用因此禁用项只保留介绍
             var mod = Path.Combine(root, "sample"); Directory.CreateDirectory(mod);
-            File.WriteAllText(Path.Combine(mod, "mod.json"), "{\"id\":\"sample.mod\",\"name\":\"测试\",\"version\":\"1.0.0\",\"entry\":\"missing.lua\"}");
+            File.WriteAllText(Path.Combine(mod, "mod.json"), "{\"schemaVersion\":1,\"id\":\"sample.mod\",\"name\":\"测试\",\"version\":\"1.0.0\",\"entry\":\"missing.lua\"}");
             var states = ModStartupState.Read(Path.Combine(root, "mod-state.txt"));
             var discovered = ModCatalog.Discover(root, new Dictionary<string, bool>(states) { ["sample.mod"] = false });
             Assert(discovered.Count == 1 && !discovered[0].Manifest.Enabled && discovered[0].EntryPath == "");
@@ -111,7 +132,7 @@ internal static class Program
             {
                 //先写入一个有效清单使路径穿越项成为实际触发条件
                 using (var manifest = new StreamWriter(archive.CreateEntry("mod.json").Open()))
-                    manifest.Write("{\"id\":\"unsafe\",\"name\":\"不安全\",\"version\":\"1.0.0\"}");
+                    manifest.Write("{\"schemaVersion\":1,\"id\":\"unsafe\",\"name\":\"不安全\",\"version\":\"1.0.0\"}");
                 using (var escape = new StreamWriter(archive.CreateEntry("../escape.lua").Open()))
                     escape.Write("return {}");
             }
@@ -130,14 +151,14 @@ internal static class Program
         Test("管理介绍拒绝空引用和危险主页协议", () =>
         {
             //主页仅展示普通网页地址不接受脚本或本机文件协议
-            var manifest = new ModManifest { Id = "meta", Name = "介绍", Version = "1.0.0", Website = "javascript:alert(1)" };
+            var manifest = new ModManifest { SchemaVersion = 1, Id = "meta", Name = "介绍", Version = "1.0.0", Website = "javascript:alert(1)" };
             Reject<InvalidDataException>(() => manifest.Validate());
             Reject<InvalidDataException>(() => (manifest with { Website = "", Features = null! }).Validate());
         });
         Test("模组能力声明只允许已知且不重复的权限", () =>
         {
             //MCP工具能力必须由模组作者在清单中明确授权
-            var manifest = new ModManifest { Id = "capability", Name = "能力", Version = "1.0.0" };
+            var manifest = new ModManifest { SchemaVersion = 1, Id = "capability", Name = "能力", Version = "1.0.0" };
             (manifest with { Capabilities = ["mcp.tools"] }).Validate();
             Reject<InvalidDataException>(() => (manifest with { Capabilities = ["native.memory"] }).Validate());
             Reject<InvalidDataException>(() => (manifest with { Capabilities = ["mcp.tools", "mcp.tools"] }).Validate());
@@ -147,7 +168,7 @@ internal static class Program
             //运行时只能收到构建计划显式验证过的能力清单
             var folder = Path.Combine(root, "action-mod"); Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "main.lua"), "return {on_load=function() end}");
-            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"action.mod\",\"name\":\"动作\",\"version\":\"1.0.0\",\"capabilities\":[\"mcp.tools\"]}");
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"schemaVersion\":1,\"id\":\"action.mod\",\"name\":\"动作\",\"version\":\"1.0.0\",\"capabilities\":[\"mcp.tools\"]}");
             var plan = LoadPlanner.Create(ModCatalog.Discover(root));
             var bundle = Encoding.UTF8.GetString(LuaBundle.Compile([], plan));
             Assert(plan.IsValid && bundle.Contains("capabilities = {" + LuaBundle.Quote("mcp.tools")));
@@ -158,13 +179,13 @@ internal static class Program
             var folder = Path.Combine(root, "markdown"); Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "main.lua"), "return {}");
             File.WriteAllText(Path.Combine(folder, "README.md"), "# 介绍\n\n- **重点** `代码`\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"README.md\"}");
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"schemaVersion\":1,\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"README.md\"}");
             var mod = ModCatalog.Discover(root).Single();
             Assert(mod.Manifest.Description.StartsWith("# 介绍", StringComparison.Ordinal));
             var bundle = Encoding.UTF8.GetString(LuaBundle.Compile([], LoadPlanner.Create([mod])));
             Assert(bundle.Contains(LuaBundle.Quote(mod.Manifest.Description)));
             Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(folder, "../README.md"));
-            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"../README.md\"}");
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"schemaVersion\":1,\"id\":\"markdown\",\"name\":\"说明\",\"version\":\"1.0.0\",\"descriptionFile\":\"../README.md\"}");
             Reject<InvalidDataException>(() => ModCatalog.Discover(root));
         }));
         Test("标准Markdown保留嵌套转义引用和代码语义", () =>
@@ -197,7 +218,7 @@ internal static class Program
             //入口合法而内部模块非法时必须在扫描阶段拒绝整个模组
             var folder = Path.Combine(root, "mod"); Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "main.lua"), "return {}");
-            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"mod\",\"name\":\"测试\",\"version\":\"1.0.0\",\"modules\":{\"escape\":\"../outside.lua\"}}");
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"schemaVersion\":1,\"id\":\"mod\",\"name\":\"测试\",\"version\":\"1.0.0\",\"modules\":{\"escape\":\"../outside.lua\"}}");
             Reject<InvalidDataException>(() => ModCatalog.Discover(root));
         }));
         Test("配置拒绝非有限数值和Lua数组歧义", () =>
@@ -229,24 +250,47 @@ internal static class Program
         });
         Test("辅助恢复只移除自有指纹文件且拒绝第三方修改", () => InWorkspace(root =>
         {
-            //合成运行文件核验复制清单不将日志或个人配置带入安装
+            //当前辅助程序只安装隐藏入口不复制源目录中的其他文件
             var source = Path.Combine(root, "source"); Directory.CreateDirectory(source);
-            foreach (var name in new[] { "MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll", "Markdig.dll", "ThirdPartyNotices.txt" })
-                File.WriteAllText(Path.Combine(source, name), name);
+            File.WriteAllText(Path.Combine(source, "MaxyModLoader.exe"), "apphost");
+            File.WriteAllText(Path.Combine(source, ".self-contained"), "single-file\n");
             File.WriteAllText(Path.Combine(source, "private.txt"), "keep");
             var game = Path.Combine(root, "game");
+            //前置验证本身不能创建目录或修改游戏资源
+            DisplayHost.ValidateInstall(game, source);
+            Assert(!Directory.Exists(game));
             DisplayHost.Install(game, source);
             var host = Path.Combine(game, "MaxyModLoader", "host");
             Assert(!File.Exists(Path.Combine(host, "private.txt")));
-            var binary = Path.Combine(host, "MaxyModLoader.dll");
-            File.AppendAllText(binary, "changed");
+            var script = Path.Combine(game, "MaxyModLoader", "display-host.vbs");
+            var original = File.ReadAllText(script);
+            File.AppendAllText(script, "changed");
             Reject<InvalidDataException>(() => DisplayHost.Uninstall(game));
-            Assert(File.Exists(Path.Combine(host, "MaxyModLoader.Core.dll")));
-            File.WriteAllText(binary, "MaxyModLoader.dll");
+            Reject<InvalidDataException>(() => DisplayHost.Install(game, source));
+            Assert(File.Exists(Path.Combine(host, "ownership.json")));
+            File.WriteAllText(script, original);
             File.WriteAllText(Path.Combine(host, "other.txt"), "keep");
             DisplayHost.Uninstall(game);
-            Assert(!File.Exists(binary) && !File.Exists(Path.Combine(game, "MaxyModLoader", "display-host.vbs")));
+            Assert(!File.Exists(script) && !File.Exists(Path.Combine(host, "ownership.json")));
             Assert(File.Exists(Path.Combine(host, "other.txt")));
+        }));
+        Test("辅助部署拒绝旧运行库和旧所有权格式", () => InWorkspace(root =>
+        {
+            //框架依赖部署不再被识别为当前自包含发行结构
+            var source = Path.Combine(root, "source"); Directory.CreateDirectory(source);
+            File.WriteAllText(Path.Combine(source, "MaxyModLoader.dll"), "framework fixture");
+            var game = Path.Combine(root, "game");
+            Reject<InvalidDataException>(() => DisplayHost.Install(game, source));
+            Assert(!Directory.Exists(game));
+
+            //已有旧字典不迁移不删除必须明确报告格式错误
+            File.WriteAllText(Path.Combine(source, "MaxyModLoader.exe"), "apphost");
+            File.WriteAllText(Path.Combine(source, ".self-contained"), "single-file\n");
+            var host = Path.Combine(game, "MaxyModLoader", "host"); Directory.CreateDirectory(host);
+            var path = Path.Combine(host, "ownership.json"); File.WriteAllText(path, "{\"mode\":\"self-contained\"}");
+            Reject<JsonException>(() => DisplayHost.Install(game, source));
+            Reject<JsonException>(() => DisplayHost.Uninstall(game));
+            Assert(File.ReadAllText(path) == "{\"mode\":\"self-contained\"}");
         }));
         Test("自包含设置辅助程序不依赖系统dotnet", () => InWorkspace(root =>
         {
@@ -371,7 +415,7 @@ internal static class Program
             var package = Path.Combine(root, "package");
             var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
             PackageInstaller.Install(game, package);
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.BuiltDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
             //确认恢复后本次会话备份和没有安装日志关联的旧目录都被清理
             var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(Path.Combine(game, "MaxyModLoader", "install-state.json")), ModManifest.JsonOptions)!;
             var backup = Path.Combine(game, state.BackupDirectory);
@@ -380,33 +424,47 @@ internal static class Program
             File.WriteAllText(Path.Combine(staleBackup, "stale.marker"), "obsolete session");
             Assert(Directory.Exists(backup));
             PackageInstaller.Restore(game);
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
-            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.Scripts.OriginalIndexSha256);
             Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "install-state.json")));
             Assert(!Directory.Exists(backup));
             Assert(!Directory.Exists(staleBackup));
         }));
-        Test("旧品牌安装日志仍可恢复且禁止重复安装", () => InWorkspace(root =>
+        Test("非当前部署格式在修改游戏前被拒绝", () => InWorkspace(root =>
         {
-            //构造旧版目录和日志验证重命名不会丢失原文件的恢复路径
+            //缺失纹理容器不再被解释为有效的单容器部署包
             var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
             var source = CreateFixture(game);
             var package = Path.Combine(root, "package");
             var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
+            var path = Path.Combine(package, "package.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(manifest with { Textures = null! }, ModManifest.JsonOptions));
+            Reject<InvalidDataException>(() => PackageInstaller.Install(game, package));
+            Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
+
+            //旧根级容器字段不会被迁移为当前Scripts字段
+            File.WriteAllText(path, "{\"container\":\"common\",\"mods\":[]}");
+            Reject<JsonException>(() => PackageInstaller.Install(game, package));
+            Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
+
+            //有效的当前安装仍拒绝叠加安装并支持完整恢复
+            File.WriteAllText(path, JsonSerializer.Serialize(manifest, ModManifest.JsonOptions));
             PackageInstaller.Install(game, package);
-            var current = Path.Combine(game, "MaxyModLoader");
-            var legacy = Path.Combine(game, "TWOMLoader");
-            Directory.Move(current, legacy);
-            var path = Path.Combine(legacy, "install-state.json");
-            var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(path), ModManifest.JsonOptions)!;
-            File.WriteAllText(path, JsonSerializer.Serialize(state with
-            {
-                BackupDirectory = Path.Combine("TWOMLoader", "backups", Path.GetFileName(state.BackupDirectory))
-            }, ModManifest.JsonOptions));
             Reject<IOException>(() => PackageInstaller.Install(game, package));
             PackageInstaller.Restore(game);
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
-            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.Scripts.OriginalIndexSha256);
+        }));
+        Test("恢复器不读取旧品牌目录的日志", () => InWorkspace(root =>
+        {
+            //历史目录不属于当前恢复契约读取失败时不能触碰它
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
+            var source = CreateFixture(game);
+            var directory = Path.Combine(game, "TWOMLoader"); Directory.CreateDirectory(directory);
+            var log = Path.Combine(directory, "install-state.json"); File.WriteAllText(log, "legacy fixture");
+            var before = PackageBuilder.Fingerprint(source + ".dat");
+            Reject<DirectoryNotFoundException>(() => PackageInstaller.Restore(game));
+            Assert(File.ReadAllText(log) == "legacy fixture" && PackageBuilder.Fingerprint(source + ".dat") == before);
         }));
         Test("第三方改动阻止自动恢复", () => InWorkspace(root =>
         {
@@ -430,7 +488,7 @@ internal static class Program
             PackageInstaller.Install(game, package);
             File.WriteAllBytes(source + ".idx", originalIndex);
             PackageInstaller.Restore(game);
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
         }));
         Test("部署包篡改在备份前被拒绝", () => InWorkspace(root =>
         {
@@ -440,7 +498,7 @@ internal static class Program
             var manifest = PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
             File.AppendAllText(Path.Combine(package, "common.dat"), "tampered");
             Reject<InvalidDataException>(() => PackageInstaller.Install(game, package));
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
             Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
         }));
         Test("纹理篡改在安装前拒绝且多容器中断完整恢复", () => InWorkspace(root =>
@@ -455,7 +513,7 @@ internal static class Program
             File.AppendAllText(texturePath, "tampered");
             Reject<InvalidDataException>(() => PackageInstaller.Install(game, package));
             Assert(!Directory.Exists(Path.Combine(game, "MaxyModLoader")));
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
             File.WriteAllBytes(texturePath, originalBuilt);
             PackageInstaller.Install(game, package);
             //模拟纹理索引尚未替换以及脚本数据已经恢复的混合中断状态
@@ -465,8 +523,8 @@ internal static class Program
             File.Copy(Path.Combine(backup, "textures-s3.idx"), Path.Combine(game, "textures-s3.idx"), true);
             File.Copy(Path.Combine(backup, "common.dat"), source + ".dat", true);
             PackageInstaller.Restore(game);
-            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.OriginalIndexSha256);
-            Assert(PackageBuilder.Fingerprint(Path.Combine(game, "textures-s3.dat")) == manifest.Textures!.OriginalDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".idx") == manifest.Scripts.OriginalIndexSha256);
+            Assert(PackageBuilder.Fingerprint(Path.Combine(game, "textures-s3.dat")) == manifest.Textures.OriginalDataSha256);
             Assert(PackageBuilder.Fingerprint(Path.Combine(game, "textures-s3.idx")) == manifest.Textures.OriginalIndexSha256);
         }));
 
@@ -547,7 +605,7 @@ internal static class Program
             var installed = File.ReadAllBytes(list); Assert(Encoding.UTF8.GetString(installed).Contains("MaxyModLoaderNative|"));
             File.AppendAllText(list, "third-party");
             Reject<InvalidDataException>(() => PackageInstaller.Restore(game));
-            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.BuiltDataSha256);
+            Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
             File.WriteAllBytes(list, installed);
             //模拟登记尚未完成以及部分自有文件已被恢复的混合中断状态
             File.WriteAllBytes(list, original); File.Delete(Path.Combine(game, "Mods", "MaxyModLoaderNative_common.idx"));
@@ -629,7 +687,7 @@ internal static class Program
         bool enabled = true, string version = "1.0.0")
     {
         //直接创建发现结果让规划测试不依赖磁盘文件
-        return new(".", new ModManifest { Id = id, Name = id, Version = version,
+        return new(".", new ModManifest { SchemaVersion = 1, Id = id, Name = id, Version = version,
             Dependencies = dependencies ?? [], Conflicts = conflicts ?? [], Enabled = enabled }, "main.lua");
     }
 
@@ -659,7 +717,7 @@ internal static class Program
         using var file = File.Create(path);
         using var archive = new ZipArchive(file, ZipArchiveMode.Create);
         using (var manifest = new StreamWriter(archive.CreateEntry(prefix + "mod.json").Open()))
-            manifest.Write(JsonSerializer.Serialize(new { id, name = id, version = "1.0.0" }));
+            manifest.Write(JsonSerializer.Serialize(new { schemaVersion = 1, id, name = id, version = "1.0.0" }));
         using (var entry = new StreamWriter(archive.CreateEntry(prefix + "main.lua").Open()))
             entry.Write("return {}\n");
     }

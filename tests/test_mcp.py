@@ -9,7 +9,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SERVER = ROOT / 'MaxyModLoader.Cli/bin/Release/net10.0/MaxyModLoader.dll'
 
 
-def serve_files(directory, stop, received):
+def serve_files(directory, stop, received, discovery_fault=None):
     """
     <summary>
     用独立文件端模拟游戏线程验证真实传输和请求关联
@@ -35,7 +35,13 @@ def serve_files(directory, stop, received):
             result = {'result': {'called': True}}
         else:
             result = {'argument': argument}
-        reply = {'id': lines[1], 'ok': True, 'result': result}
+        #非当前发现响应必须成为明确错误不能自动降级为固定工具
+        if lines[2] == 'mod_actions_list' and discovery_fault == 'unsupported':
+            reply = {'id': lines[1], 'ok': False, 'error': 'unsupported command'}
+        elif lines[2] == 'mod_actions_list' and discovery_fault == 'missing-actions':
+            reply = {'id': lines[1], 'ok': True, 'result': {}}
+        else:
+            reply = {'id': lines[1], 'ok': True, 'result': result}
         temporary = directory / 'response.tmp'
         temporary.write_text(json.dumps(reply, ensure_ascii=False), encoding='utf-8')
         temporary.replace(directory / 'response.json')
@@ -106,6 +112,27 @@ def main():
         assert {reply['error']['code'] for reply in replies if reply['id'] is None} == {-32700, -32600}
         assert not result.stderr
         print('通过：MCP固定工具、模组工具发现与结构参数传输、错误隔离和Unicode')
+        #通过真实服务进程验证协议错误不会被当作离线模式静默忽略
+        for fault in ['unsupported', 'missing-actions']:
+            stop.clear()
+            received.clear()
+            worker = threading.Thread(target=serve_files, args=(directory, stop, received, fault), daemon=True)
+            worker.start()
+            payload = '\n'.join(json.dumps(request) for request in [
+                {'jsonrpc': '2.0', 'id': 21, 'method': 'initialize'},
+                {'jsonrpc': '2.0', 'id': 22, 'method': 'tools/list'},
+                {'jsonrpc': '2.0', 'id': 23, 'method': 'ping'}]) + '\n'
+            try:
+                result = subprocess.run(['dotnet', str(SERVER), 'mcp', '--game', game], input=payload,
+                    text=True, encoding='utf-8', capture_output=True, timeout=10, check=False)
+            finally:
+                stop.set()
+                worker.join(timeout=2)
+            assert result.returncode == 0 and not result.stderr, result.stderr + result.stdout
+            replies = {reply['id']: reply for reply in map(json.loads, result.stdout.splitlines())}
+            assert replies[22]['error']['code'] == -32001 and 'result' not in replies[22]
+            assert replies[23]['result'] == {}
+        print('通过：MCP拒绝不支持命令和缺失当前字段的发现响应')
         #独立客户端并发时必须依次取得锁且各自收到关联响应
         stop.clear()
         received.clear()

@@ -8,7 +8,7 @@ namespace MaxyModLoader.Mods;
 /// </summary>
 public sealed record ModManifest
 {
-    public int SchemaVersion { get; init; } = 1;
+    public required int SchemaVersion { get; init; }
     public required string Id { get; init; }
     public required string Name { get; init; }
     public required string Version { get; init; }
