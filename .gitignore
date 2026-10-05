@@ -44,6 +44,7 @@ compressed/
 *.blend
 *.blend[0-9]
 *.blend@
+!tools/blender/models/*.blend
 
 # Runtime state / local credentials
 logs/

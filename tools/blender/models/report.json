@@ -1,0 +1,7 @@
+{
+  "blender": "5.2.2 LTS",
+  "mesh_parts": 32,
+  "triangles": 384,
+  "game_import_verified": false,
+  "format": "glTF2.0"
+}
