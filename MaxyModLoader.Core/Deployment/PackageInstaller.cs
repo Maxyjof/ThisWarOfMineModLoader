@@ -17,11 +17,11 @@ public static class PackageInstaller
     /// <summary>
     /// 校验原版身份并备份后安装部署包
     /// </summary>
-    public static void Install(string gameDirectory, string packageDirectory)
+    public static void Install(string gameDirectory, string packageDirectory, bool allowCurrentBootstrap = false)
     {
         //拒绝运行中游戏或已有安装日志避免叠加修改原始容器
         gameDirectory = Path.GetFullPath(gameDirectory);
-        EnsureGameStopped();
+        EnsureGameStopped(gameDirectory, allowCurrentBootstrap);
         var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
         if (File.Exists(statePath) || File.Exists(Path.Combine(gameDirectory, "TWOMLoader", "install-state.json")))
             throw new IOException("加载器已有安装或待恢复操作请先执行restore。");
@@ -72,11 +72,11 @@ public static class PackageInstaller
     /// <summary>
     /// 从校验后的备份恢复原版容器并拒绝覆盖第三方改动
     /// </summary>
-    public static void Restore(string gameDirectory)
+    public static void Restore(string gameDirectory, bool allowCurrentBootstrap = false)
     {
         //读取持久化日志以便恢复完整安装或只完成一半的安装
         gameDirectory = Path.GetFullPath(gameDirectory);
-        EnsureGameStopped();
+        EnsureGameStopped(gameDirectory, allowCurrentBootstrap);
         var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
         //旧版恢复日志保持可读不能因品牌目录更名而丢失原文件恢复能力
         if (!File.Exists(statePath)) statePath = Path.Combine(gameDirectory, "TWOMLoader", "install-state.json");
@@ -164,12 +164,33 @@ public static class PackageInstaller
     /// <summary>
     /// 确认游戏进程未运行以避免读取到半替换容器
     /// </summary>
-    private static void EnsureGameStopped()
+    private static void EnsureGameStopped(string gameDirectory, bool allowCurrentBootstrap)
     {
-        //按游戏进程名拒绝其他运行实例但允许当前启动引导维护资源
-        var processes = Process.GetProcessesByName("This War of Mine");
-        var active = processes.Where(process => process.Id != Environment.ProcessId).ToArray();
-        foreach (var process in processes) process.Dispose();
-        if (active.Length > 0) throw new IOException("请先退出其他游戏实例再安装或恢复加载器");
+        //按真实原版程序路径拒绝运行中的游戏且允许启动引导为本会话部署资源
+        gameDirectory = Path.GetFullPath(gameDirectory);
+        var bootstrap = Path.Combine(gameDirectory, "x64", "This War of Mine.exe");
+        var processes = Process.GetProcessesByName("This War of Mine")
+            .Concat(Process.GetProcessesByName("MaxyModLoader.Original")).ToArray();
+        var active = new List<Process>();
+        foreach (var process in processes)
+        {
+            //单文件入口可能由Steam进程托管以文件身份识别引导位置而非假定进程ID
+            string? path;
+            try { path = process.MainModule?.FileName; }
+            catch (System.ComponentModel.Win32Exception) { path = null; }
+            catch (InvalidOperationException) { path = null; }
+            if (allowCurrentBootstrap && string.Equals(path, bootstrap, StringComparison.OrdinalIgnoreCase))
+            {
+                process.Dispose();
+                continue;
+            }
+            //其他同名进程一律保守拦截避免未知游戏实例同时替换容器
+            active.Add(process);
+        }
+        if (active.Count > 0)
+        {
+            foreach (var process in active) process.Dispose();
+            throw new IOException("请先退出其他游戏实例再安装或恢复加载器，检测到仍运行的游戏进程");
+        }
     }
 }

@@ -21,7 +21,8 @@ public static class GameScreenshot
         //避免系统DPI虚拟化将窗口尺寸缩小从而裁掉右侧和底部
         SetProcessDpiAwarenessContext(-4);
         var expected = MaxyModLoader.Deployment.GameExecutableInstaller.ResolveOriginalExecutablePath(gameDirectory);
-        var candidates = Process.GetProcessesByName("This War of Mine").Where(process =>
+        var processName = Path.GetFileNameWithoutExtension(expected);
+        var candidates = Process.GetProcessesByName(processName).Where(process =>
             string.Equals(process.MainModule?.FileName, expected, StringComparison.OrdinalIgnoreCase) && process.MainWindowHandle != 0).ToArray();
         if (candidates.Length != 1) throw new IOException("未找到唯一的目标游戏窗口");
         var window = candidates[0].MainWindowHandle;

@@ -27,30 +27,39 @@ internal static class GameLauncher
         var loaderDirectory = Path.Combine(gameDirectory, "MaxyModLoader");
         var cacheDirectory = Path.Combine(loaderDirectory, "cache");
         var workDirectory = Path.Combine(loaderDirectory, "working");
+        Directory.CreateDirectory(loaderDirectory);
+        TraceStartup(gameDirectory, "入口", Environment.ProcessPath ?? "未知进程路径");
+        //独占同一安装的运行会话防止两个入口同时替换容器
+        using var sessionLease = new FileStream(Path.Combine(loaderDirectory, "session.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        TraceStartup(gameDirectory, "取得会话锁", "PID=" + Environment.ProcessId);
         Directory.CreateDirectory(cacheDirectory);
         Directory.CreateDirectory(workDirectory);
 
         //上次被强制结束时先使用持久化恢复日志还原游戏文件
         var statePath = Path.Combine(loaderDirectory, "install-state.json");
         if (File.Exists(statePath) || File.Exists(Path.Combine(gameDirectory, "TWOMLoader", "install-state.json")))
-            PackageInstaller.Restore(gameDirectory);
+            PackageInstaller.Restore(gameDirectory, true);
 
         //按照模组压缩包和原始容器指纹寻找可复用的完整部署包
         var packageKey = ComputePackageKey(modsDirectory, gameDirectory);
         var packageDirectory = Path.Combine(cacheDirectory, packageKey);
+        TraceStartup(gameDirectory, "检查模组包", packageDirectory);
         if (!Directory.Exists(packageDirectory)) BuildPackage(gameDirectory, modsDirectory, workDirectory, packageDirectory);
         else ValidateCachedPackage(packageDirectory);
+        TraceStartup(gameDirectory, "模组包准备完成", packageDirectory);
 
         //安装和游戏进程置于同一恢复边界内退出或启动失败都会尝试还原
         var displayHostInstalled = false;
         try
         {
-            PackageInstaller.Install(gameDirectory, packageDirectory);
+            PackageInstaller.Install(gameDirectory, packageDirectory, true);
             DisplayHost.Install(gameDirectory, Path.Combine(gameDirectory, "MaxyModLoader", "app"));
             displayHostInstalled = true;
             var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments, executableBootstrap);
+            TraceStartup(gameDirectory, "启动原版程序", start.FileName);
             Console.WriteLine("MaxyModLoader部署完成正在启动游戏退出后会自动恢复原版文件");
             using var process = Process.Start(start) ?? throw new IOException("无法启动游戏进程");
+            TraceStartup(gameDirectory, "原版进程已启动", "PID=" + process.Id + " EXE=" + start.FileName);
             await process.WaitForExitAsync();
             return process.ExitCode;
         }
@@ -59,7 +68,7 @@ internal static class GameLauncher
             //只在本次加载器状态日志存在时执行恢复避免触碰未安装的游戏
             try
             {
-                if (File.Exists(statePath)) PackageInstaller.Restore(gameDirectory);
+                if (File.Exists(statePath)) PackageInstaller.Restore(gameDirectory, true);
             }
             finally
             {
@@ -219,5 +228,15 @@ internal static class GameLauncher
             foreach (var child in Directory.EnumerateDirectories(current)) pending.Push(child);
         }
         foreach (var directory in directories.OrderByDescending(path => path.Length)) Directory.Delete(directory);
+    }
+
+    /// <summary>
+    /// 记录引导阶段以区分加载器和原版游戏进程
+    /// </summary>
+    private static void TraceStartup(string gameDirectory, string stage, string detail)
+    {
+        //诊断仅追加到游戏安装目录不向模组或仓库写入本机日志
+        var path = Path.Combine(gameDirectory, "MaxyModLoader", "startup.log");
+        File.AppendAllText(path, $"{DateTime.UtcNow:O} PID={Environment.ProcessId} 阶段={stage} {detail}{Environment.NewLine}", Encoding.UTF8);
     }
 }

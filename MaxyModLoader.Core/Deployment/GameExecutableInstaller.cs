@@ -11,6 +11,7 @@ public static class GameExecutableInstaller
 {
     public const string GameFingerprint = "7E114E63D2371B3A31C6070011BA3869FECB2248895AFC0171B248C3E0B69BCB";
     private const string ExecutableName = "This War of Mine.exe";
+    private const string RuntimeExecutableName = "MaxyModLoader.Original.exe";
 
     /// <summary>
     /// 安装加载器启动引导并保留可校验的原游戏程序副本
@@ -45,6 +46,15 @@ public static class GameExecutableInstaller
             Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
             File.Copy(target, backup, false);
             Check(backup, GameFingerprint);
+        }
+
+        //原生游戏会相对x64目录读取依赖必须在原目录运行核验过的副本
+        var runtimeExecutable = RuntimePath(gameDirectory);
+        if (File.Exists(runtimeExecutable)) Check(runtimeExecutable, GameFingerprint);
+        else
+        {
+            File.Copy(backup, runtimeExecutable, false);
+            Check(runtimeExecutable, GameFingerprint);
         }
 
         //当前文件只能是原版、记录中的旧引导或预期的新引导
@@ -90,6 +100,13 @@ public static class GameExecutableInstaller
         //仅在当前不是原版时用同目录临时文件原子恢复
         if (currentHash != state.OriginalSha256) Replace(backup, target, state.OriginalSha256);
         Check(target, state.OriginalSha256);
+        //只移除本加载器创建且指纹完全匹配的同目录运行副本
+        var runtimeExecutable = RuntimePath(gameDirectory);
+        if (File.Exists(runtimeExecutable))
+        {
+            Check(runtimeExecutable, state.OriginalSha256);
+            File.Delete(runtimeExecutable);
+        }
         File.Delete(statePath);
     }
 
@@ -104,6 +121,12 @@ public static class GameExecutableInstaller
         if (File.Exists(backup))
         {
             Check(backup, GameFingerprint);
+            var runtimeExecutable = RuntimePath(gameDirectory);
+            if (File.Exists(runtimeExecutable))
+            {
+                Check(runtimeExecutable, GameFingerprint);
+                return runtimeExecutable;
+            }
             return backup;
         }
 
@@ -213,7 +236,9 @@ public static class GameExecutableInstaller
     private static void EnsureGameStopped()
     {
         //引导进程自身允许维护安装状态但其他游戏实例会阻止文件替换
-        var processes = Process.GetProcessesByName("This War of Mine");
+        var processes = Process.GetProcessesByName("This War of Mine")
+            .Concat(Process.GetProcessesByName(Path.GetFileNameWithoutExtension(RuntimeExecutableName)))
+            .ToArray();
         var active = processes.Where(process => process.Id != Environment.ProcessId).ToArray();
         foreach (var process in processes) process.Dispose();
         if (active.Length > 0) throw new IOException("请先退出游戏再替换或恢复游戏启动程序");
@@ -226,6 +251,15 @@ public static class GameExecutableInstaller
     {
         //固定使用经过验证的x64游戏入口文件名
         return Path.Combine(gameDirectory, "x64", ExecutableName);
+    }
+
+    /// <summary>
+    /// 构造保持原生依赖目录的游戏运行副本路径
+    /// </summary>
+    private static string RuntimePath(string gameDirectory)
+    {
+        //独立名称避免与Steam固定启动入口冲突同时保留x64依赖目录
+        return Path.Combine(gameDirectory, "x64", RuntimeExecutableName);
     }
 
     /// <summary>
