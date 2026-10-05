@@ -58,14 +58,14 @@ Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存
 ## 玩家常见问题
 
 - **Steam启动没有加载模组**：确认游戏目录路径正确，`Mods`里放的是ZIP而非解压文件夹，并检查`MaxyModLoader\startup.log`
-- **报告版本不受支持**：当前启动引导只允许已核验的BuildID22193501，Steam更新后请等待兼容版本
+- **报告版本不受支持**：当前启动引导只允许已核验的BuildID22193501，Steam更新后请等待针对新游戏版本核验的发行包
 - **模组显示依赖缺失**：按界面介绍添加并启用其依赖；示例玩法模组都依赖“游戏事件与测试记录桥”
 - **更新或删除模组**：退出并重新启动游戏，加载器按ZIP内容自动更新缓存
 - **与其他模组冲突**：阅读模组介绍中的兼容和冲突信息，逐个禁用后使用“重启并应用”定位问题
 
 ## 模组开发
 
-**内部开发铁律：只维护当前契约，不保留旧版本兼容或迁移代码。** 旧API别名、安装目录、配置及协议格式均不会自动适配。更新加载器时按[安装指南](docs/installation.md)清理后重新安装，模组须同步更新到当前规范；`schemaVersion`必须明确填写。
+**内部开发铁律：只维护当前契约，不保留旧版本兼容或迁移代码。** 旧API别名、安装目录、配置及协议格式均不会自动适配。更新加载器时按[安装指南](Docs/Players/Installation.md)清理后重新安装，模组须同步更新到当前规范；`schemaVersion`必须明确填写。
 
 每个模组目录包含`mod.json`和一个Lua入口文件。将这些文件打包成ZIP，清单直接位于ZIP根目录，再放入游戏`Mods`文件夹。下面是最小示例：
 
@@ -82,7 +82,9 @@ Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存
 }
 ```
 
-开发文档： [模组规范和ModdingAPI](docs/modding-api.md)、[游戏MCP桥](docs/mcp.md)、[游戏版本与实测范围](docs/validation.md)。加载器API支持生命周期、Lua内部模块、事件、依赖服务、可撤销包装、共享规则和原生内容声明。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
+完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、清单字段、ModdingAPI、原生内容与MCP指南。当前游戏结果见[模组实测矩阵](Docs/Testing/ModTestMatrix.md)。
+
+开发文档： [模组规范和ModdingAPI](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。加载器API支持生命周期、Lua内部模块、事件、依赖服务、可撤销包装、共享规则和原生内容声明。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
 
 ## 开发者构建
 
@@ -99,14 +101,7 @@ python -X utf8 tests/test_mcp.py
 python -X utf8 tests/test_display.py
 ```
 
-为创建Release，给已验证的版本提交打`v主版本.次版本.修订号`标签并推送。GitHub Actions会构建Windows自包含加载器包、示例模组包、SHA256校验清单并自动发布Release：
-
-```powershell
-git tag v0.4.2
-git push origin v0.4.2
-```
-
-推送`v主版本.次版本.修订号`标签会自动运行Windows回归测试、生成玩家包和示例模组包并发布到GitHubRelease。维护者也可以在Windows上运行`tools/package-release.ps1`手动打包。
+构建、玩家包打包和GitHubRelease工作流见[构建和发行指南](Docs/Maintainers/BuildAndRelease.md)。使用未发布的新版本号，不覆盖已有标签。源码文档可能领先于最新Release，玩家以同一Release附带的说明和模组为准。
 
 ## 仓库清理原则
 

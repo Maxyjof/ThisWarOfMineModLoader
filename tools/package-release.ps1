@@ -44,7 +44,7 @@ if (Test-Path -LiteralPath $sampleZip) { throw "该版本示例模组包已存�
 $loaderArchive = [IO.Compression.ZipFile]::Open($loaderZip, [IO.Compression.ZipArchiveMode]::Create)
 try {
     Add-ReleaseFile $loaderArchive (Join-Path $repository 'tools\install-loader.ps1') 'install-loader.ps1'
-    Add-ReleaseFile $loaderArchive (Join-Path $repository 'docs\installation.md') '安装说明.md'
+    Add-ReleaseFile $loaderArchive (Join-Path $repository 'Docs\Players\Installation.md') '安装说明.md'
     Add-ReleaseFile $loaderArchive (Join-Path $repository 'LICENSE') 'LICENSE'
     Add-ReleaseFile $loaderArchive (Join-Path $cliOutput 'MaxyModLoader.exe') 'app/MaxyModLoader.exe'
     Add-ReleaseFile $loaderArchive (Join-Path $bootstrapOutput 'MaxyModLoader.Bootstrap.exe') 'app/MaxyModLoader.Bootstrap.exe'

@@ -198,7 +198,7 @@ Lua 版本来自本机 EXE 中的标识，入口和压缩格式通过实际解�
 - 游戏通过MCP正常退出并恢复，common与textures-s3四个原始容器SHA256和安装前相同，`Mods.list`逐字节恢复
 - Release构建零警告零错误，40项C#测试和4个Python验证入口通过
 
-新增内容与JSON字段说明见`docs/native-content.md`。截图位于游戏忽略目录`MaxyModLoader/mcp/screenshots`，原版抽取配置、官方工具、安装包和游戏二进制均未提交
+新增内容与JSON字段说明见`Docs/Developers/NativeContent.md`。截图位于游戏忽略目录`MaxyModLoader/mcp/screenshots`，原版抽取配置、官方工具、安装包和游戏二进制均未提交
 
 ## LuaModdingAPI规则注册层
 
