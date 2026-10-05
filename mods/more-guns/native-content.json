@@ -1,0 +1,1366 @@
+{
+  "items": [
+    {
+      "id": "MML_AK74",
+      "baseItem": "Machinegun",
+      "name": "AK-74突击步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "68.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.075000",
+        "CooldownTime": "0.220000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 38,
+      "englishName": "AK-74 assault rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_M4A1",
+      "baseItem": "Machinegun",
+      "name": "M4A1卡宾枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "75.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.093000",
+        "CooldownTime": "0.265000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 45,
+      "englishName": "M4A1 carbine",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_FAMAS",
+      "baseItem": "Machinegun",
+      "name": "法玛斯突击步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "82.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.111000",
+        "CooldownTime": "0.310000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 8,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 52,
+      "englishName": "FAMAS rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_G36",
+      "baseItem": "Machinegun",
+      "name": "G36突击步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "89.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.129000",
+        "CooldownTime": "0.355000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 9,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 59,
+      "englishName": "G36 rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_SCARH",
+      "baseItem": "Machinegun",
+      "name": "SCAR-H战斗步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "96.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.075000",
+        "CooldownTime": "0.400000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 10,
+            "Materials": 9
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 66,
+      "englishName": "SCAR-H rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_FNFAL",
+      "baseItem": "Machinegun",
+      "name": "FN FAL步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "103.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.093000",
+        "CooldownTime": "0.220000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 11,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 73,
+      "englishName": "FN FAL rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_AUG",
+      "baseItem": "Machinegun",
+      "name": "AUG突击步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "68.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.111000",
+        "CooldownTime": "0.265000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 80,
+      "englishName": "Steyr AUG rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Galil",
+      "baseItem": "Machinegun",
+      "name": "加利尔步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "75.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.129000",
+        "CooldownTime": "0.310000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 87,
+      "englishName": "Galil rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_SIG550",
+      "baseItem": "Machinegun",
+      "name": "SIG SG 550步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "82.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.075000",
+        "CooldownTime": "0.355000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 8,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 38,
+      "englishName": "SIG SG 550 rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_AN94",
+      "baseItem": "Machinegun",
+      "name": "AN-94突击步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "89.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.093000",
+        "CooldownTime": "0.400000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 9,
+            "Materials": 9
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 45,
+      "englishName": "AN-94 rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_M16A4",
+      "baseItem": "Machinegun",
+      "name": "M16A4步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "96.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.111000",
+        "CooldownTime": "0.220000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 10,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 52,
+      "englishName": "M16A4 rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_AKM",
+      "baseItem": "Machinegun",
+      "name": "AKM突击步枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "103.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.129000",
+        "CooldownTime": "0.265000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 11,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 59,
+      "englishName": "AKM rifle",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_MP5",
+      "baseItem": "Machinegun",
+      "name": "MP5冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "68.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.075000",
+        "CooldownTime": "0.220000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 38,
+      "englishName": "MP5 submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Uzi",
+      "baseItem": "Machinegun",
+      "name": "乌兹冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "75.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.093000",
+        "CooldownTime": "0.265000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 45,
+      "englishName": "Uzi submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_PPSh41",
+      "baseItem": "Machinegun",
+      "name": "PPSh-41波波沙冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "82.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.111000",
+        "CooldownTime": "0.310000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 8,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 52,
+      "englishName": "PPSh-41 submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_P90",
+      "baseItem": "Machinegun",
+      "name": "P90冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "89.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.129000",
+        "CooldownTime": "0.355000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 9,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 59,
+      "englishName": "P90 submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Vector",
+      "baseItem": "Machinegun",
+      "name": "KRISS Vector冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "96.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.075000",
+        "CooldownTime": "0.400000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 10,
+            "Materials": 9
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 66,
+      "englishName": "KRISS Vector submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_UMP45",
+      "baseItem": "Machinegun",
+      "name": "UMP-45冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "103.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.093000",
+        "CooldownTime": "0.220000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 11,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 73,
+      "englishName": "UMP45 submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_MP7",
+      "baseItem": "Machinegun",
+      "name": "MP7冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "68.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.111000",
+        "CooldownTime": "0.265000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 80,
+      "englishName": "MP7 submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Thompson",
+      "baseItem": "Machinegun",
+      "name": "汤普森冲锋枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "75.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "2",
+        "BulletTimeInterval": "0.129000",
+        "CooldownTime": "0.310000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 87,
+      "englishName": "Thompson submachine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Glock17",
+      "baseItem": "Pistol",
+      "name": "格洛克17手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "34.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.320000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 24,
+      "englishName": "Glock 17 pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_USP45",
+      "baseItem": "Pistol",
+      "name": "USP .45手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "42.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.390000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 33,
+      "englishName": "USP45 pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_FiveSeven",
+      "baseItem": "Pistol",
+      "name": "FN Five-seveN手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "50.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.460000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 8,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 42,
+      "englishName": "Five-seveN pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_DesertEagle",
+      "baseItem": "Pistol",
+      "name": "沙漠之鹰手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "58.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.530000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 9,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 51,
+      "englishName": "Desert Eagle pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Beretta92",
+      "baseItem": "Pistol",
+      "name": "贝雷塔92手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "66.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.600000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 10,
+            "Materials": 9
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 60,
+      "englishName": "Beretta 92 pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_M1911",
+      "baseItem": "Pistol",
+      "name": "M1911手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "74.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.320000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 11,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 69,
+      "englishName": "M1911 pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_P226",
+      "baseItem": "Pistol",
+      "name": "SIG P226手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "82.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.390000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 78,
+      "englishName": "SIG P226 pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_CZ75",
+      "baseItem": "Pistol",
+      "name": "CZ 75手枪",
+      "description": "按原版Pistol模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "34.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.460000",
+        "WeaponRange": "8.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 24,
+      "englishName": "CZ 75 pistol",
+      "englishDescription": "Built from the vanilla Pistol template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Remington870",
+      "baseItem": "Shotgun",
+      "name": "雷明顿870霰弹枪",
+      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "58.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.720000",
+        "WeaponRange": "6.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 68,
+      "englishName": "Remington 870 shotgun",
+      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_BenelliM4",
+      "baseItem": "Shotgun",
+      "name": "贝内利M4霰弹枪",
+      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "69.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.860000",
+        "WeaponRange": "6.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 80,
+      "englishName": "Benelli M4 shotgun",
+      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_SPAS12",
+      "baseItem": "Shotgun",
+      "name": "SPAS-12霰弹枪",
+      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "80.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "1.000000",
+        "WeaponRange": "6.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 8,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 92,
+      "englishName": "SPAS-12 shotgun",
+      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Mossberg500",
+      "baseItem": "Shotgun",
+      "name": "莫斯伯格500霰弹枪",
+      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "91.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "1.140000",
+        "WeaponRange": "6.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 9,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 104,
+      "englishName": "Mossberg 500 shotgun",
+      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_Saiga12",
+      "baseItem": "Shotgun",
+      "name": "赛加12霰弹枪",
+      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "102.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.720000",
+        "WeaponRange": "6.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 10,
+            "Materials": 9
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 116,
+      "englishName": "Saiga-12 shotgun",
+      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_DoubleBarrel",
+      "baseItem": "Shotgun",
+      "name": "双管霰弹枪",
+      "description": "按原版Shotgun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "58.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.000000",
+        "CooldownTime": "0.860000",
+        "WeaponRange": "6.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 11,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 128,
+      "englishName": "Double-barrel shotgun",
+      "englishDescription": "Built from the vanilla Shotgun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_M14",
+      "baseItem": "SniperRifle",
+      "name": "M14精确步枪",
+      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "74.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.340000",
+        "CooldownTime": "1.150000",
+        "WeaponRange": "-1.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 92,
+      "englishName": "M14 rifle",
+      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_DragunovSVD",
+      "baseItem": "SniperRifle",
+      "name": "德拉古诺夫SVD狙击步枪",
+      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "83.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.440000",
+        "CooldownTime": "1.400000",
+        "WeaponRange": "-1.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 106,
+      "englishName": "Dragunov SVD rifle",
+      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_VSSVintorez",
+      "baseItem": "SniperRifle",
+      "name": "VSS微声狙击步枪",
+      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "92.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.540000",
+        "CooldownTime": "1.650000",
+        "WeaponRange": "-1.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.0,
+          "ingredients": {
+            "WeaponParts": 8,
+            "Materials": 7
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 120,
+      "englishName": "VSS Vintorez rifle",
+      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_SKS",
+      "baseItem": "SniperRifle",
+      "name": "SKS半自动步枪",
+      "description": "按原版SniperRifle模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "101.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "1",
+        "BulletTimeInterval": "0.640000",
+        "CooldownTime": "1.900000",
+        "WeaponRange": "-1.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 4.5,
+          "ingredients": {
+            "WeaponParts": 9,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 134,
+      "englishName": "SKS rifle",
+      "englishDescription": "Built from the vanilla SniperRifle template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_M249",
+      "baseItem": "Machinegun",
+      "name": "M249轻机枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "68.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.075000",
+        "CooldownTime": "0.220000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.0,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 5
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 38,
+      "englishName": "M249 light machine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_RPK74",
+      "baseItem": "Machinegun",
+      "name": "RPK-74轻机枪",
+      "description": "按原版Machinegun模板配置，数值、射击节奏与制作成本可在native-content.json中调整。模型和图标沿用原版模板。",
+      "properties": {
+        "Value": "75.000000",
+        "StackSize": "1",
+        "BulletsPerShot": "3",
+        "BulletTimeInterval": "0.093000",
+        "CooldownTime": "0.265000",
+        "WeaponRange": "11.000000"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 3.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "damageMultiplier": 45,
+      "englishName": "RPK-74 light machine gun",
+      "englishDescription": "Built from the vanilla Machinegun template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    }
+  ],
+  "loot": [
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_AK74",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_M4A1",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_FAMAS",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map09_R_guns",
+      "item": "MML_G36",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_SCARH",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map09_R_guns",
+      "item": "MML_FNFAL",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map13_SniperSquad",
+      "item": "MML_AUG",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_Galil",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_SIG550",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_AN94",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_M16A4",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_AKM",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_MP5",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map03_bandits",
+      "item": "MML_Uzi",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map03_bandits",
+      "item": "MML_PPSh41",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map13_SniperSquad",
+      "item": "MML_P90",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map12_loner",
+      "item": "MML_Vector",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_UMP45",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map10_Trader",
+      "item": "MML_MP7",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map16_market",
+      "item": "MML_Thompson",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_Glock17",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_USP45",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map13_SniperSquad",
+      "item": "MML_FiveSeven",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map09_R_guns",
+      "item": "MML_DesertEagle",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map10_Trader",
+      "item": "MML_Beretta92",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map03_bandits",
+      "item": "MML_M1911",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_P226",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map10_Trader",
+      "item": "MML_CZ75",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map10_Trader",
+      "item": "MML_Remington870",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_BenelliM4",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map16_market",
+      "item": "MML_SPAS12",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_Mossberg500",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_Saiga12",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map03_bandits",
+      "item": "MML_DoubleBarrel",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_M14",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map09_R_guns",
+      "item": "MML_DragunovSVD",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map13_SniperSquad",
+      "item": "MML_VSSVintorez",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map13_SniperSquad",
+      "item": "MML_SKS",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_M249",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map09_R_guns",
+      "item": "MML_RPK74",
+      "minimum": 0,
+      "maximum": 1
+    }
+  ]
+}

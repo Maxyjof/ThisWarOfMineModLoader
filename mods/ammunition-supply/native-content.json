@@ -1,0 +1,122 @@
+{
+  "items": [
+    {
+      "id": "MML_AmmoPack1",
+      "baseItem": "PistolShells",
+      "name": "9mm弹药",
+      "description": "独立制作的弹药补给物品，沿用原版PistolShells模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "properties": {
+        "Value": "16.000000",
+        "StackSize": "60"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.0,
+          "ingredients": {
+            "GunPowder": 16,
+            "WeaponParts": 2
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "9 mm ammunition pack",
+      "englishDescription": "Built from the vanilla PistolShells template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_AmmoPack2",
+      "baseItem": "ShotgunAmmo",
+      "name": "12号霰弹",
+      "description": "独立制作的弹药补给物品，沿用原版ShotgunAmmo模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "properties": {
+        "Value": "20.000000",
+        "StackSize": "60"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.25,
+          "ingredients": {
+            "GunPowder": 18,
+            "WeaponParts": 2
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "12-gauge shells",
+      "englishDescription": "Built from the vanilla ShotgunAmmo template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_AmmoPack3",
+      "baseItem": "RifleAmmo",
+      "name": "步枪弹药补给",
+      "description": "独立制作的弹药补给物品，沿用原版RifleAmmo模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "properties": {
+        "Value": "18.000000",
+        "StackSize": "60"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.5,
+          "ingredients": {
+            "GunPowder": 16,
+            "WeaponParts": 2
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Rifle ammunition pack",
+      "englishDescription": "Built from the vanilla RifleAmmo template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_AmmoPack4",
+      "baseItem": "Ammo",
+      "name": "混合弹药箱",
+      "description": "独立制作的弹药补给物品，沿用原版Ammo模板。具体武器兼容和实际消耗关系取决于原版枪械配置。",
+      "properties": {
+        "Value": "30.000000",
+        "StackSize": "60"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.75,
+          "ingredients": {
+            "GunPowder": 30,
+            "WeaponParts": 3
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Mixed ammunition crate",
+      "englishDescription": "Built from the vanilla Ammo template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    }
+  ],
+  "loot": [
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_AmmoPack1",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map06_guns",
+      "item": "MML_AmmoPack2",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map09_R_guns",
+      "item": "MML_AmmoPack3",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_AmmoPack4",
+      "minimum": 0,
+      "maximum": 1
+    }
+  ]
+}

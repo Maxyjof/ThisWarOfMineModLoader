@@ -1,0 +1,186 @@
+{
+  "items": [
+    {
+      "id": "MML_ReinforcedVest",
+      "baseItem": "Vest",
+      "name": "加固防弹衣",
+      "description": "按原版Vest模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "properties": {
+        "Value": "95.000000",
+        "HP": "20.000000",
+        "StackSize": "1"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.0,
+          "ingredients": {
+            "WeaponParts": 10,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Reinforced ballistic vest",
+      "englishDescription": "Built from the vanilla Vest template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_ReinforcedHelmet",
+      "baseItem": "Helmet",
+      "name": "加固头盔",
+      "description": "按原版Helmet模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "properties": {
+        "Value": "65.000000",
+        "HP": "16.000000",
+        "StackSize": "1"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.25,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Reinforced helmet",
+      "englishDescription": "Built from the vanilla Helmet template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_HeavyCrowbar",
+      "baseItem": "Crowbar",
+      "name": "重型撬棍",
+      "description": "按原版Crowbar模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "properties": {
+        "Value": "38.000000",
+        "HP": "22.000000",
+        "StackSize": "1"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.5,
+          "ingredients": {
+            "WeaponParts": 7,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Heavy crowbar",
+      "englishDescription": "Built from the vanilla Crowbar template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_FieldPickaxe",
+      "baseItem": "Pickaxe",
+      "name": "野战镐",
+      "description": "按原版Pickaxe模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "properties": {
+        "Value": "34.000000",
+        "HP": "20.000000",
+        "StackSize": "1"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 1.75,
+          "ingredients": {
+            "WeaponParts": 6,
+            "Materials": 8
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Field pickaxe",
+      "englishDescription": "Built from the vanilla Pickaxe template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_FieldLockpick",
+      "baseItem": "LockPick",
+      "name": "野战撬锁器",
+      "description": "按原版LockPick模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "properties": {
+        "Value": "30.000000",
+        "HP": "12.000000",
+        "StackSize": "1"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 2.0,
+          "ingredients": {
+            "WeaponParts": 5,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Field lockpick",
+      "englishDescription": "Built from the vanilla LockPick template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    },
+    {
+      "id": "MML_SturdyShovel",
+      "baseItem": "Shovel",
+      "name": "加固铲",
+      "description": "按原版Shovel模板生成，保留原生用途与角色动作，耐久和成本独立调整。外观沿用原版模板。",
+      "properties": {
+        "Value": "28.000000",
+        "HP": "18.000000",
+        "StackSize": "1"
+      },
+      "recipes": [
+        {
+          "device": "MetalWorkshop3",
+          "hours": 2.25,
+          "ingredients": {
+            "WeaponParts": 5,
+            "Materials": 6
+          },
+          "resultCount": 1
+        }
+      ],
+      "englishName": "Sturdy shovel",
+      "englishDescription": "Built from the vanilla Shovel template. Item properties and crafting costs are configurable. The model and icon use the vanilla template."
+    }
+  ],
+  "loot": [
+    {
+      "generator": "LootGen_Map02",
+      "item": "MML_ReinforcedVest",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map07",
+      "item": "MML_ReinforcedHelmet",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map11",
+      "item": "MML_HeavyCrowbar",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map18",
+      "item": "MML_FieldPickaxe",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map03_family",
+      "item": "MML_FieldLockpick",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "generator": "LootGen_Map04",
+      "item": "MML_SturdyShovel",
+      "minimum": 0,
+      "maximum": 1
+    }
+  ]
+}

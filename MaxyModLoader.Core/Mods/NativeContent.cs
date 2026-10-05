@@ -6,7 +6,7 @@ namespace MaxyModLoader.Mods;
 /// <summary>
 /// 描述基于原版模板生成的原生物品及地图掉落补丁
 /// </summary>
-public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot)
+public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot, NativeTrade[]? Trading = null)
 {
     /// <summary>
     /// 读取模组内部内容声明并限制规模和标识
@@ -28,7 +28,8 @@ public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot)
     public void Validate()
     {
         //限制总量避免错误声明造成无限编译或覆盖原版物品
-        if (Items is null || Loot is null || Items.Length is < 1 or > 512 || Loot.Length > 4096)
+        if (Items is null || Loot is null || Trading is { Length: > 4096 } || Items.Length > 512 || Loot.Length > 4096 ||
+            Items.Length == 0 && Loot.Length == 0 && (Trading is null || Trading.Length == 0))
             throw new InvalidDataException("原生内容物品或掉落数量无效");
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in Items)
@@ -36,6 +37,7 @@ public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot)
             if (item is null || !ValidName(item.Id) || !item.Id.StartsWith("MML_", StringComparison.Ordinal) ||
                 !ValidName(item.BaseItem) || !ids.Add(item.Id) || string.IsNullOrWhiteSpace(item.Name) ||
                 item.Name.Length > 96 || item.Description is null || item.Description.Length > 2048 ||
+                item.EnglishName is null || item.EnglishName.Length > 96 || item.EnglishDescription is null || item.EnglishDescription.Length > 2048 ||
                 item.Properties is null || item.Properties.Count > 32 || item.Recipes is null || item.Recipes.Length > 16 ||
                 item.DamageMultiplier is { } damage && (!double.IsFinite(damage) || damage is < 0 or > 1000))
                 throw new InvalidDataException("原生物品身份属性或配方无效");
@@ -54,6 +56,13 @@ public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot)
             if (loot is null || !ValidName(loot.Generator) || !ids.Contains(loot.Item) ||
                 loot.Minimum < 0 || loot.Maximum < loot.Minimum || loot.Maximum > 100)
                 throw new InvalidDataException("原生掉落补丁无效");
+        foreach (var trade in Trading ?? [])
+            if (trade is null || !ValidName(trade.Trader) || !ValidName(trade.Item) ||
+                !trade.Item.StartsWith("MML_", StringComparison.Ordinal) ||
+                !double.IsFinite(trade.Probability) || trade.Probability is < 0 or > 1 ||
+                !double.IsFinite(trade.ValueMultiplier) || trade.ValueMultiplier is <= 0 or > 100 ||
+                trade.MinimumQuantity is < 1 or > 100 || trade.MaximumQuantity < trade.MinimumQuantity || trade.MaximumQuantity > 100)
+                throw new InvalidDataException("原生商人货单补丁无效");
     }
 
     /// <summary>
@@ -70,7 +79,8 @@ public sealed record NativeContent(NativeItem[] Items, NativeLoot[] Loot)
 /// 保存新物品模板展示文本参数和制作变体
 /// </summary>
 public sealed record NativeItem(string Id, string BaseItem, string Name, string Description,
-    Dictionary<string, string> Properties, NativeRecipe[] Recipes, double? DamageMultiplier = null);
+    Dictionary<string, string> Properties, NativeRecipe[] Recipes, double? DamageMultiplier = null,
+    string EnglishName = "", string EnglishDescription = "");
 
 /// <summary>
 /// 保存工作台成本时长和结果数量
@@ -81,3 +91,9 @@ public sealed record NativeRecipe(string Device, double Hours, Dictionary<string
 /// 指定地图生成器中的固定池数量上下限
 /// </summary>
 public sealed record NativeLoot(string Generator, string Item, int Minimum, int Maximum);
+
+/// <summary>
+/// 指定原版商人出售物品的概率价格倍率和数量范围
+/// </summary>
+public sealed record NativeTrade(string Trader, string Item, double Probability, double ValueMultiplier,
+    int MinimumQuantity = 1, int MaximumQuantity = 1);

@@ -376,6 +376,7 @@ internal static class Program
             Reject<InvalidDataException>(() => new NativeContent([item, item with { Id = "MML_test" }], []).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item with { Recipes = [new("MetalWorkshop3", double.NaN, new() { ["Parts"] = 1 })] }], []).Validate());
             Reject<InvalidDataException>(() => new NativeContent([item], [new("LootGen_Map11", "MML_Unknown", 0, 1)]).Validate());
+            Reject<InvalidDataException>(() => new NativeContent([item], [], [new("MissingTrader", "MML_Test", 2, 1)]).Validate());
         });
         Test("物品配方补丁只改直接属性且保留其他模板数据", () =>
         {
@@ -394,6 +395,20 @@ internal static class Program
             Assert(document.Descendants("Prop").Any(node => (string?)node.Attribute("Value") == "keep"));
             Assert(document.Descendants("Prop").Single(node => (string?)node.Attribute("Name") == "Count").Attribute("Value")!.Value == "4");
             Reject<InvalidDataException>(() => NativeContentCompiler.ApplyItem(document, item with { Properties = new() { ["Missing"] = "0" } }, new HashSet<string>()));
+        });
+        Test("交易补丁仅加入唯一已知商人的原版货单", () =>
+        {
+            //合成最小原版商人结构验证货单类型和关键字段
+            var document = XDocument.Parse("""
+                <KosovoTradingConfig><Properties><Prop Name="Entries"><Entry><Properties ClassName="KosovoTraderConfig">
+                <Prop Name="Name" Value="BasicTrader"/><Prop Name="OfferedItems"><Entry><Properties ClassName="KosovoTraderItemOfferConfig">
+                <Prop Name="Name" Value="Ammo"/></Properties></Entry></Prop></Properties></Entry></Prop></Properties></KosovoTradingConfig>
+                """);
+            NativeContentCompiler.ApplyTrading(document, [new("BasicTrader", "MML_Test", 0.25, 1.5, 1, 1)]);
+            var offer = document.Descendants("Properties").Single(node => (string?)node.Attribute("ClassName") == "KosovoTraderItemOfferConfig" &&
+                node.Elements("Prop").Any(value => (string?)value.Attribute("Value") == "MML_Test"));
+            Assert(offer.Elements("Prop").Single(value => (string?)value.Attribute("Name") == "OccuranceProbability").Attribute("Value")!.Value == "0.25");
+            Reject<InvalidDataException>(() => NativeContentCompiler.ApplyTrading(document, [new("MissingTrader", "MML_Other", 0.1, 1)]));
         });
         Test("原生语言字典保留中文代理项和长度边界", () =>
         {

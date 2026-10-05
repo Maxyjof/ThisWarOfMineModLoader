@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.content.field-equipment",
+  "name": "野战工具与防护装备",
+  "version": "0.1.0",
+  "author": "MaxyModLoader",
+  "description": "增加加固防弹衣、头盔、撬棍、镐、撬锁器和铲子，可在三级金工台制作，并分散出现在原版住宅、仓库、军营、医院与帮派地点。",
+  "descriptionFile": "README.md",
+  "nativeContentFile": "native-content.json",
+  "entry": "main.lua",
+  "enabled": true,
+  "features": [
+    "6种可制作工具与防护装备",
+    "调整耐久、价格和制作成本",
+    "保留对应原版装备或工具模板能力",
+    "按地点分散加入原版掉落表"
+  ]
+}

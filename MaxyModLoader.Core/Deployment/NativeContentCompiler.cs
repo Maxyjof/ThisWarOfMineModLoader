@@ -51,7 +51,8 @@ public static class NativeContentCompiler
             if (!File.Exists(Path.Combine(work, "LootGeneratorsConfig.xml"))) throw new InvalidDataException("官方工具未导出完整配置");
             var knownItems = Directory.GetFiles(Path.Combine(work, "items"), "*.xml").Select(path => Path.GetFileNameWithoutExtension(path))
                 .Concat(items.Select(item => item.Id)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var translations = new Dictionary<string, string>(StringComparer.Ordinal);
+            var chineseTranslations = new Dictionary<string, string>(StringComparer.Ordinal);
+            var englishTranslations = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var item in items)
             {
                 //新物品只复制本机原版模板修改自己声明的标量和配方
@@ -60,8 +61,12 @@ public static class NativeContentCompiler
                 var document = ReadXml(Path.Combine(work, "items", item.BaseItem + ".xml"));
                 ApplyItem(document, item, knownItems);
                 WriteXml(target, document);
-                translations.Add("MaxyModLoader/Items/" + item.Id + "/Name", item.Name);
-                translations.Add("MaxyModLoader/Items/" + item.Id + "/Description", item.Description);
+                var nameKey = "MaxyModLoader/Items/" + item.Id + "/Name";
+                var descriptionKey = "MaxyModLoader/Items/" + item.Id + "/Description";
+                chineseTranslations.Add(nameKey, item.Name);
+                chineseTranslations.Add(descriptionKey, item.Description);
+                englishTranslations.Add(nameKey, item.EnglishName.Length > 0 ? item.EnglishName : item.Name);
+                englishTranslations.Add(descriptionKey, item.EnglishDescription.Length > 0 ? item.EnglishDescription : item.Description);
             }
             var loot = contents.SelectMany(content => content.Loot).ToArray();
             if (loot.Length > 0)
@@ -69,9 +74,18 @@ public static class NativeContentCompiler
                 var path = Path.Combine(work, "LootGeneratorsConfig.xml");
                 var document = ReadXml(path); ApplyLoot(document, loot); WriteXml(path, document);
             }
+            var trading = contents.SelectMany(content => content.Trading ?? []).ToArray();
+            if (trading.Length > 0)
+            {
+                //商人只引用同一构建计划中已登记的模组物品
+                if (trading.Any(entry => !items.Any(item => item.Id == entry.Item)))
+                    throw new InvalidDataException("商人货单引用了未安装的模组物品");
+                var path = Path.Combine(work, "TradingConfig.xml");
+                var document = ReadXml(path); ApplyTrading(document, trading); WriteXml(path, document);
+            }
             //新增语言只包含自有键由原版语言加载机制合并不重分发原版翻译
-            foreach (var language in new[] { "chinese", "english" })
-                File.WriteAllBytes(Path.Combine(work, "localizations", language + ".lang"), LiquidLanguage.Encode(translations));
+            File.WriteAllBytes(Path.Combine(work, "localizations", "chinese.lang"), LiquidLanguage.Encode(chineseTranslations));
+            File.WriteAllBytes(Path.Combine(work, "localizations", "english.lang"), LiquidLanguage.Encode(englishTranslations));
             Run(game, "-getnewfiles", relative + "/items", ".xml");
             Run(game, "-getnewfiles", relative + "/localizations");
             Run(game, "-bcommon", relative, relative + "_common.dat");
@@ -157,6 +171,32 @@ public static class NativeContentCompiler
             Prop(generator, "FixedPool").Add(new XElement("Entry", new XElement("Properties", new XAttribute("ClassName", "KosovoItemPoolItemEntry"),
                 Value("Name", loot.Item), new XElement("Prop", new XAttribute("Name", "Tags")), Value("MinQuantity", loot.Minimum),
                 Value("MaxQuantity", loot.Maximum), Value("UseValueInsteadOfQuantity", 0))));
+        }
+    }
+
+    /// <summary>
+    /// 将自有物品加入存在的原版商人出售货单
+    /// </summary>
+    public static void ApplyTrading(XDocument document, IEnumerable<NativeTrade> entries)
+    {
+        //准确匹配商人直接名称和货单集合不改动接受物品规则
+        var traders = document.Descendants("Properties").Where(node => (string?)node.Attribute("ClassName") == "KosovoTraderConfig").ToArray();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var trade in entries)
+        {
+            if (!seen.Add(trade.Trader + "|" + trade.Item)) throw new InvalidDataException("商人同一货单物品重复");
+            var trader = traders.SingleOrDefault(node => node.Elements("Prop").Any(value =>
+                (string?)value.Attribute("Name") == "Name" && (string?)value.Attribute("Value") == trade.Trader))
+                ?? throw new InvalidDataException("原版商人不存在：" + trade.Trader);
+            var offers = Prop(trader, "OfferedItems");
+            if (offers.Elements("Entry").Any(entry => (string?)entry.Element("Properties")?.Elements("Prop")
+                .SingleOrDefault(value => (string?)value.Attribute("Name") == "Name")?.Attribute("Value") == trade.Item))
+                throw new InvalidDataException("商人货单已包含相同物品");
+            //使用原版货单字段名与有限的数量概率值
+            offers.Add(new XElement("Entry", new XElement("Properties", new XAttribute("ClassName", "KosovoTraderItemOfferConfig"),
+                Value("Name", trade.Item), Value("ValueMultiplier", trade.ValueMultiplier),
+                Value("OccuranceProbability", trade.Probability), Value("MinQuantity", trade.MinimumQuantity),
+                Value("MaxQuantity", trade.MaximumQuantity))));
         }
     }
 

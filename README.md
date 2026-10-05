@@ -30,7 +30,7 @@ dotnet run --project MaxyModLoader.Cli -- plan examples
 
 ## 使用第一版
 
-日常玩家包可先运行`./tools/prepare-player-mods.ps1 -Destination <新的模组目录>`，准备五个实用模组，再把下方构建命令的`examples`替换为该目录。该脚本不覆盖已有目录，开发示例、故意失败探针和重复的开局辅助不会混入玩家包。
+日常玩家包可先运行`./tools/prepare-player-mods.ps1 -Destination <新的模组目录>`，准备五个已实装验证的玩法模组，以及更多枪械、弹药补给、野战装备和军火交易四个原生内容模组，再把下方构建命令的`examples`替换为该目录。该脚本不覆盖已有目录，开发示例与故意失败探针不会混入玩家包。原生内容格式见[原生内容模组说明](docs/native-content.md)。
 
 先退出游戏。在仓库根目录运行以下命令，将路径改为自己的安装目录。`artifacts/package-demo` 必须是尚不存在的目录。
 
@@ -71,6 +71,7 @@ dotnet publish MaxyModLoader.Cli -c Release -o artifacts/tool
 - `enabled` 控制是否纳入加载计划，禁用模组仍检查清单格式。
 - `name`、`author`、`description`填写展示信息；`features`为功能说明数组，`compatibility`填写兼容条件，`website`只接受HTTP或HTTPS地址，`license`填写许可名称。
 - `entry` 必须指向模组目录内真实存在的 Lua 文件，拒绝目录逃逸和入口符号链接。
+- `nativeContentFile`可选，指向本机已核验版本上构建的物品、制作配方、地图掉落或商人货单定义，格式见原生内容说明。
 - 扫描模组根目录的直接子目录；没有 `mod.json` 的目录跳过。
 
 入口返回带有 `on_load(context)` 函数的表。`context.log(message)` 输出带模组 ID 的日志，`context.events.on(name, callback)` 订阅事件并返回取消函数，`context.wrap(table, key, callback)` 包装现有 Lua 表函数并把前一个函数作为回调的第一个参数，返回取消包装函数。
@@ -81,7 +82,7 @@ dotnet publish MaxyModLoader.Cli -c Release -o artifacts/tool
 
 `context.services.provide(name, service)` 提供本模组服务，`context.services.get(providerId, name)` 获取服务。使用其他模组服务必须在清单中声明依赖，且提供方入口必须成功；入口失败会清理该模组提供的服务。这些接口不是不可信代码沙箱。
 
-小型和中型实装测试包位于 `playtests/mods`，与普通欢迎示例分开。测试包包括真实游戏接口桥、搜刮提速、移动体力、角色状态、生存营地、活动记录、快捷键及两种故意失败探针。基线包只包含观察功能，组合包用于验证模组实际效果及彼此组合，故意失败探针的错误日志属于预期结果。
+小型和中型实装测试包位于 `playtests/mods`，与普通欢迎示例分开。测试包包括真实游戏接口桥、搜刮提速、移动体力、角色状态、生存营地、活动记录、快捷键及两种故意失败探针。基线包只包含观察功能，组合包用于验证模组实际效果及彼此组合，故意失败探针的错误日志属于预期结果。枪械与装备内容使用本机官方ModTools从原版物品模板编译，不带独立模型或动画；弹药补给尚未关联到枪械弹药消耗，枪械伤害、搜刮结果和商人实际库存还需要在具体玩法场景中验证。
 
 `diary-observer` 演示包装本机 `Events.lua` 中的 `logEvent` 并发出 `game.diary` 事件。这只覆盖经过该 Lua 函数的记录，不代表完整的原生日记事件总线。当前没有自动昼夜、角色、物品或场景事件接口。
 

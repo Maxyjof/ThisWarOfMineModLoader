@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.content.more-guns",
+  "name": "更多枪械模组",
+  "version": "0.1.0",
+  "author": "MaxyModLoader",
+  "description": "为原版添加40种可制作并分散投放在军营、枪械仓库、狙击点、帮派据点和商人地图的枪械配置。每把枪有独立价值、射击参数、伤害倍率与制作成本。",
+  "descriptionFile": "README.md",
+  "nativeContentFile": "native-content.json",
+  "entry": "main.lua",
+  "enabled": true,
+  "features": [
+    "40个独立注册物品ID",
+    "依照原版地图生成器分散投放，每处最多出现一件且由原版掉落逻辑抽取",
+    "在三级金工台制作，消耗零件与材料",
+    "可直接编辑JSON中的射击间隔、连发数、冷却、射程、价值、伤害倍率与配方"
+  ]
+}

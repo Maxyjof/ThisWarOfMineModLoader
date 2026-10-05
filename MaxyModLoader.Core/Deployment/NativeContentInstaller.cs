@@ -115,7 +115,7 @@ public static class NativeContentInstaller
         //清单文件名不能控制安装目标目录
         if (native.Files is null || !native.Files.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(NativeContentCompiler.FileNames) ||
             native.Files.Values.Any(value => value is null || !Regex.IsMatch(value, "^[0-9A-F]{64}$")) ||
-            native.Items is null || native.Items.Length is < 1 or > 1024 ||
+            native.Items is null || native.Items.Length > 1024 ||
             native.Items.Any(item => !NativeContent.ValidName(item) || !item.StartsWith("MML_", StringComparison.Ordinal)))
             throw new InvalidDataException("原生内容清单无效");
     }

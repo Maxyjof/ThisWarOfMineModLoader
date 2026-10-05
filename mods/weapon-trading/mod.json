@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.content.weapon-trading",
+  "name": "军火交易扩展",
+  "version": "0.1.0",
+  "author": "MaxyModLoader",
+  "description": "将更多枪械加入原版普通商人、武装部队与帮派商人的出售清单，概率、价格倍率和数量使用原版交易字段控制。",
+  "descriptionFile": "README.md",
+  "nativeContentFile": "native-content.json",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {
+    "twom.content.more-guns": "0.1.0"
+  },
+  "features": [
+    "在BasicTrader、GenericTrader、ArmybaseTrader和KidnapersTrader的原版货单中加入精选枪械",
+    "每笔货单独立设置出现概率和价格倍率",
+    "保持原版每日出售价值上限及交易逻辑",
+    "依赖更多枪械模组提供物品定义"
+  ]
+}

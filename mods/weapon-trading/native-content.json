@@ -1,0 +1,20 @@
+{
+  "items": [],
+  "loot": [],
+  "trading": [
+    {"trader":"BasicTrader","item":"MML_Glock17","probability":0.20,"valueMultiplier":1.45,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"BasicTrader","item":"MML_Beretta92","probability":0.18,"valueMultiplier":1.40,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"BasicTrader","item":"MML_M1911","probability":0.15,"valueMultiplier":1.55,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"GenericTrader","item":"MML_MP5","probability":0.18,"valueMultiplier":1.40,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"GenericTrader","item":"MML_Uzi","probability":0.20,"valueMultiplier":1.35,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"GenericTrader","item":"MML_UMP45","probability":0.12,"valueMultiplier":1.50,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"ArmybaseTrader","item":"MML_AK74","probability":0.32,"valueMultiplier":1.30,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"ArmybaseTrader","item":"MML_M4A1","probability":0.26,"valueMultiplier":1.35,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"ArmybaseTrader","item":"MML_M16A4","probability":0.24,"valueMultiplier":1.30,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"ArmybaseTrader","item":"MML_M249","probability":0.12,"valueMultiplier":1.60,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"ArmybaseTrader","item":"MML_M14","probability":0.18,"valueMultiplier":1.45,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"KidnapersTrader","item":"MML_AKM","probability":0.25,"valueMultiplier":1.35,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"KidnapersTrader","item":"MML_PPSh41","probability":0.22,"valueMultiplier":1.35,"minimumQuantity":1,"maximumQuantity":1},
+    {"trader":"KidnapersTrader","item":"MML_Remington870","probability":0.18,"valueMultiplier":1.50,"minimumQuantity":1,"maximumQuantity":1}
+  ]
+}
