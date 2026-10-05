@@ -1,7 +1,7 @@
 local api = MaxyModLoader
 --离线Lua测试和未知平台没有原生UI时不安装界面
 if not LuaGameDelegate or not UIButton or not UITextBox or not Vector then return end
-local manager = {open = false, selection = 1, buttons = {}}
+local manager = {open = false, selection = 1, buttons = {}, pending_states = {}, confirm_open = false}
 api.manager = manager
 local statuses = {loaded = '已加载', failed = '加载失败', skipped = '依赖失败', disabled = '已禁用', pending = '等待加载', loading = '加载中'}
 
@@ -157,7 +157,7 @@ function manager.details(mod)
         table.insert(blocks, {kind = kind, level = level, runs = {{text = value}}})
     end
     block('heading', '版本信息', 2)
-    block('paragraph', '版本：' .. mod.version .. '  |  状态：' .. (statuses[mod.status] or mod.status))
+    block('paragraph', '版本：' .. mod.version .. '  |  状态：' .. manager.status_for(mod))
     block('paragraph', '作者：' .. (mod.author ~= '' and mod.author or '未提供'))
     local document = mod.description_document or {{kind = 'paragraph', runs = {{text = mod.description or '作者尚未提供内容介绍'}}}}
     for index, node in ipairs(document) do
@@ -193,6 +193,137 @@ function manager.details(mod)
 end
 
 --<summary>
+--返回模组在下一次启动时的目标启用状态
+--</summary>
+function manager.desired_enabled(mod)
+    local desired = manager.pending_states[mod.id]
+    if desired == nil then return mod.enabled ~= false end
+    return desired
+end
+
+--<summary>
+--显示已生效或等待重启应用的模组状态
+--</summary>
+function manager.status_for(mod)
+    local desired = manager.desired_enabled(mod)
+    if desired ~= (mod.enabled ~= false) then return desired and '待启用' or '待禁用' end
+    return statuses[mod.status] or mod.status
+end
+
+--<summary>
+--判断当前会话是否有尚未应用的模组状态修改
+--</summary>
+function manager.has_changes()
+    for _, mod in ipairs(api.mods) do
+        if manager.desired_enabled(mod) ~= (mod.enabled ~= false) then return true end
+    end
+    return false
+end
+
+--<summary>
+--验证暂存启用组合不会留下缺失依赖或模组冲突
+--</summary>
+function manager.validate_states(states)
+    local by_id = api.mod_by_id
+    for _, mod in ipairs(api.mods) do
+        if states[mod.id] then
+            for dependency in pairs(mod.dependencies or {}) do
+                if not by_id[dependency] or not states[dependency] then
+                    return false, '无法启用' .. mod.name .. '，它依赖仍被禁用的模组' .. dependency
+                end
+            end
+            for _, conflict in ipairs(mod.conflicts or {}) do
+                if by_id[conflict] and states[conflict] then
+                    return false, '无法同时启用互相冲突的模组' .. mod.name .. '和' .. conflict
+                end
+            end
+        end
+    end
+    return true
+end
+
+--<summary>
+--按已发现模组的稳定顺序编码启动启用状态
+--</summary>
+function manager.serialize_states(states)
+    local lines = {'MMLS1'}
+    for _, mod in ipairs(api.mods) do
+        table.insert(lines, mod.id .. '\t' .. (states[mod.id] and '1' or '0'))
+    end
+    return table.concat(lines, '\n') .. '\n'
+end
+
+--<summary>
+--切换所选模组的暂存状态并立即检查依赖关系
+--</summary>
+function manager.toggle_selected()
+    local mod = api.mods[manager.selection]
+    if not mod then return end
+    local states = {}
+    for _, item in ipairs(api.mods) do states[item.id] = manager.desired_enabled(item) end
+    states[mod.id] = not states[mod.id]
+    local valid, message = manager.validate_states(states)
+    if not valid then manager.notice = message; manager.refresh(); return end
+    if states[mod.id] == (mod.enabled ~= false) then manager.pending_states[mod.id] = nil
+    else manager.pending_states[mod.id] = states[mod.id] end
+    manager.notice = nil
+    manager.refresh()
+end
+
+--<summary>
+--将启停状态写入游戏目录并请求正常退出以便引导器重新构建
+--</summary>
+function manager.restart_apply()
+    if not manager.has_changes() then manager.notice = '没有等待应用的修改'; manager.refresh(); return end
+    local states = {}
+    for _, mod in ipairs(api.mods) do states[mod.id] = manager.desired_enabled(mod) end
+    local valid, message = manager.validate_states(states)
+    if not valid then manager.notice = message; manager.refresh(); return end
+
+    --先写入完整暂存表再发布重启标记防止半成品进入下一次启动
+    local temporary = io.open('MaxyModLoader/mod-state.tmp', 'wb')
+    if not temporary then error('无法写入模组启用状态') end
+    temporary:write(manager.serialize_states(states))
+    temporary:close()
+    os.remove('MaxyModLoader/mod-state.txt')
+    local saved, save_error = os.rename('MaxyModLoader/mod-state.tmp', 'MaxyModLoader/mod-state.txt')
+    if not saved then error(save_error or '无法保存模组启用状态') end
+
+    --重启请求仅含固定标记不执行任何玩家文本或系统命令
+    local request = io.open('MaxyModLoader/restart-request.tmp', 'wb')
+    if not request then error('无法写入模组重启请求') end
+    request:write('MMLR1\n')
+    request:close()
+    os.remove('MaxyModLoader/restart-request.txt')
+    local published, publish_error = os.rename('MaxyModLoader/restart-request.tmp', 'MaxyModLoader/restart-request.txt')
+    if not published then error(publish_error or '无法发布模组重启请求') end
+
+    --使用游戏公开退出接口让引导器先恢复文件再重启
+    gGame:Quit()
+end
+
+--<summary>
+--根据未应用状态显示返回确认或立即恢复主菜单
+--</summary>
+function manager.close_request()
+    if manager.has_changes() then
+        manager.confirm_open = true
+        manager.confirm_frame:SetVisible(true)
+    else
+        manager.show(false)
+    end
+end
+
+--<summary>
+--丢弃暂存修改并返回原版主菜单
+--</summary>
+function manager.discard_and_return()
+    manager.pending_states = {}
+    manager.confirm_open = false
+    manager.show(false)
+end
+
+--<summary>
 --将缺少语法树的兼容文本作为普通段落显示
 --</summary>
 function manager.markdown(value)
@@ -213,7 +344,7 @@ function manager.refresh()
             --选择颜色由刷新本身维护鼠标停在游戏窗口外时也保持所选条目可辨认
             row:FindElementByName('MML_ROW_' .. index .. '_TEXT'):SetColor(1, index == manager.selection and 0.55 or 1,
                 index == manager.selection and 0.16 or 1, 1)
-            row:FindElementByName('MML_ROW_' .. index .. '_STATUS'):SetText(unicode(statuses[mod.status] or mod.status))
+            row:FindElementByName('MML_ROW_' .. index .. '_STATUS'):SetText(unicode(manager.status_for(mod)))
         end
     end
     local mod = api.mods[manager.selection]
@@ -290,7 +421,16 @@ function manager.refresh()
     manager.offsets = manager.offsets or {}
     manager.move_scroll('detail', 0)
     manager.frame:FindElementByName('MML_MOD_TITLE'):SetText(unicode(mod and caption(mod.name, 46) or '暂无模组'))
-    manager.footer:SetText(unicode('共' .. #api.mods .. '个模组  鼠标滚轮滚动列表和介绍  增删或启用变更需要重新构建并重启游戏'))
+    manager.footer:SetText(unicode('共' .. #api.mods .. '个模组  鼠标滚轮滚动列表和介绍  切换模组后点击重启并应用生效'))
+    local selected = api.mods[manager.selection]
+    if manager.buttons.MML_TOGGLE then
+        manager.buttons.MML_TOGGLE.element:SetVisible(selected ~= nil)
+        manager.buttons.MML_TOGGLE.element:FindElementByName('MML_TOGGLE_TEXT'):SetText(unicode(
+            selected and (manager.desired_enabled(selected) and '禁用模组' or '启用模组') or '启用模组'))
+    end
+    if manager.buttons.MML_RESTART then manager.buttons.MML_RESTART.element:SetVisible(manager.has_changes()) end
+    if manager.notice then manager.footer:SetText(unicode(manager.notice))
+    elseif manager.has_changes() then manager.footer:SetText(unicode('启停修改尚未应用  点击重启并应用后生效')) end
 end
 
 --<summary>
@@ -474,6 +614,8 @@ end
 function manager.show(visible)
     manager.open = visible
     manager.drag, manager.pressed = nil, nil
+    manager.confirm_open = false
+    if manager.confirm_frame then manager.confirm_frame:SetVisible(false) end
     manager.menu:SetVisible(not visible)
     manager.frame:SetVisible(visible)
     if visible then manager.refresh() end
@@ -564,7 +706,26 @@ function manager.attach()
     manager.move_scroll('list', 0)
     text(manager.frame, 'MML_MOD_TITLE', '', 425, 122, 625, 42, 24)
     manager.footer = text(manager.frame, 'MML_FOOTER', '', 30, 600, 1040, 42, 16)
-    button(manager.frame, 'MML_CLOSE', '返回主菜单', 850, 530, 215, function() manager.show(false) end)
+    button(manager.frame, 'MML_TOGGLE', '禁用模组', 420, 530, 195, function() manager.toggle_selected() end)
+    button(manager.frame, 'MML_RESTART', '重启并应用', 620, 530, 210, function() manager.restart_apply() end)
+    button(manager.frame, 'MML_CLOSE', '返回主菜单', 850, 530, 215, function() manager.close_request() end)
+    --未应用修改时用游戏内确认层阻止误触底层管理按钮
+    manager.confirm_frame = UIElement:new()
+    manager.confirm_frame:SetName('MML_RETURN_CONFIRM')
+    manager.confirm_frame:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
+    manager.confirm_frame:SetPosition(vector(210, 205))
+    manager.confirm_frame:SetSize(vector(680, 220))
+    manager.confirm_frame:SetColorMode(UICOLOR_STATIC)
+    manager.confirm_frame:SetColor(0.035, 0.035, 0.035, 0.98)
+    manager.confirm_frame:RaiseFlag(UIFLAG_FOCUSABLEWITHMOUSE)
+    manager.frame:AddChild(manager.confirm_frame)
+    text(manager.confirm_frame, 'MML_CONFIRM_TEXT', '有未应用的模组修改，是否立即返回并丢弃？', 28, 36, 624, 68, 22)
+    button(manager.confirm_frame, 'MML_CONFIRM_DISCARD', '立即返回', 34, 125, 270, function() manager.discard_and_return() end)
+    button(manager.confirm_frame, 'MML_CONFIRM_STAY', '继续管理', 365, 125, 270, function()
+        manager.confirm_open = false
+        manager.confirm_frame:SetVisible(false)
+    end)
+    manager.confirm_frame:SetVisible(false)
     manager.frame:SetVisible(false)
     manager.open = false
     manager.skin_applied = false
@@ -611,7 +772,7 @@ function manager.skin()
     panel('MML_NATIVE_LIST', 'BrushList', -6, 78, 398, 474)
     panel('MML_NATIVE_DETAIL', 'BrushDetail', 371, 78, 728, 474)
     --沿用原版刷痕按钮背景但使用自有交互容器不复制原版创意工坊回调
-    for index, bounds in ipairs({{845, 535, 225, 64}}) do
+    for index, bounds in ipairs({{420, 535, 195, 64}, {620, 535, 210, 64}, {845, 535, 225, 64}}) do
         decoration(background, top, 'black paint', 'MML_NATIVE_BUTTONS_' .. index, bounds[1], bounds[2], bounds[3], bounds[4]):SetColor(0, 0, 0, 1)
         local mirrored = decoration(background, top, 'black paint', 'MML_NATIVE_BUTTONS_MIRROR_' .. index,
             bounds[1] + bounds[3], bounds[2], bounds[3], bounds[4])
@@ -634,12 +795,14 @@ function manager.skin()
     --面板内上下留白统一为原版对话框的节奏并让内容由滚动窗口裁剪
     for index, row in ipairs(manager.rows) do row:SetSize(vector(345, 56)) end
     --返回按钮拥有完整刷痕背景文字居中使边缘透明区留出空间
-    for _, name in ipairs({'MML_CLOSE'}) do
+    for _, name in ipairs({'MML_TOGGLE', 'MML_RESTART', 'MML_CLOSE', 'MML_CONFIRM_DISCARD', 'MML_CONFIRM_STAY'}) do
         local label = manager.frame:FindElementByName(name .. '_TEXT')
+        if name:match('^MML_CONFIRM_') then label = manager.confirm_frame:FindElementByName(name .. '_TEXT') end
         label:SetFont('NotoSansCJKsc-Medium.otf', 18, true)
         label:SetAlignment(TEXTALIGNMENT_CENTER)
         label:SetPosition(vector(8, 18))
-        manager.buttons[name].element:SetSize(vector(name == 'MML_CLOSE' and 215 or name:match('^MML_LIST') and 170 or 185, 64))
+        local widths = {MML_TOGGLE = 195, MML_RESTART = 210, MML_CLOSE = 215, MML_CONFIRM_DISCARD = 270, MML_CONFIRM_STAY = 270}
+        manager.buttons[name].element:SetSize(vector(widths[name], 64))
     end
     manager.skin_applied = true
     manager.layout_width = nil
@@ -715,6 +878,8 @@ function manager.pointed_button(element)
         if not element then return nil end
         local item = manager.buttons[element:GetName()]
         if item and item.element == element and element:IsVisible() and element:IsEnabled() then
+            --确认框显示时禁止触发被覆盖的模组列表和返回按钮
+            if manager.confirm_open and not element:GetName():match('^MML_CONFIRM_') then return nil end
             --设置扩展按钮只能在其所属页面可见且后台服务可用时触发
             if item.available and not item.available() then return nil end
             --检查父层可见性防止隐藏管理面板中的行被误点
@@ -821,6 +986,8 @@ end
 function manager.state()
     return {available = manager.frame ~= nil, open = manager.frame and manager.frame:IsVisible() or false,
         selected = api.mods[manager.selection] and api.mods[manager.selection].id or '',
+        dirty = manager.has_changes(), confirm_open = manager.confirm_open,
+        pending_states = manager.pending_states, notice = manager.notice or '',
         list_count = #api.mods, detail_lines = #(manager.detail_lines or {}), text = manager.visible_text or '',
         font_height = manager.detail_lines and manager.detail_lines[1] and manager.detail_lines[1]:GetFirstChild() and
             manager.detail_lines[1]:GetFirstChild():GetFontHeight() or 0,

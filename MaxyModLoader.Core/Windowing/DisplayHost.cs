@@ -186,7 +186,9 @@ public static class DisplayHost
             //游戏初始化主窗口前短暂等待且不自动启动游戏或激活窗口
             while (process is null && started.Elapsed < TimeSpan.FromSeconds(30))
             {
-                foreach (var candidate in Process.GetProcessesByName("This War of Mine"))
+                //原版副本使用独立进程名但保持经过校验的实际可执行路径
+                foreach (var candidate in Process.GetProcessesByName("This War of Mine")
+                    .Concat(Process.GetProcessesByName("MaxyModLoader.Original")))
                 {
                     if (string.Equals(candidate.MainModule?.FileName, MaxyModLoader.Deployment.GameExecutableInstaller.ResolveOriginalExecutablePath(game), StringComparison.OrdinalIgnoreCase) && candidate.MainWindowHandle != 0)
                     {

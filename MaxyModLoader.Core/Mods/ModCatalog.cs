@@ -10,7 +10,7 @@ public static class ModCatalog
     /// <summary>
     /// 扫描根目录的直接子目录并校验启用模组入口
     /// </summary>
-    public static IReadOnlyList<DiscoveredMod> Discover(string root)
+    public static IReadOnlyList<DiscoveredMod> Discover(string root, IReadOnlyDictionary<string, bool>? enabledOverrides = null)
     {
         //按路径稳定排序并拒绝模组目录符号链接
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"找不到模组目录：{root}");
@@ -41,6 +41,9 @@ public static class ModCatalog
                     throw new InvalidDataException("模组Markdown说明必须使用有效UTF8编码", exception);
                 }
             }
+            //玩家暂存状态覆盖清单默认值并先于入口检查生效
+            if (enabledOverrides is not null && enabledOverrides.TryGetValue(manifest.Id, out var enabled))
+                manifest = manifest with { Enabled = enabled };
             //禁用模组不需要有效入口但仍需可解析的清单
             var entry = manifest.Enabled ? ResolveEntry(directory, manifest.Entry) : "";
             //启用模组的每个显式模块都必须属于同一个模组目录

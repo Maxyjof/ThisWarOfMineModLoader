@@ -97,6 +97,28 @@ for _, row in ipairs(detail) do for _, run in ipairs(row.runs) do
 end end
 assert(found)
 
+--验证界面暂存状态阻止依赖断裂和冲突组合
+MaxyModLoader.mods = {
+    {id = 'base.mod', name = '基础模组', enabled = true, status = 'loaded'},
+    {id = 'feature.mod', name = '功能模组', enabled = true, status = 'loaded', dependencies = {['base.mod'] = '1.0.0'}},
+    {id = 'other.mod', name = '冲突模组', enabled = false, status = 'disabled', conflicts = {'feature.mod'}}
+}
+MaxyModLoader.mod_by_id = {}
+for _, mod in ipairs(MaxyModLoader.mods) do MaxyModLoader.mod_by_id[mod.id] = mod end
+manager.pending_states = {}
+assert(not manager.has_changes())
+assert(manager.desired_enabled(MaxyModLoader.mods[1]))
+manager.pending_states['base.mod'] = false
+assert(manager.has_changes())
+local valid, reason = manager.validate_states({['base.mod'] = false, ['feature.mod'] = true, ['other.mod'] = false})
+assert(not valid and reason:find('依赖'))
+valid, reason = manager.validate_states({['base.mod'] = true, ['feature.mod'] = true, ['other.mod'] = true})
+assert(not valid and reason:find('冲突'))
+valid = manager.validate_states({['base.mod'] = true, ['feature.mod'] = false, ['other.mod'] = true})
+assert(valid)
+assert(manager.serialize_states({['base.mod'] = true, ['feature.mod'] = false, ['other.mod'] = true}) ==
+    'MMLS1\\nbase.mod\\t1\\nfeature.mod\\t0\\nother.mod\\t1\\n')
+
 --创建可见层级验证点击文字子控件也能激活其按钮
 local function element(name, parent)
     return {GetName = function() return name end, GetParent = function() return parent end,

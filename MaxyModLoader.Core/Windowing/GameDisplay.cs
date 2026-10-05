@@ -187,7 +187,9 @@ public static class GameDisplay
         SetProcessDpiAwarenessContext(-4);
         var expected = MaxyModLoader.Deployment.GameExecutableInstaller.ResolveOriginalExecutablePath(game);
         var matches = new List<Process>();
-        foreach (var process in Process.GetProcessesByName("This War of Mine"))
+        //通过Steam引导的副本使用加载器标识仍按完整路径绑定目标安装
+        foreach (var process in Process.GetProcessesByName("This War of Mine")
+            .Concat(Process.GetProcessesByName("MaxyModLoader.Original")))
         {
             //非目标进程及时释放查询句柄查询失败也不会留下句柄
             try

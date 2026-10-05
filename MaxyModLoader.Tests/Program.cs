@@ -64,6 +64,31 @@ internal static class Program
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
         Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 3));
+        Test("模组暂存状态覆盖默认值并允许禁用损坏入口", () => InWorkspace(root =>
+        {
+            //暂存开关在校验Lua入口前应用因此禁用项只保留介绍
+            var mod = Path.Combine(root, "sample"); Directory.CreateDirectory(mod);
+            File.WriteAllText(Path.Combine(mod, "mod.json"), "{\"id\":\"sample.mod\",\"name\":\"测试\",\"version\":\"1.0.0\",\"entry\":\"missing.lua\"}");
+            var states = ModStartupState.Read(Path.Combine(root, "mod-state.txt"));
+            var discovered = ModCatalog.Discover(root, new Dictionary<string, bool>(states) { ["sample.mod"] = false });
+            Assert(discovered.Count == 1 && !discovered[0].Manifest.Enabled && discovered[0].EntryPath == "");
+        }));
+        Test("模组状态严格解析并消费单次重启标记", () => InWorkspace(root =>
+        {
+            //状态只接受唯一模组标识和二值开关格式
+            var state = Path.Combine(root, "state.txt");
+            File.WriteAllText(state, "MMLS1\nsample.mod\t1\nother\t0\n", new UTF8Encoding(false));
+            var values = ModStartupState.Read(state);
+            Assert(values.Count == 2 && values["sample.mod"] && !values["other"]);
+            File.WriteAllText(state, "MMLS1\nsample.mod\t2\n");
+            Reject<InvalidDataException>(() => ModStartupState.Read(state));
+
+            //固定请求被读取一次后移除防止额外重启
+            var loader = Path.Combine(root, "MaxyModLoader"); Directory.CreateDirectory(loader);
+            var request = Path.Combine(loader, "restart-request.txt");
+            File.WriteAllText(request, "MMLR1\n", new UTF8Encoding(false));
+            Assert(ModStartupState.ConsumeRestartRequest(root) && !ModStartupState.ConsumeRestartRequest(root));
+        }));
         Test("模组ZIP支持根目录和一级目录布局", () => InWorkspace(root =>
         {
             //每个压缩包代表一个模组且包内文件会被展开到独立目录

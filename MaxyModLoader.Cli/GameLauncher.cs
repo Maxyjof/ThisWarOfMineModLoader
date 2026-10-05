@@ -40,50 +40,61 @@ internal static class GameLauncher
         if (File.Exists(statePath) || File.Exists(Path.Combine(gameDirectory, "TWOMLoader", "install-state.json")))
             PackageInstaller.Restore(gameDirectory, true);
 
-        //按照模组压缩包和原始容器指纹寻找可复用的完整部署包
-        var packageKey = ComputePackageKey(modsDirectory, gameDirectory);
-        var packageDirectory = Path.Combine(cacheDirectory, packageKey);
-        TraceStartup(gameDirectory, "检查模组包", packageDirectory);
-        if (!Directory.Exists(packageDirectory)) BuildPackage(gameDirectory, modsDirectory, workDirectory, packageDirectory);
-        else ValidateCachedPackage(packageDirectory);
-        TraceStartup(gameDirectory, "模组包准备完成", packageDirectory);
+        //清理上次异常退出留下的请求后进入可恢复的运行循环
+        var staleRestart = Path.Combine(loaderDirectory, "restart-request.txt");
+        if (File.Exists(staleRestart)) File.Delete(staleRestart);
+        while (true)
+        {
+            //模组压缩包和启用状态共同决定缓存键值
+            var packageKey = ComputePackageKey(modsDirectory, gameDirectory);
+            var packageDirectory = Path.Combine(cacheDirectory, packageKey);
+            TraceStartup(gameDirectory, "检查模组包", packageDirectory);
+            if (!Directory.Exists(packageDirectory)) BuildPackage(gameDirectory, modsDirectory, workDirectory, packageDirectory);
+            else ValidateCachedPackage(packageDirectory);
+            TraceStartup(gameDirectory, "模组包准备完成", packageDirectory);
 
-        //安装和游戏进程置于同一恢复边界内退出或启动失败都会尝试还原
-        var displayHostInstalled = false;
-        try
-        {
-            PackageInstaller.Install(gameDirectory, packageDirectory, true);
-            DisplayHost.Install(gameDirectory, Path.Combine(gameDirectory, "MaxyModLoader", "app"));
-            displayHostInstalled = true;
-            var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments, executableBootstrap);
-            TraceStartup(gameDirectory, "启动原版程序", start.FileName);
-            Console.WriteLine("MaxyModLoader部署完成正在启动游戏退出后会自动恢复原版文件");
-            using var process = Process.Start(start) ?? throw new IOException("无法启动游戏进程");
-            TraceStartup(gameDirectory, "原版进程已启动", "PID=" + process.Id + " EXE=" + start.FileName);
-            await process.WaitForExitAsync();
-            return process.ExitCode;
-        }
-        finally
-        {
-            //只在本次加载器状态日志存在时执行恢复避免触碰未安装的游戏
+            //安装和游戏进程置于同一恢复边界内退出或启动失败都会尝试还原
+            var displayHostInstalled = false;
+            var exitCode = -1;
             try
             {
-                if (File.Exists(statePath)) PackageInstaller.Restore(gameDirectory, true);
+                PackageInstaller.Install(gameDirectory, packageDirectory, true);
+                DisplayHost.Install(gameDirectory, Path.Combine(gameDirectory, "MaxyModLoader", "app"));
+                displayHostInstalled = true;
+                var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments, executableBootstrap);
+                TraceStartup(gameDirectory, "启动原版程序", start.FileName);
+                Console.WriteLine("MaxyModLoader部署完成正在启动游戏退出后会自动恢复原版文件");
+                using var process = Process.Start(start) ?? throw new IOException("无法启动游戏进程");
+                TraceStartup(gameDirectory, "原版进程已启动", "PID=" + process.Id + " EXE=" + start.FileName);
+                await process.WaitForExitAsync();
+                exitCode = process.ExitCode;
             }
             finally
             {
-                //原版资源恢复后再移除仅属于本次启动的设置辅助文件
+                //只在本次加载器状态日志存在时执行恢复避免触碰未安装的游戏
                 try
                 {
-                    if (displayHostInstalled) DisplayHost.Uninstall(gameDirectory);
+                    if (File.Exists(statePath)) PackageInstaller.Restore(gameDirectory, true);
                 }
                 finally
                 {
-                    //恢复失败时保留部署缓存供用户排查但仍清理解包工作区
-                    if (!File.Exists(statePath)) PruneOldPackages(cacheDirectory, packageDirectory);
-                    DeleteOwnedTree(workDirectory, loaderDirectory);
+                    //原版资源恢复后再移除仅属于本次启动的设置辅助文件
+                    try
+                    {
+                        if (displayHostInstalled) DisplayHost.Uninstall(gameDirectory);
+                    }
+                    finally
+                    {
+                        //恢复失败时保留部署缓存供用户排查但仍清理解包工作区
+                        if (!File.Exists(statePath)) PruneOldPackages(cacheDirectory, packageDirectory);
+                        DeleteOwnedTree(workDirectory, loaderDirectory);
+                    }
                 }
             }
+
+            //只有游戏正常退出并留下有效请求时才重新构建和启动
+            if (!ModStartupState.ConsumeRestartRequest(gameDirectory)) return exitCode;
+            TraceStartup(gameDirectory, "重启并应用", "按新模组启用状态重新构建");
         }
     }
 
@@ -97,7 +108,9 @@ internal static class GameLauncher
         try
         {
             _ = ModZipImporter.ExtractAll(modsDirectory, stagingDirectory);
-            var plan = LoadPlanner.Create(ModCatalog.Discover(stagingDirectory));
+            //状态文件覆盖模组清单默认值未知旧标识会自然忽略
+            var states = ModStartupState.Read(Path.Combine(gameDirectory, "MaxyModLoader", "mod-state.txt"));
+            var plan = LoadPlanner.Create(ModCatalog.Discover(stagingDirectory, states));
             if (!plan.IsValid) throw new InvalidDataException(string.Join(Environment.NewLine, plan.Errors));
 
             //仅从已核验的原始Main资源创建缓存部署包
@@ -140,6 +153,13 @@ internal static class GameLauncher
             var buffer = new byte[1024 * 1024];
             int read;
             while ((read = input.Read(buffer, 0, buffer.Length)) > 0) hash.AppendData(buffer.AsSpan(0, read));
+        }
+        //启停状态加入缓存键值避免复用旧模组入口
+        var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "mod-state.txt");
+        if (File.Exists(statePath))
+        {
+            hash.AppendData(Encoding.UTF8.GetBytes("\0ModStartupState\0"));
+            hash.AppendData(File.ReadAllBytes(statePath));
         }
         return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
     }
