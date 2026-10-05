@@ -94,7 +94,7 @@ try {
 
 #为本次版本的两个可下载文件生成SHA256校验清单
 $hashes = Get-FileHash -Algorithm SHA256 -LiteralPath @($loaderZip, $sampleZip)
-$hashes | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), $_.Path } |
+$hashes | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), [IO.Path]::GetFileName($_.Path) } |
     Set-Content -LiteralPath (Join-Path $output 'SHA256SUMS.txt') -Encoding utf8
 Write-Output "已生成Windows加载器包：$loaderZip"
 Write-Output "已生成示例模组包：$sampleZip"

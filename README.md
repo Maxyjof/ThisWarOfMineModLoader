@@ -100,8 +100,8 @@ python -X utf8 tests/test_display.py
 为创建Release，给已验证的版本提交打`v主版本.次版本.修订号`标签并推送。GitHub Actions会构建Windows自包含加载器包、示例模组包、SHA256校验清单并自动发布Release：
 
 ```powershell
-git tag v0.4.1
-git push origin v0.4.1
+git tag v0.4.2
+git push origin v0.4.2
 ```
 
 推送`v主版本.次版本.修订号`标签会自动运行Windows回归测试、生成玩家包和示例模组包并发布到GitHubRelease。维护者也可以在Windows上运行`tools/package-release.ps1`手动打包。

@@ -59,13 +59,16 @@ public sealed class GameBridgeClient
             {
                 if (File.Exists(response) && new FileInfo(response).Length <= 1024 * 1024)
                 {
-                    using var parsed = JsonDocument.Parse(await File.ReadAllTextAsync(response));
+                    //读取时允许游戏替换响应文件避免Windows共享冲突阻断原子发布
+                    await using var stream = new FileStream(response, FileMode.Open, FileAccess.Read,
+                        FileShare.ReadWrite | FileShare.Delete, 4096, useAsync: true);
+                    using var parsed = await JsonDocument.ParseAsync(stream);
                     if (parsed.RootElement.GetProperty("id").GetString() == id)
                     {
-                        //先释放读取句柄再删除响应让Lua下次可以原子发布新结果
+                        //匹配结果已复制清理失败不会把成功执行的游戏命令误报为失败
                         var result = parsed.RootElement.Clone();
-                        parsed.Dispose();
-                        File.Delete(response);
+                        try { File.Delete(response); }
+                        catch (IOException) { }
                         return result;
                     }
                 }

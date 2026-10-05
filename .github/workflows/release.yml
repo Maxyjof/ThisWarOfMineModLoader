@@ -18,8 +18,10 @@ jobs:
           python-version: '3.12'
       - name: 安装Lua运行时测试依赖
         run: python -m pip install -r tests/requirements.txt
+      - name: 构建完整解决方案
+        run: dotnet build -c Release
       - name: 运行CSharp回归测试
-        run: dotnet run --project MaxyModLoader.Tests -c Release
+        run: dotnet run --project MaxyModLoader.Tests -c Release --no-build
       - name: 运行Lua和管理界面回归测试
         shell: pwsh
         run: |

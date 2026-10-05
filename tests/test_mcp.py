@@ -75,10 +75,12 @@ def main():
         payload += '\ninvalid-json\n[]\n' + json.dumps({'jsonrpc': '2.0', 'id': 12, 'method': 'ping'}) + '\n'
         try:
             result = subprocess.run(['dotnet', str(SERVER), 'mcp', '--game', game], input=payload, text=True,
-                                    encoding='utf-8', capture_output=True, timeout=20, check=True)
+                                    encoding='utf-8', capture_output=True, timeout=20, check=False)
         finally:
             stop.set()
             worker.join(timeout=2)
+        #先报告进程错误避免协议解析掩盖构建缺失等启动失败
+        assert result.returncode == 0, result.stderr + result.stdout
         replies = [json.loads(line) for line in result.stdout.splitlines()]
         by_id = {reply['id']: reply for reply in replies if reply['id'] is not None}
         assert by_id[1]['error']['code'] == -32002
