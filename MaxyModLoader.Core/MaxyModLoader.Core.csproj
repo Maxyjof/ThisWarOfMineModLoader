@@ -5,6 +5,7 @@
         <EmbeddedResource Include="Runtime/bootstrap.lua" />
         <EmbeddedResource Include="Runtime/manager.lua" />
         <EmbeddedResource Include="Runtime/mcp.lua" />
+        <EmbeddedResource Include="Runtime/display.lua" />
         <EmbeddedResource Include="../tools/ui-art/resources/UI/MaxyModLoader/*.dds" LogicalName="MaxyModLoader.Assets.%(Filename)%(Extension)" />
     </ItemGroup>
 

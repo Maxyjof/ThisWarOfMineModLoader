@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MaxyModLoader.Windowing;
 
 namespace MaxyModLoader.Mcp;
 
@@ -17,6 +18,7 @@ public sealed class McpServer(GameBridgeClient bridge)
     private static readonly GameTool[] Tools =
     [
         new("end_day", "end_day", "通过游戏内部接口结束当前庇护所白天并进入夜间安排", ReadOnly: false),
+        new("display_mode", "display_mode", "切换游戏窗口显示模式支持无边框全屏窗口、普通窗口和游戏全屏", "mode", ReadOnly: false),
         new("game_state", "game_state", "读取真实场景天数、暂停状态和角色饥饿疲劳疾病受伤参数"),
         new("game_screenshot", "screenshot", "只读捕获目标游戏窗口返回PNG图像不激活窗口或发送键鼠输入"),
         new("inspect_type", "inspect_type", "列出公开Lua类型的绑定方法仅用于接口诊断不执行任意源码", "name"),
@@ -25,6 +27,7 @@ public sealed class McpServer(GameBridgeClient bridge)
         new("mod_scroll", "mod_scroll", "将模组管理滚动窗口移到指定列表条目或介绍行格式为list|序号或detail|行号", "target", ReadOnly: false),
         new("quit_game", "quit", "请求游戏正常退出以进行可恢复部署", ReadOnly: false),
         new("set_pause", "pause", "明确设置游戏用户暂停状态", "paused", "boolean", false),
+        new("settings_state", "settings_state", "读取原版窗口设置行真实模式待应用选择后台服务和错误状态"),
         new("ui_click", "ui_click", "按元素名称在游戏当前原生界面触发点击不控制Windows桌面", "name", ReadOnly: false),
         new("ui_adjust", "ui_adjust", "临时调整加载器自有控件位置大小缩放或颜色格式为控件名|属性|数字列表不执行源码", "edit", ReadOnly: false),
         new("ui_catalog", "ui_catalog", "读取当前原生界面的可见与隐藏控件用于配方诊断"),
@@ -118,6 +121,12 @@ public sealed class McpServer(GameBridgeClient bridge)
                 var capture = await bridge.CaptureAsync();
                 return Result(id, new { content = new object[] { new { type = "image", data = capture.Data, mimeType = "image/png" },
                     new { type = "text", text = capture.Path } }, isError = false });
+            }
+            if (selected.Command == "display_mode")
+            {
+                //窗口模式在游戏外按已核验的游戏进程和Windows公开窗口接口调整
+                var state = await DisplayHost.RequestAsync(bridge.GameDirectory, argument);
+                return Result(id, new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(state) } }, isError = false });
             }
             var reply = await bridge.CallAsync(selected.Command, argument);
             var success = reply.GetProperty("ok").GetBoolean();

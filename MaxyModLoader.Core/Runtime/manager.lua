@@ -744,6 +744,8 @@ function manager.pointed_button(element)
         if not element then return nil end
         local item = manager.buttons[element:GetName()]
         if item and item.element == element and element:IsVisible() and element:IsEnabled() then
+            --设置扩展按钮只能在其所属页面可见且后台服务可用时触发
+            if item.available and not item.available() then return nil end
             --检查父层可见性防止隐藏管理面板中的行被误点
             if element:IsDescendantOf(manager.frame) and not manager.open then return nil end
             if element:IsDescendantOf(manager.menu) and manager.open then return nil end

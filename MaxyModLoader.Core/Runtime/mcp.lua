@@ -166,6 +166,46 @@ end
 --分发白名单命令所有游戏操作均在主线程执行
 --</summary>
 function module.dispatch(command, argument)
+    if command == 'display_host_ready' then
+        if not api.display then error('原版设置扩展未安装') end
+        return api.display.ready(argument)
+    end
+    if command == 'display_request' then
+        if not api.display then error('原版设置扩展未安装') end
+        return api.display.request(argument)
+    end
+    if command == 'settings_state' then
+        if not api.display then error('原版设置扩展未安装') end
+        return api.display.state()
+    end
+    if command == 'display_state' then
+        if not gConfigHelper then error('游戏显示设置接口不可用') end
+        return {fullscreen = gConfigHelper:GetFullScreen(), mode = gConfigHelper:GetScreenMode()}
+    end
+    if command == 'display_prepare' then
+        if not gConfigHelper then error('游戏显示设置接口不可用') end
+        local mode, width, height = (argument or ''):match('^(%a+)|(%d+)|(%d+)$')
+        width, height = tonumber(width), tonumber(height)
+        if not (mode == 'borderless' or mode == 'windowed' or mode == 'fullscreen') or
+            not width or not height or width < 640 or height < 480 or width > 8192 or height > 8192 then
+            error('显示模式或显示尺寸无效')
+        end
+        --失败时恢复原显示设置并通过游戏已核验的画面配置入口应用
+        local previous = gConfigHelper:GetFullScreen()
+        local ok, message = pcall(function()
+            gConfigHelper:SetFullScreen(mode == 'fullscreen')
+            gGame:RequestScreenResoultionChange(width, height)
+            gConfigHelper:ApplySeriousGFXSettings()
+            gConfigHelper:SaveConfig()
+        end)
+        if not ok then
+            gConfigHelper:SetFullScreen(previous)
+            gConfigHelper:ApplySeriousGFXSettings()
+            gConfigHelper:SaveConfig()
+            error('显示设置应用失败：' .. tostring(message))
+        end
+        return {requested = mode, fullscreen = gConfigHelper:GetFullScreen(), previous = previous}
+    end
     if command == "game_state" then return module.state() end
     if command == "mods_list" then return {mods = MaxyModLoader.mods} end
     if command == "ui_tree" then return module.ui_tree() end

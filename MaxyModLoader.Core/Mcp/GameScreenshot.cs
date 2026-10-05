@@ -27,11 +27,12 @@ public static class GameScreenshot
         var window = candidates[0].MainWindowHandle;
         //最小化窗口只能返回标题条不能作为游戏画面验证
         if (IsIconic(window)) throw new IOException("游戏窗口已最小化请恢复显示后再截图");
-        if (!GetWindowRect(window, out var rectangle)) throw new IOException("无法读取游戏窗口尺寸");
+        //只截取游戏客户区避免普通窗口的标题栏阴影与旧非客户区像素混入画面
+        if (!GetClientRect(window, out var rectangle)) throw new IOException("无法读取游戏画面尺寸");
         var width = rectangle.Right - rectangle.Left;
         var height = rectangle.Bottom - rectangle.Top;
         if (width <= 0 || height <= 0 || (long)width * height > 16777216) throw new IOException("游戏窗口尺寸不适合截图");
-        var source = GetWindowDC(window);
+        var source = GetDC(window);
         nint target = 0, bitmap = 0, original = 0;
         try
         {
@@ -48,7 +49,7 @@ public static class GameScreenshot
                 if (!BitBlt(target, 0, 0, width, height, source, 0, 0, 0x00CC0020))
                     throw new IOException("无法读取前台游戏画面");
             }
-            else if (!PrintWindow(window, target, 2)) throw new IOException("游戏未提供后台画面截图失败");
+            else if (!PrintWindow(window, target, 3)) throw new IOException("游戏未提供后台画面截图失败");
             SelectObject(target, original);
             var header = new BitmapHeader { Size = 40, Width = width, Height = -height, Planes = 1, BitCount = 32 };
             var pixels = new byte[checked(width * height * 4)];
@@ -143,9 +144,9 @@ public static class GameScreenshot
     }
 
     /// <summary>
-    /// 读取指定窗口边界
+    /// 读取指定游戏窗口客户区边界
     /// </summary>
-    [DllImport("user32.dll")] private static extern bool GetWindowRect(nint window, out WindowRectangle rectangle);
+    [DllImport("user32.dll")] private static extern bool GetClientRect(nint window, out WindowRectangle rectangle);
     /// <summary>
     /// 判断目标游戏窗口是否已最小化
     /// </summary>
@@ -159,9 +160,9 @@ public static class GameScreenshot
     /// </summary>
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
     /// <summary>
-    /// 获取窗口绘图上下文
+    /// 获取游戏客户区绘图上下文
     /// </summary>
-    [DllImport("user32.dll")] private static extern nint GetWindowDC(nint window);
+    [DllImport("user32.dll")] private static extern nint GetDC(nint window);
     /// <summary>
     /// 释放窗口绘图上下文
     /// </summary>

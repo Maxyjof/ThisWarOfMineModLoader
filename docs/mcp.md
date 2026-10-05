@@ -47,14 +47,16 @@ MCP客户端启动配置使用实际的绝对路径：
 | `quit_game` | 无 | 请求游戏正常退出 |
 | `inspect_type` | `name`字符串 | 列出公开Lua类型的方法名称 |
 | `game_screenshot` | 无 | 捕获游戏窗口并返回PNG图像内容 |
+| `display_mode` | `mode`字符串：`borderless`、`windowed`或`fullscreen` | 请求引擎切换显示模式并调整Windows窗口边框，随后读取真实全屏状态、样式与显示器边界复核 |
+| `settings_state` | 无 | 读取原版设置行、已确认模式、待应用选择、后台服务与错误状态 |
 
 名称重复时`ui_click`拒绝调用，改用`ui_tree`提供的完整路径。调试新增控件时应使用`ui_hit_test`和`ui_click_point`检查实际命中，而不能只调用名字对应的处理函数。`mod_manager`返回当前鼠标命中、最近按下或释放边沿及滚轮输入。列表和介绍各自保存偏移，更换所选模组时只将介绍恢复到顶部。`mod_scroll`与真实滚轮共用边界和内容定位逻辑，用于检查原生裁剪与滑块位置，不发送系统滚轮事件。MCP模拟点击与真实鼠标点击分别验证，工具返回成功只表示已触发请求，场景切换、动画和渲染完成需要后续状态读取与截图确认。
 
-截图仅定位指定安装目录的唯一游戏进程，在独立辅助进程中捕获，避免后台窗口绘制卡住MCP服务。捕获失败或黑帧会明确报错，不能把工具返回的文字状态当作截图验证。PNG保存到游戏目录`MaxyModLoader/mcp/screenshots`，MCP响应同时提供`image/png`图像内容。系统接口依据：[PrintWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-printwindow)、[GetDIBits](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getdibits)。
+截图仅定位指定安装目录的唯一游戏进程，在独立辅助进程中捕获游戏客户区，避免后台窗口绘制卡住MCP服务，也避免普通窗口的非客户区旧像素混入画面。捕获失败或黑帧会明确报错，不能把工具返回的文字状态当作截图验证。PNG保存到游戏目录`MaxyModLoader/mcp/screenshots`，MCP响应同时提供`image/png`图像内容。系统接口依据：[PrintWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-printwindow)、[GetDIBits](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getdibits)。
 
 ## 传输与边界
 
-服务与游戏通过固定目录`MaxyModLoader/mcp`交换请求。单个客户端持有文件锁，以临时文件原子发布请求，使用随机请求ID关联返回；请求上限64KB，返回上限1MB。游戏每个CPU时间间隔检查一次，请求在执行前移除，不自动重放。
+服务与游戏通过固定目录`MaxyModLoader/mcp`交换请求。单个客户端持有文件锁，其他客户端有界等待，以临时文件原子发布请求，使用随机请求ID关联返回；请求上限64KB，返回上限1MB。游戏每个CPU时间间隔检查一次，请求在执行前移除，不自动重放。
 
 工具等待超过8秒会返回“结果未确认”。状态变更命令不能因超时自动重试，先查询实际状态。游戏退出、处于加载阶段或不处理帧回调时，工具可能失败。后台轮询通过游戏委托的`CanSleep`包装保持工作，会增加后台游戏的运行开销。
 
@@ -70,6 +72,10 @@ dotnet run --project MaxyModLoader.Cli -c Release -- screenshot "<游戏安装�
 
 ## 验证
 
-`tests/test_mcp.py`使用统一CLI的真实MCP服务进程与临时文件端验证握手、十五项工具发现、参数错误隔离及中文参数往返。`tests/test_manager.py`另外验证自有控件调整的参数及所有权边界。这些协议测试不代表游戏效果验证。真实游戏验证与截图检查单独记录在`docs/validation.md`。
+`display_mode`与原版设置菜单共用内置后台服务，确认后保存模式并同步游戏内状态，最多等待15秒；超时不能直接重放操作。服务随游戏启动，使用独占会话锁，游戏退出时结束，诊断保存在本机`MaxyModLoader/display-host.log`。读取确认文件允许原子替换；短暂共享冲突只重试发布文件，不重试显示操作。
+
+窗口扩展仅允许Windows目标安装的唯一游戏进程，绑定已验证EXE指纹，并拒绝最小化窗口。窗口保存与进程ID、启动时间和句柄绑定的恢复信息；切换后轮询读取游戏内部全屏开关、Windows边框和显示器范围，无法确认时恢复可用的窗口样式并返回失败。工具会改变游戏显示状态，不会激活窗口或发送键鼠输入。`display <游戏目录> <模式>`与MCP工具使用相同路径，省略模式参数只读取状态。
+
+`tests/test_mcp.py`使用统一CLI的真实MCP服务进程与临时文件端验证握手、十七项工具发现、显示模式参数、错误隔离、中文参数往返和多客户端请求串行化。`tests/test_display.py`验证设置淡入期间不半接入、箭头端点命中、取消与单次应用、字体复制、旧响应隔离和超时状态。`tests/test_manager.py`另外验证自有控件调整的参数及所有权边界。这些协议测试不代表游戏效果验证。真实游戏验证与截图检查单独记录在`docs/validation.md`。
 
 `ui_adjust`仅作用于加载器拥有的`MML_`及`BUTTON_MAXY_MODS`控件，不允许修改原版控件、执行代码或调用地址。支持`position`、`size`、`scale`、`color`及自有图片的默认`channel`，拒绝空分量、非有限数字和越界数值。更改只在当前会话保留，正式布局需要修改运行库并重新部署。最小化时截图工具明确报错，不能将标题条当作游戏画面。

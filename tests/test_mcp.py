@@ -71,7 +71,11 @@ def main():
         assert by_id[1]['error']['code'] == -32002
         assert by_id[2]['result']['serverInfo']['name'] == 'MaxyModLoader'
         tools = by_id[3]['result']['tools']
-        assert len(tools) == 15 and len({tool['name'] for tool in tools}) == 15
+        assert len(tools) == 17 and len({tool['name'] for tool in tools}) == 17
+        assert next(tool for tool in tools if tool['name'] == 'settings_state')['annotations']['readOnlyHint']
+        display = next(tool for tool in tools if tool['name'] == 'display_mode')
+        assert display['inputSchema']['required'] == ['mode']
+        assert display['annotations']['readOnlyHint'] is False
         assert not by_id[4]['result']['isError']
         assert by_id[5]['result']['isError'] and by_id[6]['result']['isError']
         assert by_id[7]['error']['code'] == -32602
@@ -79,7 +83,24 @@ def main():
         assert received == [('ui_click', '中文按钮'), ('game_state', '')]
         assert {reply['error']['code'] for reply in replies if reply['id'] is None} == {-32700, -32600}
         assert not result.stderr
-        print('通过：MCP握手、十五项工具、错误隔离和Unicode传输')
+        print('通过：MCP握手、十七项工具、错误隔离和Unicode传输')
+        #独立客户端并发时必须依次取得锁且各自收到关联响应
+        stop.clear()
+        received.clear()
+        worker = threading.Thread(target=serve_files, args=(directory, stop, received), daemon=True)
+        worker.start()
+        clients = [subprocess.Popen(['dotnet', str(SERVER), 'rpc', game, 'ui_click', name],
+                    text=True, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE) for name in ['并发甲', '并发乙']]
+        try:
+            replies = [client.communicate(timeout=20) for client in clients]
+        finally:
+            stop.set()
+            worker.join(timeout=2)
+        for client, (output, error), name in zip(clients, replies, ['并发甲', '并发乙']):
+            assert client.returncode == 0 and not error
+            assert json.loads(output)['result']['argument'] == name
+        assert sorted(received) == [('ui_click', '并发乙'), ('ui_click', '并发甲')]
+        print('通过：独立客户端并发传输不覆盖请求')
 
 
 if __name__ == '__main__':

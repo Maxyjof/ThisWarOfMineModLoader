@@ -36,6 +36,11 @@ public static class LuaBundle
         //单独作用域使没有原生UI时的提前返回不会跳过后续模组加载
         text.Append("local install_manager, manager_error = compile(").Append(Quote(managerReader.ReadToEnd()))
             .Append(", '@MaxyModLoader/manager.lua')\nif not install_manager then error(manager_error) end\ninstall_manager()\n");
+        //显示模式属于内置功能并复用管理模块的中文文字编码
+        using var displayResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.display.lua")!;
+        using var displayReader = new StreamReader(displayResource, Utf8);
+        text.Append("local install_display, display_error = compile(").Append(Quote(displayReader.ReadToEnd()))
+            .Append(", '@MaxyModLoader/display.lua')\nif not install_display then error(display_error) end\ninstall_display()\n");
         //控制桥属于内置功能没有任何模组时也随加载器自动安装
         using var mcpResource = Assembly.GetExecutingAssembly().GetManifestResourceStream("MaxyModLoader.Runtime.mcp.lua")!;
         using var mcpReader = new StreamReader(mcpResource, Utf8);

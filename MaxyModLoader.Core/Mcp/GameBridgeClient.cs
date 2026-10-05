@@ -13,6 +13,11 @@ public sealed class GameBridgeClient
     private readonly string game;
 
     /// <summary>
+    /// 返回此桥接客户端绑定的游戏安装目录
+    /// </summary>
+    public string GameDirectory => game;
+
+    /// <summary>
     /// 绑定单个游戏安装中的本地MCP目录
     /// </summary>
     public GameBridgeClient(string gameDirectory)
@@ -29,7 +34,7 @@ public sealed class GameBridgeClient
     public async Task<JsonElement> CallAsync(string command, string argument = "", TimeSpan? timeout = null)
     {
         //跨进程独占锁避免两个MCP客户端覆盖彼此请求
-        using var lease = new FileStream(Path.Combine(directory, "client.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        using var lease = await AcquireLeaseAsync(timeout ?? TimeSpan.FromSeconds(8));
         var id = Guid.NewGuid().ToString("N");
         var request = Path.Combine(directory, "request.txt");
         if (File.Exists(request)) throw new IOException("游戏仍有待处理命令请检查状态后再发起操作");
@@ -68,6 +73,24 @@ public sealed class GameBridgeClient
         }
         catch (IOException) { }
         throw new TimeoutException("游戏MCP控制桥未及时返回执行结果未确认请勿自动重试状态变更命令");
+    }
+
+    /// <summary>
+    /// 等待其他加载器客户端完成当前命令再取得独占传输锁
+    /// </summary>
+    private async Task<FileStream> AcquireLeaseAsync(TimeSpan limit)
+    {
+        //后台显示服务与AI客户端共享同一桥只等待锁不会重放游戏命令
+        var watch = Stopwatch.StartNew();
+        while (true)
+        {
+            try { return new FileStream(Path.Combine(directory, "client.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+            catch (IOException exception) when ((exception.HResult & 0xffff) is 32 or 33)
+            {
+                if (watch.Elapsed >= limit) throw new TimeoutException("其他加载器客户端正在处理游戏命令");
+                await Task.Delay(50);
+            }
+        }
     }
 
     /// <summary>

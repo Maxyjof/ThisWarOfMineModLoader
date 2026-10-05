@@ -5,6 +5,7 @@ using MaxyModLoader.Archives;
 using MaxyModLoader.Deployment;
 using MaxyModLoader.Mods;
 using MaxyModLoader.Runtime;
+using MaxyModLoader.Windowing;
 
 namespace MaxyModLoader.Tests;
 
@@ -101,6 +102,45 @@ internal static class Program
             Reject<InvalidDataException>(() => LuaBundle.EncodeSetting(array.RootElement));
         });
         Test("Main资源哈希与实测值一致", () => Assert(ResourceHash.Compute("/Scripts/Main.lua") == MainHash));
+
+        //显示辅助只接收固定模式并保留可见的普通窗口几何
+        Test("显示请求拒绝额外命令和无效关联标识", () =>
+        {
+            var id = new string('a', 32);
+            foreach (var mode in new[] { "windowed", "fullscreen", "borderless" })
+                Assert(DisplayHost.ParseRequest($"MMLD1\n{id}\n{mode}\n") == (id, mode));
+            foreach (var value in new[] { $"MMLD1\n{id}\nborderless\nextra", $"MMLD1\n{id}\nborderless & command\n", "MMLD1\ninvalid\nwindowed\n" })
+                Reject<InvalidDataException>(() => DisplayHost.ParseRequest(value));
+        });
+        Test("普通窗口保持已有位置且越界时适配负坐标显示器", () =>
+        {
+            Assert(GameDisplay.FitWindowBounds(100, 80, 1280, 720, 0, 0, 2560, 1400) == new GameDisplay.WindowBounds(100, 80, 1280, 720));
+            var fitted = GameDisplay.FitWindowBounds(-11, -28, 2582, 1466, -1920, 0, 1920, 1040);
+            Assert(fitted.Left >= -1920 && fitted.Top >= 0 && fitted.Left + fitted.Width <= 0 && fitted.Top + fitted.Height <= 1040);
+            Assert(Math.Abs((double)fitted.Width / fitted.Height - 2582.0 / 1466) < 0.01);
+            Reject<ArgumentException>(() => GameDisplay.FitWindowBounds(0, 0, int.MaxValue, 720, 0, 0, 1920, 1080));
+        });
+        Test("辅助恢复只移除自有指纹文件且拒绝第三方修改", () => InWorkspace(root =>
+        {
+            //合成运行文件核验复制清单不将日志或个人配置带入安装
+            var source = Path.Combine(root, "source"); Directory.CreateDirectory(source);
+            foreach (var name in new[] { "MaxyModLoader.dll", "MaxyModLoader.deps.json", "MaxyModLoader.runtimeconfig.json", "MaxyModLoader.Core.dll" })
+                File.WriteAllText(Path.Combine(source, name), name);
+            File.WriteAllText(Path.Combine(source, "private.txt"), "keep");
+            var game = Path.Combine(root, "game");
+            DisplayHost.Install(game, source);
+            var host = Path.Combine(game, "MaxyModLoader", "host");
+            Assert(!File.Exists(Path.Combine(host, "private.txt")));
+            var binary = Path.Combine(host, "MaxyModLoader.dll");
+            File.AppendAllText(binary, "changed");
+            Reject<InvalidDataException>(() => DisplayHost.Uninstall(game));
+            Assert(File.Exists(Path.Combine(host, "MaxyModLoader.Core.dll")));
+            File.WriteAllText(binary, "MaxyModLoader.dll");
+            File.WriteAllText(Path.Combine(host, "other.txt"), "keep");
+            DisplayHost.Uninstall(game);
+            Assert(!File.Exists(binary) && !File.Exists(Path.Combine(game, "MaxyModLoader", "display-host.vbs")));
+            Assert(File.Exists(Path.Combine(host, "other.txt")));
+        }));
 
         //使用合成容器验证格式损坏、资源替换与长度限制
         Test("容器替换保留其他资源和原文件", () => InWorkspace(root =>
