@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.mcp.echo",
+  "name": "结构化MCP工具示例",
+  "version": "1.0.0",
+  "author": "MaxyModLoader",
+  "description": "展示声明MCP工具能力、参数模式和游戏主线程回调",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {},
+  "conflicts": [],
+  "capabilities": ["mcp.tools"],
+  "features": ["结构化工具发现", "标量参数校验", "游戏主线程回调"],
+  "compatibility": "MaxyModLoaderModdingAPI1.0",
+  "license": "MIT"
+}

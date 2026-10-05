@@ -151,11 +151,48 @@ assert(not TWOMLoader.load_mod("rules.rollback", [[return {on_load = function(c)
     error("expected rule rollback")
 end}]], {}))
 for _, rule in ipairs(MaxyModLoader.rule_snapshot()) do assert(rule.id ~= "rules.rollback:temporary") end
+
+--验证模组MCP动作必须获权且只接收符合声明模式的标量参数
+assert(not TWOMLoader.load_mod("action.denied", [[return {on_load = function(c)
+    c.actions.register("echo", {description = "未授权", properties = {}}, function() return true end)
+end}]], {}))
+assert(TWOMLoader.load_mod("action.echo", [[return {on_load = function(c)
+    c.actions.register("echo", {description = "回声工具", properties = {
+        text = {type = "string"}, count = {type = "integer"}, active = {type = "boolean"}
+    }, required = {"text"}, read_only = true}, function(arguments)
+        return {text = arguments.text, count = arguments.count or 1, active = arguments.active or false}
+    end)
+end}]], {}, {capabilities = {"mcp.tools"}}))
+local action_rows = MaxyModLoader.actions.list()
+assert(#action_rows == 1 and action_rows[1].id == "action.echo:echo" and action_rows[1].readOnly)
+local action_result = MaxyModLoader.actions.call("action.echo:echo", {text = "中文\n消息", count = 2, active = true})
+assert(action_result.text == "中文\n消息" and action_result.count == 2 and action_result.active)
+assert(not pcall(MaxyModLoader.actions.call, "action.echo:echo", {text = "ok", invalid = true}))
+assert(not pcall(MaxyModLoader.actions.call, "action.echo:echo", {text = "ok", count = 1.5}))
+assert(not TWOMLoader.load_mod("action.rollback", [[return {on_load = function(c)
+    c.actions.register("hidden", {description = "失败动作", properties = {}}, function() return true end)
+    error("expected action rollback")
+end}]], {}, {capabilities = {"mcp.tools"}}))
+assert(#MaxyModLoader.actions.list() == 1)
 ''')
 assert any("expected entry failure" in message for message in messages)
 assert any("expected callback failure" in message for message in messages)
 assert any("invalid event subscription" in message for message in messages)
-print("通过：Lua5.1入口隔离、依赖失败、事件参数、订阅快照和函数包装")
+print("通过：Lua5.1入口隔离、规则API、模组MCP动作、事件与服务隔离")
+
+#用最小主线程替身验证内置桥对模组动作的实际解析和分发
+runtime.execute("LuaGameDelegate = {OnTick = function() end, OnPauseTick = function() end}; gGame = {}; gGameDelegate = {}")
+runtime.execute(pathlib.Path("MaxyModLoader.Core/Runtime/mcp.lua").read_text(encoding="utf-8"))
+runtime.execute(r'''
+--模组动作列表仅展示有权限且已成功加载的动作
+local actions = MaxyModLoader.mcp.dispatch("mod_actions_list").actions
+assert(#actions == 1 and actions[1].id == "action.echo:echo")
+--结构参数在Lua侧解码后仍经过动作注册表的模式校验
+local result = MaxyModLoader.mcp.dispatch("mod_action_call", "action.echo:echo\n616374697665|b|74727565\n636f756e74|n|32\n74657874|s|e4bda0e5a5bd0ae5b9b8e5ad98e88085\n")
+local expected = string.char(228,189,160,229,165,189,10,229,185,184,229,173,152,232,128,133)
+assert(result.result.text == expected and result.result.count == 2 and result.result.active)
+''')
+print("通过：Lua5.1内置游戏桥解析并分发模组MCP动作")
 
 #额外验证由C#工具生成的完整入口源码实际可以执行
 bundle = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/tests/bundle.lua")

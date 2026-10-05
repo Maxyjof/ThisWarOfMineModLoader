@@ -51,6 +51,8 @@ MCP客户端启动配置使用实际的绝对路径：
 | `settings_state` | 无 | 读取原版设置行、已确认模式、待应用选择、后台服务与错误状态 |
 | `rule_list` | 无 | 只读列出运行时模组规则、当前值、约束范围及提供方 |
 
+除十九项固定工具外，`tools/list`会读取游戏中成功加载的模组工具。模组必须在清单`capabilities`中声明`mcp.tools`，并通过`context.actions.register`提交描述、扁平参数模式和游戏主线程回调。工具名称以`mod_`开头，调用参数由固定服务重新校验；这不会开放任意Lua执行。模组工具能力可调用游戏Lua全局对象，因此模组本身仍必须来自可信来源，详见[ModdingAPI文档](modding-api.md)
+
 名称重复时`ui_click`拒绝调用，改用`ui_tree`提供的完整路径。调试新增控件时应使用`ui_hit_test`和`ui_click_point`检查实际命中，而不能只调用名字对应的处理函数。`mod_manager`返回当前鼠标命中、最近按下或释放边沿及滚轮输入。列表和介绍各自保存偏移，更换所选模组时只将介绍恢复到顶部。`mod_scroll`与真实滚轮共用边界和内容定位逻辑，用于检查原生裁剪与滑块位置，不发送系统滚轮事件。MCP模拟点击与真实鼠标点击分别验证，工具返回成功只表示已触发请求，场景切换、动画和渲染完成需要后续状态读取与截图确认。
 
 截图仅定位指定安装目录的唯一游戏进程，在独立辅助进程中捕获游戏客户区，避免后台窗口绘制卡住MCP服务，也避免普通窗口的非客户区旧像素混入画面。捕获失败或黑帧会明确报错，不能把工具返回的文字状态当作截图验证。PNG保存到游戏目录`MaxyModLoader/mcp/screenshots`，MCP响应同时提供`image/png`图像内容。系统接口依据：[PrintWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-printwindow)、[GetDIBits](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getdibits)。

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text;
+using System.Text.RegularExpressions;
 using MaxyModLoader.Windowing;
 
 namespace MaxyModLoader.Mcp;
@@ -8,6 +10,12 @@ namespace MaxyModLoader.Mcp;
 /// </summary>
 internal sealed record GameTool(string Name, string Command, string Description, string? Parameter = null,
     string ParameterType = "string", bool ReadOnly = true);
+
+/// <summary>
+/// 描述由已加载模组显式注册的MCP工具
+/// </summary>
+internal sealed record ModGameTool(string Name, string ActionId, string Description, JsonElement InputSchema,
+    bool ReadOnly, bool Destructive);
 
 /// <summary>
 /// 提供兼容初始化握手的本地标准输入输出MCP工具服务
@@ -88,49 +96,61 @@ public sealed class McpServer(GameBridgeClient bridge)
         if (!initialized) return Error(id, -32002, "请先初始化MCP服务");
         if (name == "tools/list")
         {
-            //确定性排序和明确参数模式便于客户端稳定发现工具
-            var tools = Tools.Select(tool => new { name = tool.Name, description = tool.Description,
+            //将固定工具与已加载模组提供的结构化工具合并
+            var modTools = await ReadModToolsAsync();
+            var tools = Tools.Select(tool => (object)new { name = tool.Name, description = tool.Description,
                 inputSchema = new { type = "object", properties = tool.Parameter is null ? new Dictionary<string, object>() :
                     new Dictionary<string, object> { [tool.Parameter] = new { type = tool.ParameterType } },
                     required = tool.Parameter is null ? Array.Empty<string>() : new[] { tool.Parameter }, additionalProperties = false },
-                annotations = new { readOnlyHint = tool.ReadOnly, destructiveHint = false, idempotentHint = tool.ReadOnly || tool.Name == "set_pause", openWorldHint = false } });
+                annotations = new { readOnlyHint = tool.ReadOnly, destructiveHint = false, idempotentHint = tool.ReadOnly || tool.Name == "set_pause", openWorldHint = false } })
+                .Concat(modTools.Select(tool => (object)new { name = tool.Name, description = tool.Description,
+                    inputSchema = tool.InputSchema,
+                    annotations = new { readOnlyHint = tool.ReadOnly, destructiveHint = tool.Destructive,
+                        idempotentHint = tool.ReadOnly, openWorldHint = false } })).ToArray();
             return Result(id, new { tools });
         }
         if (name != "tools/call") return Error(id, -32601, "不支持的方法");
         if (!request.TryGetProperty("params", out var parameters) || !parameters.TryGetProperty("name", out var toolName))
             return Error(id, -32602, "工具调用缺少名称");
         var selected = Tools.FirstOrDefault(tool => tool.Name == toolName.GetString());
-        if (selected is null) return Error(id, -32602, "未知工具");
+        var modTool = selected is null ? (await ReadModToolsAsync()).FirstOrDefault(tool => tool.Name == toolName.GetString()) : null;
+        if (selected is null && modTool is null) return Error(id, -32602, "未知工具");
         try
         {
             //再次验证参数而不是仅依赖客户端遵守输入模式
             var argument = "";
-            if (parameters.TryGetProperty("arguments", out var arguments))
+            var arguments = parameters.TryGetProperty("arguments", out var suppliedArguments) ? suppliedArguments : default;
+            if (modTool is not null)
             {
-                if (arguments.ValueKind != JsonValueKind.Object || arguments.EnumerateObject().Any(property => property.Name != selected.Parameter))
+                //模组工具参数按其运行时JSON模式再次校验后编码
+                argument = EncodeModActionArguments(modTool, arguments);
+            }
+            else if (arguments.ValueKind != JsonValueKind.Undefined)
+            {
+                if (arguments.ValueKind != JsonValueKind.Object || arguments.EnumerateObject().Any(property => property.Name != selected!.Parameter))
                     throw new ArgumentException("工具参数包含未知字段");
             }
-            if (selected.Parameter is { } parameter)
+            if (modTool is null && selected!.Parameter is { } parameter)
             {
                 if (arguments.ValueKind != JsonValueKind.Object || !arguments.TryGetProperty(parameter, out var value))
                     throw new ArgumentException("工具调用缺少必填参数");
                 argument = selected.ParameterType == "boolean" ? value.GetBoolean().ToString().ToLowerInvariant() : value.GetString()
                     ?? throw new ArgumentException("参数不能为空");
             }
-            if (selected.Command == "screenshot")
+            if (selected is { Command: "screenshot" })
             {
                 //截图由受限辅助进程读取画面不在游戏主线程等待窗口消息
                 var capture = await bridge.CaptureAsync();
                 return Result(id, new { content = new object[] { new { type = "image", data = capture.Data, mimeType = "image/png" },
                     new { type = "text", text = capture.Path } }, isError = false });
             }
-            if (selected.Command == "display_mode")
+            if (selected is { Command: "display_mode" })
             {
                 //窗口模式在游戏外按已核验的游戏进程和Windows公开窗口接口调整
                 var state = await DisplayHost.RequestAsync(bridge.GameDirectory, argument);
                 return Result(id, new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(state) } }, isError = false });
             }
-            var reply = await bridge.CallAsync(selected.Command, argument);
+            var reply = await bridge.CallAsync(modTool is null ? selected!.Command : "mod_action_call", argument);
             var success = reply.GetProperty("ok").GetBoolean();
             return Result(id, new { content = new[] { new { type = "text", text = reply.GetRawText() } }, isError = !success });
         }
@@ -139,6 +159,121 @@ public sealed class McpServer(GameBridgeClient bridge)
             //游戏失败属于工具结果使模型能读取错误并修正操作
             return Result(id, new { content = new[] { new { type = "text", text = exception.Message } }, isError = true });
         }
+    }
+
+    /// <summary>
+    /// 从游戏主线程读取已加载模组发布的动作及参数模式
+    /// </summary>
+    private async Task<IReadOnlyList<ModGameTool>> ReadModToolsAsync()
+    {
+        try
+        {
+            //游戏未启动或旧版桥接不可用时保留固定工具服务
+            var reply = await bridge.CallAsync("mod_actions_list", timeout: TimeSpan.FromSeconds(2));
+            if (!reply.GetProperty("ok").GetBoolean()) return Array.Empty<ModGameTool>();
+            using var document = JsonDocument.Parse(reply.GetProperty("result").GetRawText());
+            if (!document.RootElement.TryGetProperty("actions", out var actions) || actions.ValueKind != JsonValueKind.Array)
+                return Array.Empty<ModGameTool>();
+            var result = new List<ModGameTool>();
+            var names = Tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+            foreach (var action in actions.EnumerateArray())
+            {
+                //验证游戏返回的标识和输入模式防止损坏清单污染MCP工具发现
+                var actionId = action.GetProperty("id").GetString();
+                var owner = action.GetProperty("owner").GetString();
+                var actionName = action.GetProperty("name").GetString();
+                if (actionId is null || owner is null || actionName is null || actionId.Length > 192 ||
+                    !Regex.IsMatch(actionId, "^[a-z][a-z0-9._-]*:[a-z][a-z0-9_]*$") ||
+                    !Regex.IsMatch(owner, "^[a-z][a-z0-9._-]*$") || !Regex.IsMatch(actionName, "^[a-z][a-z0-9_]*$")) continue;
+                var schema = action.GetProperty("inputSchema");
+                if (!IsSupportedActionSchema(schema)) continue;
+                var ownerName = owner.Replace('.', '_').Replace('-', '_');
+                if (ownerName.Length > 48) ownerName = ownerName[..48];
+                var suffix = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(actionId)))[..12].ToLowerInvariant();
+                var toolName = $"mod_{ownerName}_{actionName}_{suffix}";
+                if (!names.Add(toolName)) continue;
+                result.Add(new ModGameTool(toolName, actionId,
+                    $"模组动作{owner}：{action.GetProperty("description").GetString()}", schema.Clone(),
+                    action.GetProperty("readOnly").GetBoolean(), action.GetProperty("destructive").GetBoolean()));
+            }
+            return result;
+        }
+        catch (Exception exception) when (exception is IOException or TimeoutException or JsonException or
+            InvalidOperationException or KeyNotFoundException or ArgumentException)
+        {
+            //动作发现失败不影响内置固定工具的使用
+            return Array.Empty<ModGameTool>();
+        }
+    }
+
+    /// <summary>
+    /// 检查模组动作只暴露扁平标量参数且没有开放属性
+    /// </summary>
+    private static bool IsSupportedActionSchema(JsonElement schema)
+    {
+        //限制为对象、简单类型及有界属性数便于跨进程稳定编码
+        if (schema.ValueKind != JsonValueKind.Object || !schema.TryGetProperty("type", out var type) ||
+            type.GetString() != "object" || !schema.TryGetProperty("properties", out var properties) ||
+            properties.ValueKind != JsonValueKind.Object || properties.EnumerateObject().Count() > 32 ||
+            !schema.TryGetProperty("required", out var required) || required.ValueKind != JsonValueKind.Array ||
+            !schema.TryGetProperty("additionalProperties", out var additional) || additional.ValueKind != JsonValueKind.False)
+            return false;
+        foreach (var property in properties.EnumerateObject())
+        {
+            //所有动作参数均使用字符串、数值、整数或布尔标量
+            if (!Regex.IsMatch(property.Name, "^[A-Za-z][A-Za-z0-9_]*$") || property.Value.ValueKind != JsonValueKind.Object ||
+                !property.Value.TryGetProperty("type", out var propertyType) || propertyType.ValueKind != JsonValueKind.String ||
+                propertyType.GetString() is not ("string" or "number" or "integer" or "boolean")) return false;
+        }
+        foreach (var item in required.EnumerateArray())
+            if (item.ValueKind != JsonValueKind.String || !properties.TryGetProperty(item.GetString()!, out _)) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// 按动作声明校验参数并编码为无歧义的逐字段传输格式
+    /// </summary>
+    private static string EncodeModActionArguments(ModGameTool tool, JsonElement arguments)
+    {
+        //逐字段十六进制编码避免中文、分隔符和换行破坏游戏桥协议
+        if (arguments.ValueKind != JsonValueKind.Object) throw new ArgumentException("模组动作参数必须是JSON对象");
+        var schema = tool.InputSchema;
+        var properties = schema.GetProperty("properties");
+        var values = arguments.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal).ToArray();
+        foreach (var property in values)
+        {
+            //拒绝未声明字段和与模式不一致的JSON类型
+            if (!properties.TryGetProperty(property.Name, out var definition)) throw new ArgumentException($"未知模组动作参数：{property.Name}");
+            var expected = definition.GetProperty("type").GetString();
+            var valid = expected switch
+            {
+                "string" => property.Value.ValueKind == JsonValueKind.String,
+                "boolean" => property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False,
+                "integer" => property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt64(out var integer) && Math.Abs((double)integer) <= 9007199254740991d,
+                "number" => property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetDouble(out var number) && double.IsFinite(number),
+                _ => false
+            };
+            if (!valid) throw new ArgumentException($"模组动作参数类型错误：{property.Name}");
+        }
+        foreach (var required in schema.GetProperty("required").EnumerateArray())
+            if (!arguments.TryGetProperty(required.GetString()!, out _)) throw new ArgumentException($"缺少模组动作参数：{required.GetString()}");
+
+        var encoded = new StringBuilder(tool.ActionId).Append('\n');
+        foreach (var property in values)
+        {
+            var definition = properties.GetProperty(property.Name);
+            var expected = definition.GetProperty("type").GetString();
+            var kind = expected == "string" ? 's' : expected == "boolean" ? 'b' : 'n';
+            var value = expected switch
+            {
+                "string" => property.Value.GetString()!,
+                "boolean" => property.Value.GetBoolean() ? "true" : "false",
+                _ => property.Value.GetRawText()
+            };
+            encoded.Append(Convert.ToHexString(Encoding.UTF8.GetBytes(property.Name)).ToLowerInvariant()).Append('|')
+                .Append(kind).Append('|').Append(Convert.ToHexString(Encoding.UTF8.GetBytes(value)).ToLowerInvariant()).Append('\n');
+        }
+        return encoded.ToString();
     }
 
     /// <summary>

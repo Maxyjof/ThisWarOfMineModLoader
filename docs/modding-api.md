@@ -59,6 +59,28 @@ context.rules.set("daily_fatigue_rate", 0.8)
 
 `MaxyModLoader.rule_snapshot()`返回按ID稳定排序的规则定义与当前值，内置MCP的`rule_list`工具提供只读查询
 
+## 模组注册的MCP工具
+
+模组清单只有在`capabilities`中明确填写`mcp.tools`后，才可以调用`context.actions.register(name, definition, callback)`注册工具。客户端调用`tools/list`时会从正在运行的游戏读取工具定义，之后可像调用加载器内置工具一样调用模组工具。回调在游戏Lua主线程执行
+
+```lua
+context.actions.register("echo", {
+    description = "回传文本用于检查结构化参数",
+    properties = {
+        text = {type = "string", description = "输入文本"},
+        count = {type = "integer", description = "重复次数"}
+    },
+    required = {"text"},
+    read_only = true
+}, function(arguments)
+    return {text = arguments.text, count = arguments.count or 1}
+end)
+```
+
+参数模式限32个扁平字段，类型为`string`、`number`、`integer`或`boolean`，不接受任意函数、Lua源码、嵌套对象或自由文件路径。`required`列出必填键；未列出的键会被拒绝。`read_only`和`destructive`用于生成MCP工具提示，不代替回调自身的游戏状态检查。动作注册随模组入口失败撤销，普通取消函数可撤销已注册动作
+
+授予`mcp.tools`的模组可以注册改变游戏的动作，并以模组代码本身的权限访问Lua全局变量；Lua模组不是安全沙箱，只应加载可信来源。内置桥不会因为该能力开放任意代码执行
+
 ## 原生内容与设置配置
 
 `nativeContentFile`声明在构建期间通过本机已核验的官方ModTools生成物品、配方、地图掉落和商人货单差异。该路径是离线内容API，不代表运行时文件挂载或新模型导入，参见[原生内容说明](native-content.md)
@@ -69,4 +91,4 @@ context.rules.set("daily_fatigue_rate", 0.8)
 
 依赖模组须在提供方之后加载。加载器版本升级不应在补丁版本移除API行为；增加可选方法时提升次版本；移除或改变既有契约时提升主版本。模组可在入口中检查`context.api_version`并对不兼容版本提前报错
 
-`examples/rule-api`演示规则提供方、显式依赖、跨模组调节和变更监听。Lua5.1运行时测试覆盖规则类型、边界、依赖授权、事件通知、快照排序和入口失败回滚。真实游戏玩法是否受规则影响，必须为对应适配器单独提供游戏内验证记录
+`examples/rule-api`演示规则提供方、显式依赖、跨模组调节和变更监听。`examples/mcp-tools`演示声明工具能力和结构化动作。Lua5.1运行时测试覆盖规则类型、边界、依赖授权、事件通知、快照排序和入口失败回滚；MCP协议测试使用真实服务进程检查工具发现、类型和参数编码。真实游戏玩法是否受规则或动作影响，必须为对应适配器单独提供游戏内验证记录

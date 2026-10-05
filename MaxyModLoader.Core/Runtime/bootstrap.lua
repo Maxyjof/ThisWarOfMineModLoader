@@ -4,7 +4,9 @@ local loaded = {}
 local listeners = {}
 local services = {}
 local rules = {}
+local actions = {}
 local api = { name = "MaxyModLoader", version = "0.3.0", api_version = "1.0.0", loaded = loaded, mods = {}, mod_by_id = {} }
+api.actions = {}
 MaxyModLoader = api
 --保留旧API名称使已经发布的模组继续兼容
 TWOMLoader = api
@@ -83,6 +85,9 @@ local function context_for(id, dependencies, options)
     local owned_wrappers = {}
     local owned_rules = {}
     local owned_rule_changes = {}
+    local owned_actions = {}
+    local allowed_capabilities = {}
+    for _, capability in ipairs(options.capabilities or {}) do allowed_capabilities[capability] = true end
     context.log = function(message) log(id, message) end
 
     --<summary>
@@ -253,10 +258,49 @@ local function context_for(id, dependencies, options)
         table.insert(owned_listeners, subscription)
         return function() subscription.active = false end
     end
+    context.actions = {}
+    --<summary>
+    --注册需要显式清单能力授权的结构化MCP工具
+    --</summary>
+    context.actions.register = function(name, definition, callback)
+        --工具只接受有限的扁平标量参数避免任意Lua或复杂对象穿过跨进程协议
+        require_condition(allowed_capabilities["mcp.tools"], "manifest capability mcp.tools is required")
+        require_condition(type(name) == "string" and #name <= 48 and name:match("^[a-z][a-z0-9_]*$"), "invalid action name")
+        require_condition(type(definition) == "table" and type(definition.description) == "string" and
+            #definition.description > 0 and #definition.description <= 512, "invalid action description")
+        require_condition(type(definition.properties) == "table" and type(definition.required or {}) == "table", "invalid action schema")
+        require_condition(type(callback) == "function", "action callback must be a function")
+        local property_count = 0
+        for key, property in pairs(definition.properties) do
+            property_count = property_count + 1
+            require_condition(property_count <= 32 and type(key) == "string" and #key <= 64 and
+                key:match("^[A-Za-z][A-Za-z0-9_]*$") and type(property) == "table", "invalid action property")
+            require_condition(property.type == "string" or property.type == "number" or
+                property.type == "integer" or property.type == "boolean", "unsupported action property type")
+            require_condition(property.description == nil or type(property.description) == "string" and #property.description <= 256,
+                "invalid action property description")
+        end
+        local required = {}
+        for _, key in ipairs(definition.required or {}) do
+            require_condition(type(key) == "string" and definition.properties[key] ~= nil and not required[key], "invalid required action property")
+            required[key] = true
+        end
+        require_condition(definition.read_only == nil or type(definition.read_only) == "boolean", "invalid action read-only hint")
+        require_condition(definition.destructive == nil or type(definition.destructive) == "boolean", "invalid action destructive hint")
+        local action_id = id .. ":" .. name
+        require_condition(actions[action_id] == nil, "duplicate action: " .. action_id)
+        local action = {id = action_id, owner = id, name = name, description = definition.description,
+            input_schema = {type = "object", properties = definition.properties, required = definition.required or {}, additionalProperties = false},
+            callback = callback, read_only = definition.read_only == true, destructive = definition.destructive == true, active = true}
+        actions[action_id] = action
+        table.insert(owned_actions, action)
+        return function() action.active = false end
+    end
     local rollback = function()
         --保留其他模组包装和订阅只禁用当前入口新增的注册项
         for _, item in ipairs(owned_listeners) do item.active = false end
         for _, item in ipairs(owned_wrappers) do item.active = false end
+        for _, action in ipairs(owned_actions) do action.active = false end
         --失败入口撤销其对其他模组规则的改值并通知仍有效的监听者
         for key, previous in pairs(owned_rule_changes) do
             local rule = rules[key]
@@ -287,6 +331,48 @@ function api.rule_snapshot()
     end
     table.sort(result, function(left, right) return left.id < right.id end)
     return result
+end
+
+--<summary>
+--返回已成功加载模组注册的结构化MCP工具定义
+--</summary>
+function api.actions.list()
+    --未成功加载的模组或已撤销动作不会暴露给MCP客户端
+    local result = {}
+    for _, action in pairs(actions) do
+        if action.active and loaded[action.owner] then
+            table.insert(result, {id = action.id, owner = action.owner, name = action.name,
+                description = action.description, inputSchema = action.input_schema,
+                readOnly = action.read_only, destructive = action.destructive})
+        end
+    end
+    table.sort(result, function(left, right) return left.id < right.id end)
+    return result
+end
+
+--<summary>
+--校验结构化动作参数后在游戏主线程调用模组回调
+--</summary>
+function api.actions.call(action_id, arguments)
+    --动作名只解析注册表中的精确ID不会编译或执行客户端文本
+    local action = actions[action_id]
+    require_condition(action and action.active and loaded[action.owner], "mod action is unavailable")
+    require_condition(type(arguments) == "table", "mod action arguments must be an object")
+    for key, value in pairs(arguments) do
+        local property = action.input_schema.properties[key]
+        require_condition(property ~= nil, "unknown mod action argument: " .. tostring(key))
+        local kind = type(value)
+        if property.type == "integer" then
+            require_condition(kind == "number" and value == value and math.abs(value) < math.huge and value % 1 == 0, "mod action argument must be an integer")
+        elseif property.type == "number" then
+            require_condition(kind == "number" and value == value and math.abs(value) < math.huge, "mod action argument must be a finite number")
+        else
+            require_condition(kind == property.type, "mod action argument has the wrong type")
+        end
+        if kind == "string" then require_condition(#value <= 4096, "mod action string argument is too long") end
+    end
+    for _, key in ipairs(action.input_schema.required) do require_condition(arguments[key] ~= nil, "missing mod action argument: " .. key) end
+    return action.callback(arguments)
 end
 
 --<summary>

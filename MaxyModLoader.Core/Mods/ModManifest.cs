@@ -24,6 +24,7 @@ public sealed record ModManifest
     public bool Enabled { get; init; } = true;
     public Dictionary<string, string> Dependencies { get; init; } = new(StringComparer.Ordinal);
     public string[] Conflicts { get; init; } = [];
+    public string[] Capabilities { get; init; } = [];
     public Dictionary<string, string> Modules { get; init; } = new(StringComparer.Ordinal);
     public Dictionary<string, JsonElement> Settings { get; init; } = new(StringComparer.Ordinal);
 
@@ -44,8 +45,11 @@ public sealed record ModManifest
         ValidateId(Id);
         if (string.IsNullOrWhiteSpace(Name)) throw new InvalidDataException("模组名称不能为空。");
         _ = ModVersion.Parse(Version);
-        if (Dependencies is null || Conflicts is null || Modules is null || Settings is null)
-            throw new InvalidDataException("依赖、冲突、模块和配置不能为null");
+        if (Dependencies is null || Conflicts is null || Capabilities is null || Modules is null || Settings is null)
+            throw new InvalidDataException("依赖、冲突、能力、模块和配置不能为null");
+        //能力采用明确白名单避免模组静默取得尚未定义的高权限
+        if (Capabilities.Any(capability => capability != "mcp.tools") || Capabilities.Distinct(StringComparer.Ordinal).Count() != Capabilities.Length)
+            throw new InvalidDataException("模组能力包含未知或重复项");
         //管理界面读取原始UTF8文本不允许空引用或无效网页协议
         if (Author is null || Description is null || Description.Length > 16384 || NativeContentFile is null ||
             NativeContentFile.Length > 240 || NativeContentFile.Length > 0 && Path.GetExtension(NativeContentFile) != ".json" || DescriptionFile is null ||

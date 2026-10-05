@@ -67,6 +67,7 @@ public static class LuaBundle
                 var module = Utf8.GetString(File.ReadAllBytes(ModCatalog.ResolveEntry(mod.Directory, path))).TrimStart('\ufeff');
                 text.Append('[').Append(Quote(name)).Append("] = ").Append(Quote(module)).Append(',');
             }
+            text.Append("}, capabilities = {").AppendJoin(", ", mod.Manifest.Capabilities.Order(StringComparer.Ordinal).Select(Quote));
             text.Append("}, config = {");
             foreach (var (name, value) in mod.Manifest.Settings.OrderBy(pair => pair.Key, StringComparer.Ordinal))
                 text.Append('[').Append(Quote(name)).Append("] = ").Append(EncodeSetting(value)).Append(',');
@@ -89,6 +90,7 @@ public static class LuaBundle
             .Append(",description_document=").Append(MarkdownContent.Encode(MarkdownContent.Parse(manifest.Description)))
             .Append(",compatibility=").Append(Quote(manifest.Compatibility)).Append(",website=").Append(Quote(manifest.Website))
             .Append(",license=").Append(Quote(manifest.License)).Append(",enabled=").Append(manifest.Enabled ? "true" : "false")
+            .Append(",capabilities={").AppendJoin(',', manifest.Capabilities.Order(StringComparer.Ordinal).Select(Quote)).Append('}')
             .Append(",features={").AppendJoin(',', manifest.Features.Select(Quote)).Append("},dependencies={");
         //版本要求和冲突独立展示不依赖Lua表遍历的顺序
         foreach (var (id, version) in manifest.Dependencies.OrderBy(pair => pair.Key, StringComparer.Ordinal))

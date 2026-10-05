@@ -185,6 +185,34 @@ end
 --分发白名单命令所有游戏操作均在主线程执行
 --</summary>
 function module.dispatch(command, argument)
+    if command == 'mod_actions_list' then return {actions = api.actions.list()} end
+    if command == 'mod_action_call' then
+        --桥接只传递十六进制标量字段避免分隔符和换行改变参数边界
+        local action_id, encoded = (argument or ''):match('^([a-z0-9_.-]+:[a-z][a-z0-9_]*)\n(.*)$')
+        if not action_id then error('模组动作标识格式无效') end
+        local arguments = {}
+        --键和值均为UTF8十六进制文本数字和布尔值使用明确类型标记
+        local function decode_hex(value)
+            if #value % 2 ~= 0 or value:find('[^0-9a-f]') then error('模组动作参数编码无效') end
+            return (value:gsub('..', function(byte) return string.char(tonumber(byte, 16)) end))
+        end
+        for line in encoded:gmatch('([^\n]*)\n') do
+            local key_hex, kind, value_hex = line:match('^([0-9a-f]*)|([snb])|([0-9a-f]*)$')
+            if not key_hex or key_hex == '' then error('模组动作参数字段无效') end
+            local key = decode_hex(key_hex)
+            local value = decode_hex(value_hex)
+            if kind == 'n' then
+                value = tonumber(value)
+                if not value or value ~= value or math.abs(value) == math.huge then error('模组动作数字参数无效') end
+            elseif kind == 'b' then
+                if value ~= 'true' and value ~= 'false' then error('模组动作布尔参数无效') end
+                value = value == 'true'
+            end
+            if arguments[key] ~= nil then error('模组动作参数重复') end
+            arguments[key] = value
+        end
+        return {result = api.actions.call(action_id, arguments)}
+    end
     if command == 'display_host_ready' then
         if not api.display then error('原版设置扩展未安装') end
         return api.display.ready(argument)

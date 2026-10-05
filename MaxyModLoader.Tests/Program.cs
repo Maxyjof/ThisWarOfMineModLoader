@@ -54,7 +54,7 @@ internal static class Program
         //校验清单边界和真实目录发现行为
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
-        Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 2));
+        Test("实际目录发现示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 3));
         Test("管理目录保留禁用模组且不加载入口", () => InWorkspace(root =>
         {
             //禁用模组仍有介绍静态加载顺序只包含启用项
@@ -71,6 +71,24 @@ internal static class Program
             Reject<InvalidDataException>(() => manifest.Validate());
             Reject<InvalidDataException>(() => (manifest with { Website = "", Features = null! }).Validate());
         });
+        Test("模组能力声明只允许已知且不重复的权限", () =>
+        {
+            //MCP工具能力必须由模组作者在清单中明确授权
+            var manifest = new ModManifest { Id = "capability", Name = "能力", Version = "1.0.0" };
+            (manifest with { Capabilities = ["mcp.tools"] }).Validate();
+            Reject<InvalidDataException>(() => (manifest with { Capabilities = ["native.memory"] }).Validate());
+            Reject<InvalidDataException>(() => (manifest with { Capabilities = ["mcp.tools", "mcp.tools"] }).Validate());
+        });
+        Test("模组能力会随生成入口传递", () => InWorkspace(root =>
+        {
+            //运行时只能收到构建计划显式验证过的能力清单
+            var folder = Path.Combine(root, "action-mod"); Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "main.lua"), "return {on_load=function() end}");
+            File.WriteAllText(Path.Combine(folder, "mod.json"), "{\"id\":\"action.mod\",\"name\":\"动作\",\"version\":\"1.0.0\",\"capabilities\":[\"mcp.tools\"]}");
+            var plan = LoadPlanner.Create(ModCatalog.Discover(root));
+            var bundle = Encoding.UTF8.GetString(LuaBundle.Compile([], plan));
+            Assert(plan.IsValid && bundle.Contains("capabilities = {" + LuaBundle.Quote("mcp.tools")));
+        }));
         Test("Markdown介绍只从模组目录内读取有效UTF8文件", () => InWorkspace(root =>
         {
             //模组清单引用的Markdown在打包时读取并成为游戏内展示文本
