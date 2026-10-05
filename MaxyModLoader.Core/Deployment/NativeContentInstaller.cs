@@ -17,6 +17,7 @@ public static class NativeContentInstaller
 {
     private const string Prefix = "MaxyModLoaderNative_";
     private const string Registry = "MaxyModLoaderNative|MaxyModLoader原生内容|由加载器管理物品配方和掉落请通过加载器恢复|enabled|local|SWG";
+    private static readonly string NormalizedRegistry = Registry[..Registry.LastIndexOf('|')];
 
     /// <summary>
     /// 在任何文件写入前核验固定产物与原生列表身份
@@ -87,8 +88,8 @@ public static class NativeContentInstaller
                 throw new InvalidDataException("原生内容已有第三方修改停止恢复");
         var original = File.ReadAllBytes(Path.Combine(backup, "native-Mods.list"));
         if (Hash(original) != state.OriginalListSha256) throw new InvalidDataException("原生登记备份指纹不符");
-        var current = Hash(ReadList(ListPath(game)));
-        if (current != state.OriginalListSha256 && current != state.InstalledListSha256)
+        var current = ReadList(ListPath(game));
+        if (!IsKnownListState(current, original, state))
             throw new InvalidDataException("原生模组列表已有其他改动停止恢复");
     }
 
@@ -143,6 +144,42 @@ public static class NativeContentInstaller
             throw new InvalidDataException("原生登记条目已存在");
         var separator = original.Length > 0 && original[^1] != 10 ? "\r\n" : "";
         return original.Concat(Encoding.UTF8.GetBytes(separator + Registry + "\r\n")).ToArray();
+    }
+
+    /// <summary>
+    /// 识别原始登记列表或游戏规范化后的加载器登记列表
+    /// </summary>
+    private static bool IsKnownListState(byte[] current, byte[] original, NativeInstallState state)
+    {
+        //原始列表和加载器安装时生成的逐字节内容优先按指纹识别
+        var currentHash = Hash(current);
+        if (currentHash == state.OriginalListSha256 || currentHash == state.InstalledListSha256) return true;
+
+        //游戏会将登记行末尾的SWG标记去掉并统一换行因此只接受这两种明确规范化
+        var installed = AppendRegistry(original);
+        if (Hash(installed) != state.InstalledListSha256) return false;
+        try
+        {
+            var encoding = new UTF8Encoding(false, true);
+            var installedText = NormalizeLineEndings(encoding.GetString(installed));
+            var currentText = NormalizeLineEndings(encoding.GetString(current));
+            var normalizedText = NormalizeLineEndings(encoding.GetString(installed).Replace(Registry, NormalizedRegistry, StringComparison.Ordinal));
+            return currentText == installedText || currentText == normalizedText;
+        }
+        catch (DecoderFallbackException)
+        {
+            //无效UTF8不能作为游戏规范化结果接受
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 将已核验登记文本的换行统一为LF
+    /// </summary>
+    private static string NormalizeLineEndings(string text)
+    {
+        //游戏只会改写登记文本换行不会改变其他行内容或顺序
+        return text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\r", "\n", StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -212,6 +212,41 @@ function module.item_config(name)
 end
 
 --<summary>
+--读取已注册物品的真实全局库存用于区分配置注册和实际获取
+--</summary>
+function module.inventory_item(name)
+    --先通过配置表确认物品存在不把任意字符串交给原生库存接口
+    if not module.item_config(name).registered then error('物品尚未注册') end
+    if not gKosovoGlobalState or not gScene or not gScene.GetDwellerCount or gScene:GetDwellerCount() == 0 then
+        error('当前没有可读取库存的玩法场景')
+    end
+    return {name = name, count = gKosovoGlobalState:GetGlobalItemCount(name)}
+end
+
+--<summary>
+--向当前庇护所测试存档注入有界物资并返回原生库存前后值
+--</summary>
+function module.give_item(argument)
+    --诊断工具明确改变物资不能用它的结果宣称自然掉落或制作已经验证
+    local name, amount, index = (argument or ''):match('^([A-Za-z][A-Za-z0-9_]*)|(%d+)|(%d+)$')
+    amount, index = tonumber(amount), tonumber(index)
+    if not name or not amount or amount < 1 or amount > 20 or not index or index > 15 then
+        error('物资参数必须为物品名|1到20数量|0到15角色序号')
+    end
+    --只允许已进入核心玩法的庇护所不在加载介绍和夜间背包中注入物资
+    if not gGameDelegate:IsCoreGameplayPhase() or gGameDelegate:IsScavenge() or gGame:IsLoadingScreenActive() or
+        module.screen(false, 'Intro') then error('当前不是可注入物资的庇护所玩法阶段') end
+    local before = module.inventory_item(name)
+    if index >= gScene:GetDwellerCount() then error('角色序号超出当前场景范围') end
+    local dweller = gScene:GetDweller(index)
+    dweller:AddItems(name, amount)
+    local after = module.inventory_item(name)
+    context.log('诊断注入物资：' .. name .. '/' .. amount .. '/' .. before.count .. '→' .. after.count)
+    return {name = name, character = dweller:GetDwellerName(), requested = amount,
+        before = before.count, after = after.count, diagnostic = true}
+end
+
+--<summary>
 --分发白名单命令所有游戏操作均在主线程执行
 --</summary>
 function module.dispatch(command, argument)
@@ -304,6 +339,8 @@ function module.dispatch(command, argument)
     end
     if command == "inspect_type" then return module.inspect(argument) end
     if command == 'item_config' then return module.item_config(argument) end
+    if command == 'inventory_item' then return module.inventory_item(argument) end
+    if command == 'give_item' then return module.give_item(argument) end
     if command == 'ui_hit_test' then local element, result = module.hit_test(argument); return result end
     if command == 'ui_click_point' then
         local element, result, screen = module.hit_test(argument)

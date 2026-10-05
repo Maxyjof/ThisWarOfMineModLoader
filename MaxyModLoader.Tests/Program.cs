@@ -606,7 +606,15 @@ internal static class Program
             File.AppendAllText(list, "third-party");
             Reject<InvalidDataException>(() => PackageInstaller.Restore(game));
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
-            File.WriteAllBytes(list, installed);
+            //模拟游戏移除SWG标记并统一登记文件换行后的实际写回结果
+            var gameNormalized = Encoding.UTF8.GetString(installed)
+                .Replace("MaxyModLoaderNative|MaxyModLoader原生内容|由加载器管理物品配方和掉落请通过加载器恢复|enabled|local|SWG", "MaxyModLoaderNative|MaxyModLoader原生内容|由加载器管理物品配方和掉落请通过加载器恢复|enabled|local", StringComparison.Ordinal)
+                .Replace("\r\n", "\n", StringComparison.Ordinal);
+            File.WriteAllText(list, gameNormalized, new UTF8Encoding(false));
+            PackageInstaller.Restore(game);
+            Assert(File.ReadAllBytes(list).AsSpan().SequenceEqual(original));
+            Assert(!Directory.EnumerateFiles(Path.Combine(game, "Mods"), "MaxyModLoaderNative_*").Any());
+            PackageInstaller.Install(game, package);
             //模拟登记尚未完成以及部分自有文件已被恢复的混合中断状态
             File.WriteAllBytes(list, original); File.Delete(Path.Combine(game, "Mods", "MaxyModLoaderNative_common.idx"));
             PackageInstaller.Restore(game);

@@ -92,7 +92,9 @@ def main():
         assert by_id[1]['error']['code'] == -32002
         assert by_id[2]['result']['serverInfo']['name'] == 'MaxyModLoader'
         tools = by_id[3]['result']['tools']
-        assert len(tools) == 20 and len({tool['name'] for tool in tools}) == 20
+        assert len(tools) == 22 and len({tool['name'] for tool in tools}) == 22
+        assert next(tool for tool in tools if tool['name'] == 'inventory_item')['annotations']['readOnlyHint']
+        assert not next(tool for tool in tools if tool['name'] == 'debug_give_item')['annotations']['readOnlyHint']
         assert next(tool for tool in tools if tool['name'] == 'rule_list')['annotations']['readOnlyHint']
         mod_tool = next(tool for tool in tools if tool['name'].startswith('mod_twom_demo_greet_'))
         assert mod_tool['inputSchema']['required'] == ['name'] and not mod_tool['annotations']['readOnlyHint']

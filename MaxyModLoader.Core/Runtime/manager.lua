@@ -4,6 +4,20 @@ if not LuaGameDelegate or not UIButton or not UITextBox or not Vector then retur
 local manager = {open = false, selection = 1, buttons = {}, pending_states = {}, confirm_open = false}
 api.manager = manager
 local statuses = {loaded = '已加载', failed = '加载失败', skipped = '依赖失败', disabled = '已禁用', pending = '等待加载', loading = '加载中'}
+local fade_wait_frames = 90
+
+--<summary>
+--等待原版菜单首轮淡入结束后再创建加载器入口
+--</summary>
+function manager.menu_fade_complete(screen, menu, frame)
+    --菜单场景改变时重新计时不继承上一页面的淡入状态
+    if manager.fade_screen ~= screen or manager.fade_menu ~= menu then
+        manager.fade_screen, manager.fade_menu, manager.fade_start = screen, menu, frame
+        return false
+    end
+    --固定帧界限覆盖低帧率启动场景且菜单切换仍由游戏帧自然推进
+    return frame - manager.fade_start >= fade_wait_frames
+end
 
 --<summary>
 --将UTF8文本解码为Unicode码点用于换行和原生中文显示
@@ -643,10 +657,13 @@ function manager.attach()
         manager.skin_applied, manager.skin_error = nil, nil
         manager.palette = nil
         manager.layout_width = nil
+        manager.fade_screen, manager.fade_menu, manager.fade_start = nil, nil, nil
         manager.screen, manager.open, manager.pressed = screen, false, nil
     end
     if not menu then return end
     if manager.frame then return end
+    --原版用屏幕淡入遮罩逐步显现按钮延后入口避免新控件提前呈现完整亮度
+    if not manager.menu_fade_complete(screen, menu, gGame:GetCurrentFrame()) then return end
     --游戏界面以720逻辑高度缩放横坐标根据当前宽高比计算
     manager.menu, manager.screen, manager.buttons = menu, screen, {}
     manager.template = menu:FindElementByName('BUTTON_STARTNEW')

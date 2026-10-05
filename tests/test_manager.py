@@ -28,6 +28,14 @@ dead = setmetatable({}, {__index = function() error('访问已释放的原生控
     lua.execute((ROOT / 'MaxyModLoader.Core/Runtime/manager.lua').read_text(encoding='utf-8'))
     lua.execute('''
 local manager = MaxyModLoader.manager
+--主菜单新场景先等待淡入帧界限不同界面重新开始计时
+local first_screen, second_screen, menu = {}, {}, {}
+assert(not manager.menu_fade_complete(first_screen, menu, 100))
+assert(not manager.menu_fade_complete(first_screen, menu, 189))
+assert(manager.menu_fade_complete(first_screen, menu, 190))
+assert(not manager.menu_fade_complete(second_screen, menu, 191))
+assert(not manager.menu_fade_complete(second_screen, menu, 280))
+assert(manager.menu_fade_complete(second_screen, menu, 281))
 manager.screen, manager.menu, manager.frame = dead, dead, dead
 manager.detail, manager.footer = dead, dead
 manager.buttons = {old = {element = dead, handler = function() error('旧按钮被调用') end}}
@@ -362,6 +370,33 @@ tolua = {type = function() return 'UIScreen' end}
 local state = bridge.state()
 assert(state.timing.GetCurrentFrame == 12 and state.timing.GetGameTime.kind == 'table')
 assert(bridge.json(state):find('UIScreen', 1, true))
+--物资诊断拒绝错误物品数量角色和阶段无效请求不能调用发放接口
+local stock, grants, core_play, scavenge, loading = 0, 0, true, false, false
+local test_dweller = {GetDwellerName = function() return 'test' end,
+    AddItems = function(self, name, amount) assert(name == 'MML_Test'); stock = stock + amount; grants = grants + 1 end}
+gScene = {GetDwellerCount = function() return 1 end, GetDweller = function() return test_dweller end}
+gKosovoGlobalState = {GetGlobalItemCount = function(self, name) assert(name == 'MML_Test'); return stock end}
+gKosovoItemConfig = {GetEntryWithName = function(self, name) if name == 'MML_Test' then return {Value = 1} end end}
+gGameDelegate.IsCoreGameplayPhase = function() return core_play end
+gGameDelegate.IsScavenge = function() return scavenge end
+gGame.IsLoadingScreenActive = function() return loading end
+hidden.FindElementByName = function() return nil end
+assert(bridge.dispatch('inventory_item', 'MML_Test').count == 0 and grants == 0)
+for _, argument in ipairs({'MML_Test|0|0', 'MML_Test|21|0', 'MML_Test|1|16', 'MML_Test|1|1',
+    'Missing|1|0', '../MML_Test|1|0', 'MML_Test|1.5|0', 'MML_Test|1|0|extra'}) do
+    assert(not pcall(bridge.dispatch, 'give_item', argument) and grants == 0)
+end
+core_play = false
+assert(not pcall(bridge.dispatch, 'give_item', 'MML_Test|1|0'))
+core_play, scavenge = true, true
+assert(not pcall(bridge.dispatch, 'give_item', 'MML_Test|1|0'))
+scavenge, loading = false, true
+assert(not pcall(bridge.dispatch, 'give_item', 'MML_Test|1|0'))
+loading = false
+local granted = bridge.dispatch('give_item', 'MML_Test|2|0')
+assert(granted.before == 0 and granted.after == 2 and granted.diagnostic and grants == 1)
+gScene = nil
+assert(not pcall(bridge.dispatch, 'inventory_item', 'MML_Test'))
 --返回编码失败仍写入关联错误而不是丢失回复造成不确定超时
 local original_dispatch = bridge.dispatch
 bridge.dispatch = function() return {invalid = function() end} end
