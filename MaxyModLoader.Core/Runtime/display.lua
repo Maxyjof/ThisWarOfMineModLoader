@@ -1,7 +1,7 @@
 local api = MaxyModLoader
 --没有原生设置界面的平台不安装显示扩展
 if not LuaGameDelegate or not gConfigHelper or not api.manager then return end
-local display = {host = false, mode = gConfigHelper:GetFullScreen() and 'fullscreen' or 'windowed', sequence = 0}
+local display = {host = false, mode = gConfigHelper:GetFullScreen() and 'fullscreen' or 'windowed', sequence = 0, buttons = {}}
 api.display = display
 local modes = {'windowed', 'fullscreen', 'borderless'}
 local labels = {windowed = '窗口', fullscreen = '全屏', borderless = '无边框全屏'}
@@ -55,9 +55,54 @@ local function control(parent, recipe, name, handler)
         parent:AddChild(element)
     end
     --回调保留原版设置的应用顺序并明确标注所属页面
-    api.manager.buttons[name] = {element = element, handler = handler,
+    display.buttons[name] = {element = element, handler = handler,
         available = function() return display.open == true and display.host and not display.pending end}
     return element
+end
+
+--<summary>
+--从原生命中父链取得设置页面独立拥有的按钮
+--</summary>
+function display.pointed_button(element)
+    if not display.open or not display.host or display.pending then return nil end
+    local pointed
+    --设置行可能由原版助手独立持有核验完整父链而不依赖主菜单面板
+    for depth = 1, 24 do
+        if not element then break end
+        if not element:IsVisible() or not element:IsEnabled() then return nil end
+        local item = display.buttons[element:GetName()]
+        if item and item.element == element then pointed = item end
+        element = element:GetParent()
+    end
+    return pointed
+end
+
+--<summary>
+--成对处理设置按钮的按下释放并复用原版补间反馈
+--</summary>
+function display.pointer(down, up, element)
+    local pointed = display.pointed_button(element)
+    --控制按钮使用自身配方的悬停动画不会修改原版设置按钮
+    for _, item in pairs(display.buttons) do item.element:SetHighlight(item == pointed, false) end
+    if down then display.pressed = pointed end
+    if up then
+        local pressed = display.pressed
+        display.pressed = nil
+        if pressed and pressed == pointed then pressed.handler(); return true end
+    end
+    return false
+end
+
+--<summary>
+--让MCP通过设置页面同一交互路径验证自有控件
+--</summary>
+function display.activate(name)
+    display.attach()
+    local item = display.buttons[name]
+    if not item then return false end
+    if display.pointed_button(item.element) ~= item then error('设置按钮当前不可操作') end
+    display.pointer(true, false, item.element)
+    return display.pointer(false, true, item.element)
 end
 
 --<summary>
@@ -90,10 +135,16 @@ end
 --在原版设置页面内接入三种窗口模式
 --</summary>
 function display.attach()
-    local screen = api.mcp and api.mcp.screen()
+    local screen = api.mcp and api.mcp.screen(false, 'Settings')
     local panel = screen and screen:FindElementByName('Settings')
     local visible = panel and panel:IsVisible() or false
-    if not visible then display.open = false; return end
+    --场景切换可能销毁旧控件先比较根节点不读取旧对象的任何属性
+    if screen ~= display.screen then
+        display.buttons, display.pressed = {}, nil
+        display.slot, display.apply, display.original_apply = nil, nil, nil
+        display.open, display.screen = false, screen
+    end
+    if not visible then display.open, display.pressed = false, nil; return end
     if not display.host then return end
     local slot = setting_slot(screen)
     if not slot then return end
@@ -153,6 +204,14 @@ end
 --</summary>
 function display.tick()
     display.attach()
+    --设置输入在普通帧和暂停帧均独立执行不要求主菜单管理面板存在
+    if display.open then
+        if gGame:IsActive() and gGame:IsCursorOnGameWindow() then
+            local element = display.screen:GetElementAtScreenPosition(gGame:GetCursorPosition())
+            display.pointer(gGame:IsMouseButtonPressedForTheFirstTime(65536),
+                gGame:IsMouseButtonReleasedForTheFirstTime(65536), element)
+        else display.pressed = nil end
+    end
     if display.queued and gGame:GetBigFrameIndex() > display.queued_frame then
         local mode = display.queued
         display.queued = nil
@@ -185,7 +244,7 @@ end
 --读取由原版设置助手独立管理的实际设置行
 --</summary>
 function display.state()
-    local screen = api.mcp and api.mcp.screen()
+    local screen = api.mcp and api.mcp.screen(false, 'Settings')
     local panel = screen and screen:FindElementByName('Settings')
     local result = {available = panel ~= nil, visible = panel and panel:IsVisible() or false, elements = {},
         host = display.host, mode = display.mode, error = display.error or ''}

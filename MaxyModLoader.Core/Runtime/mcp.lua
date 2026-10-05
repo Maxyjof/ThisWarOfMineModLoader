@@ -54,12 +54,22 @@ end
 --<summary>
 --取得当前可操作的原生界面根节点
 --</summary>
-function module.screen()
+function module.screen(include_hidden, panel_name)
     --主菜单和游戏场景共享引擎的前置界面或游戏覆盖界面
     local screen = gGame:GetPreFSEUIScreen()
-    if screen and screen:IsVisible() and screen:GetFirstChild() then return screen end
     local overlay = gGameDelegate:GetGameOverlayScreen()
-    if overlay and overlay:IsVisible() then return overlay end
+    --原生设置在不同场景归属不同根节点不能让隐藏的同名页面遮蔽可见页面
+    if panel_name then
+        for index = 1, 2 do
+            local root
+            if index == 1 then root = screen else root = overlay end
+            local panel = root and root:FindElementByName(panel_name)
+            if root and root:IsVisible() and panel and panel:IsVisible() then return root end
+        end
+        return nil
+    end
+    if screen and (include_hidden or screen:IsVisible()) and screen:GetFirstChild() then return screen end
+    if overlay and (include_hidden or overlay:IsVisible()) then return overlay end
     return nil
 end
 
@@ -68,7 +78,7 @@ end
 --</summary>
 function module.ui_tree(include_hidden)
     local result = module.array()
-    local screen = module.screen()
+    local screen = module.screen(include_hidden)
     if not screen then return {available = false, elements = result} end
     --限制深度和节点数量避免异常界面层级阻塞游戏主线程
     --<summary>
@@ -96,7 +106,26 @@ end
 --</summary>
 function module.state()
     local result = {loader = MaxyModLoader.name, version = MaxyModLoader.version,
-        paused = gGame:IsPaused(), gameplay_paused = gGame:IsGameplayPaused(), characters = module.array()}
+        paused = gGame:IsPaused(), gameplay_paused = gGame:IsGameplayPaused(), characters = module.array(),
+        core_gameplay = gGameDelegate:IsCoreGameplayPhase(), interactive_prologue = gGameDelegate:IsDuringInteractivePrologue(),
+        loading = gGame:IsLoadingScreenActive(), active = gGame:IsActive()}
+    --帧计时绑定可能返回原生计时对象只返回数字值或类型避免泄露地址
+    result.timing = {}
+    for _, name in ipairs({'GetCurrentFrame', 'GetGameTime', 'GetGameplayTime'}) do
+        local value = gGame[name](gGame)
+        result.timing[name] = type(value) == 'number' and value or {kind = type(value)}
+    end
+    --界面根节点的真实可见性帮助区分流程等待与无可点击界面
+    result.screens = module.array()
+    for _, source in ipairs({'pre', 'overlay'}) do
+        local screen
+        if source == 'pre' then screen = gGame:GetPreFSEUIScreen()
+        else screen = gGameDelegate:GetGameOverlayScreen() end
+        if screen then
+            table.insert(result.screens, {source = source, name = screen:GetName(),
+                kind = tolua.type(screen), visible = screen:IsVisible(), children = screen:GetFirstChild() ~= nil})
+        end
+    end
     --非玩法场景没有角色接口时返回空状态不制造替身
     if gScene and gScene.GetDwellerCount then
         result.day = gScene:GetCurrentDay()
@@ -104,6 +133,7 @@ function module.state()
         for index = 0, result.dweller_count - 1 do
             local dweller = gScene:GetDweller(index)
             table.insert(result.characters, {index = index, name = dweller:GetDwellerName(),
+                kind = tolua.type(dweller),
                 hungry = dweller:GetParameterValue("Hungry"), tired = dweller:GetParameterValue("Tired"),
                 sick = dweller:GetParameterValue("Sick"), wounded = dweller:GetParameterValue("Wounded")})
         end
@@ -147,7 +177,7 @@ function module.hit_test(argument)
     local x, y = (argument or ''):match('^([%d.]+),([%d.]+)$')
     x, y = tonumber(x), tonumber(y)
     if not x or not y or x < 0 or x > 1 or y < 0 or y > 1 then error('坐标格式必须为0到1之间的x,y') end
-    local screen = module.screen()
+    local screen = module.screen(false, 'Settings') or module.screen()
     if not screen then error('当前没有可操作界面') end
     local element = screen:GetElementAtScreenPosition(Vector:Instance(x, y, 0, 0))
     local chain = module.array()
@@ -159,7 +189,7 @@ function module.hit_test(argument)
             mouse_focusable = node:IsFlag(UIFLAG_FOCUSABLEWITHMOUSE)})
         node = node:GetParent()
     end
-    return element, {x = x, y = y, chain = chain}
+    return element, {x = x, y = y, chain = chain}, screen
 end
 
 --<summary>
@@ -276,7 +306,7 @@ function module.dispatch(command, argument)
     if command == 'item_config' then return module.item_config(argument) end
     if command == 'ui_hit_test' then local element, result = module.hit_test(argument); return result end
     if command == 'ui_click_point' then
-        local element, result = module.hit_test(argument)
+        local element, result, screen = module.hit_test(argument)
         if not element or not element:IsEnabled() then error('坐标处没有可操作控件') end
         --原生命中缓存可能保留已关闭页面控件必须核验整条父链
         for _, node in ipairs(result.chain) do
@@ -284,12 +314,17 @@ function module.dispatch(command, argument)
         end
         --自有控件也必须经过原生命中不允许按名字直接调用函数冒充点击验证
         local manager = MaxyModLoader.manager
-        if manager and manager.pointed_button(element) then
+        local display = api.display
+        if display and display.pointed_button(element) then
+            display.pointer(true, false, element)
+            result.activated = display.pointer(false, true, element)
+            result.source = 'MCP设置坐标命中'
+        elseif manager and manager.pointed_button(element) then
             manager.pointer(true, false, element)
             result.activated = manager.pointer(false, true, element)
             result.source = 'MCP坐标命中'
         else
-            module.screen():SimulateClick(element)
+            screen:SimulateClick(element)
             result.activated, result.source = true, '游戏原生界面'
         end
         return result
@@ -298,6 +333,7 @@ function module.dispatch(command, argument)
         --只点击当前界面中存在且可见的元素不向桌面注入输入
         local screen = module.screen()
         if not screen then error("当前没有可操作界面") end
+        if api.display and api.display.activate(argument) then return {clicked = argument, handler = "MaxyModLoader设置"} end
         if MaxyModLoader.manager and MaxyModLoader.manager.activate(argument) then return {clicked = argument, handler = "MaxyModLoader"} end
         --名称重复时拒绝歧义调用者可使用界面树返回的完整路径
         local matches, visited = {}, 0
@@ -323,6 +359,8 @@ function module.dispatch(command, argument)
     if command == "pause" then
         --暂停值明确传递而不是不确定的切换操作
         if argument ~= "true" and argument ~= "false" then error("暂停值必须是布尔值") end
+        --介绍和菜单流程需要引擎推进不能把诊断暂停施加到非玩法阶段
+        if argument == 'true' and not gGameDelegate:IsCoreGameplayPhase() then error('只允许在核心玩法阶段暂停') end
         gGame:SetUserPause(argument == "true")
         return {requested = argument == "true", paused = gGame:IsPaused()}
     end
@@ -359,7 +397,12 @@ function module.poll()
     local argument = encoded:gsub("..", function(byte) return string.char(tonumber(byte, 16)) end)
     --异常结果传给调用者不会扩散到游戏原本的帧回调
     local ok, result = pcall(module.dispatch, command, argument)
-    local output = module.json({id = id, ok = ok, result = ok and result or nil, error = not ok and tostring(result) or nil})
+    local encoded_ok, output = pcall(module.json, {id = id, ok = ok, result = ok and result or nil, error = not ok and tostring(result) or nil})
+    --返回值编码异常同样必须回复避免请求已消费却让客户端只能等待超时
+    if not encoded_ok then
+        context.log('MCP返回编码失败：' .. tostring(output))
+        output = module.json({id = id, ok = false, error = 'MCP返回编码失败：' .. tostring(output)})
+    end
     local response = io.open(root .. "response.tmp", "wb")
     if not response then context.log("无法写入MCP返回文件"); return end
     response:write(output)

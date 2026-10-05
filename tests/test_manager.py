@@ -332,8 +332,55 @@ bridge.hit_test = function()
     return {IsEnabled = function() return true end}, {chain = {{visible = true, enabled = true}, {visible = false, enabled = true}}}
 end
 assert(not pcall(bridge.dispatch, 'ui_click_point', '0.5,0.5'))
+--非玩法阶段拒绝暂停但允许解除暂停避免介绍流程被诊断工具冻结
+local core, user_pause = false, false
+gGameDelegate.IsCoreGameplayPhase = function() return core end
+gGame.SetUserPause = function(self, value) user_pause = value end
+gGame.IsPaused = function() return user_pause end
+assert(not pcall(bridge.dispatch, 'pause', 'true') and not user_pause)
+assert(bridge.dispatch('pause', 'false').paused == false)
+core = true
+assert(bridge.dispatch('pause', 'true').paused and user_pause)
+--隐藏界面可供目录诊断读取但不能成为可点击界面
+local hidden = {IsVisible = function() return false end, GetFirstChild = function() return {} end}
+gGame.GetPreFSEUIScreen = function() return hidden end
+gGameDelegate.GetGameOverlayScreen = function() return nil end
+assert(bridge.screen() == nil and bridge.screen(true) == hidden)
+
+--计时原生对象不能进入JSON而应报告类型正常数字仍保留
+hidden.GetName = function() return 'hidden' end
+hidden.IsVisible = function() return false end
+gGameDelegate.IsDuringInteractivePrologue = function() return false end
+gGame.IsGameplayPaused = function() return false end
+gGame.IsLoadingScreenActive = function() return false end
+gGame.IsActive = function() return true end
+gGame.GetCurrentFrame = function() return 12 end
+gGame.GetGameTime = function() return {} end
+gGame.GetGameplayTime = function() return {} end
+gScene = nil
+tolua = {type = function() return 'UIScreen' end}
+local state = bridge.state()
+assert(state.timing.GetCurrentFrame == 12 and state.timing.GetGameTime.kind == 'table')
+assert(bridge.json(state):find('UIScreen', 1, true))
+--返回编码失败仍写入关联错误而不是丢失回复造成不确定超时
+local original_dispatch = bridge.dispatch
+bridge.dispatch = function() return {invalid = function() end} end
+local request_id = string.rep('a', 32)
+local captured = ''
+local original_open, original_remove, original_rename, original_clock = io.open, os.remove, os.rename, os.clock
+os.clock = function() return 100 end
+os.remove, os.rename = function() end, function() end
+io.open = function(path, mode)
+    if mode == 'rb' then return {read = function() return 'MML1\\n' .. request_id .. '\\ngame_state\\n\\n' end, close = function() end} end
+    return {write = function(self, value) captured = value end, close = function() end}
+end
+bridge.poll()
+io.open, os.remove, os.rename, os.clock = original_open, original_remove, original_rename, original_clock
+bridge.dispatch = original_dispatch
+assert(captured:find(request_id, 1, true) and captured:find('"ok":false', 1, true))
+
 ''')
-    print('通过：MCP只读物品注册查询与名称边界')
+    print('通过：MCP物品查询、非玩法暂停保护与隐藏界面诊断')
 
 
 if __name__ == '__main__':
