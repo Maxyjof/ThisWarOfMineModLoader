@@ -37,10 +37,14 @@ public sealed class GameBridgeClient
         using var lease = await AcquireLeaseAsync(timeout ?? TimeSpan.FromSeconds(8));
         var id = Guid.NewGuid().ToString("N");
         var request = Path.Combine(directory, "request.txt");
+        var response = Path.Combine(directory, "response.json");
         if (File.Exists(request)) throw new IOException("游戏仍有待处理命令请检查状态后再发起操作");
         if (!System.Text.RegularExpressions.Regex.IsMatch(command, "^[a-z_]+$")) throw new ArgumentException("游戏命令名称无效");
         var encoded = Convert.ToHexString(Encoding.UTF8.GetBytes(argument)).ToLowerInvariant();
         if (encoded.Length > 60000) throw new ArgumentException("游戏命令参数过长");
+
+        //传输锁独占期间清理上次崩溃遗留的响应避免Lua无法覆盖旧文件
+        if (File.Exists(response)) File.Delete(response);
 
         //先完整写入临时文件再改名游戏只能观察到完整请求
         var temporary = Path.Combine(directory, "request.tmp");
@@ -48,7 +52,6 @@ public sealed class GameBridgeClient
         File.Move(temporary, request);
         var watch = Stopwatch.StartNew();
         var limit = timeout ?? TimeSpan.FromSeconds(8);
-        var response = Path.Combine(directory, "response.json");
         while (watch.Elapsed < limit)
         {
             //只接受本次ID旧结果和短暂文件共享冲突都不会误报成功
@@ -57,7 +60,14 @@ public sealed class GameBridgeClient
                 if (File.Exists(response) && new FileInfo(response).Length <= 1024 * 1024)
                 {
                     using var parsed = JsonDocument.Parse(await File.ReadAllTextAsync(response));
-                    if (parsed.RootElement.GetProperty("id").GetString() == id) return parsed.RootElement.Clone();
+                    if (parsed.RootElement.GetProperty("id").GetString() == id)
+                    {
+                        //先释放读取句柄再删除响应让Lua下次可以原子发布新结果
+                        var result = parsed.RootElement.Clone();
+                        parsed.Dispose();
+                        File.Delete(response);
+                        return result;
+                    }
                 }
             }
             catch (IOException) { }
