@@ -75,6 +75,9 @@ try {
 #官方模组包只包含用户要求的内容模组和必要的事件适配器
 $officialMods = @(
     @{ Name = 'MaxyModLoader游戏事件适配器'; Source = 'playtests\mods\bridge' },
+    @{ Name = '疲劳与搜刮战术'; Source = 'mods\scavenger-tactics' },
+    @{ Name = '营地轮休制度'; Source = 'mods\camp-rotation' },
+    @{ Name = '营地参谋MCP'; Source = 'mods\camp-advisor' },
     @{ Name = '更多枪械模组'; Source = 'mods\more-guns' },
     @{ Name = '弹药补给模组'; Source = 'mods\ammunition-supply' },
     @{ Name = '野战工具与防护装备'; Source = 'mods\field-equipment' },

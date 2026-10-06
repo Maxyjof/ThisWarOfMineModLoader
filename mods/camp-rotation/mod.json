@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.play.camp-rotation",
+  "name": "营地轮休制度",
+  "version": "0.1.0",
+  "author": "MaxyModLoader",
+  "description": "每逢第3个游戏日，自动安排最疲惫的营地成员轮休，降低其疲劳并跨启动记住执行日期。",
+  "descriptionFile": "README.md",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {
+    "twom.play.bridge": "0.3.0"
+  },
+  "features": [
+    "监听真实game.day.begin生命周期事件",
+    "通过角色领域API降低疲劳12点",
+    "按游戏日和持久存储避免重复触发"
+  ],
+  "compatibility": "SteamBuildID22193501 MaxyModLoaderModdingAPI1.2.0",
+  "license": "MIT"
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.play.camp-advisor",
+  "name": "营地参谋MCP",
+  "version": "0.1.0",
+  "author": "MaxyModLoader",
+  "description": "为本机可信AI客户端提供营地状态查询、有限疲劳恢复和实时搜刮战术切换。",
+  "descriptionFile": "README.md",
+  "entry": "main.lua",
+  "enabled": true,
+  "capabilities": ["mcp.tools"],
+  "dependencies": {
+    "twom.play.bridge": "0.3.0",
+    "twom.play.scavenger-tactics": "0.1.0"
+  },
+  "features": [
+    "shelter_report只读返回游戏日与幸存者状态",
+    "rest_survivor仅可降低指定成员疲劳",
+    "set_scavenge_mode可实时调整依赖模组共享规则"
+  ],
+  "compatibility": "SteamBuildID22193501 MaxyModLoaderModdingAPI1.2.0",
+  "license": "MIT"
+}

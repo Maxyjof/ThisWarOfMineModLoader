@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.play.scavenger-tactics",
+  "name": "疲劳与搜刮战术",
+  "version": "0.1.0",
+  "author": "MaxyModLoader",
+  "description": "根据外出角色的实际疲劳动态调整本次搜刮耗时，可在游戏运行中通过加载器规则或MCP切换战术。",
+  "descriptionFile": "README.md",
+  "entry": "main.lua",
+  "enabled": true,
+  "dependencies": {
+    "twom.play.bridge": "0.3.0"
+  },
+  "features": [
+    "包装原版ScavengeAction.OnBegin并保留原函数",
+    "谨慎、均衡、紧急三种动态耗时策略",
+    "规则可被已声明依赖的模组实时调整"
+  ],
+  "compatibility": "SteamBuildID22193501 MaxyModLoaderModdingAPI1.2.0",
+  "license": "MIT"
+}

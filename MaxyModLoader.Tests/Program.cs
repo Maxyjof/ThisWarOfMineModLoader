@@ -577,7 +577,10 @@ internal static class Program
         Test("全部示例原生物品均使用存在的原创图标", () =>
         {
             //按正式加载顺序解析所有示例模组与依赖
-            var mods = ModCatalog.Discover(Path.Combine(Repository, "mods"));
+            //将公开模组、游戏事件适配器与开局实测模组一并纳入发行契约验证
+            var mods = ModCatalog.Discover(Path.Combine(Repository, "mods"))
+                .Concat(ModCatalog.Discover(Path.Combine(Repository, "playtests", "mods")))
+                .ToArray();
             var plan = LoadPlanner.Create(mods);
             Assert(plan.IsValid);
             var textures = new HashSet<uint>();
