@@ -1,6 +1,6 @@
 # MaxyModLoader运行时API参考
 
-当前API契约版本为`1.1.0`，由游戏原生Lua5.1.1虚拟机执行。它扩展现有Lua环境，不是.NET、Unity、Mono、BepInEx或Harmony插件接口。模组与原版Lua脚本拥有相同进程权限，只安装可信来源的模组。
+当前API契约版本为`1.2.0`，由游戏原生Lua5.1.1虚拟机执行。它扩展现有Lua环境，不是.NET、Unity、Mono、BepInEx或Harmony插件接口。模组与原版Lua脚本拥有相同进程权限，只安装可信来源的模组。
 
 ## API能力速览
 
@@ -9,6 +9,7 @@
 | `context.require` | 加载清单登记的内部Lua模块，自动缓存并检测循环 | 不能从任意磁盘路径加载文件 |
 | `context.events` | 订阅加载器就绪事件和模组自定义事件 | 没有自动覆盖所有游戏玩法事件 |
 | `context.schedule` | 根据事件桥的昼夜事件安排一次或周期性游戏日任务 | 依赖`game.day.begin`事件，不使用现实时间或后台线程 |
+| `context.game` | 用经过校验的门面读取或修改已核验的游戏状态、角色、物品、库存和剧情事件 | 仅封装当前版本确认存在的Lua绑定，不创建引擎中不存在的原生操作 |
 | `context.services` | 向直接依赖模组提供命名服务 | 只能访问自身或清单中直接声明的依赖 |
 | `context.wrap` | 包装已存在的Lua表函数并保留原函数链 | 只处理实际经过该Lua函数的调用 |
 | `context.rules` | 声明、校验、读取、调整和监听共享规则 | 规则值只存在当前游戏进程，不会自动改变原生玩法 |
@@ -87,6 +88,40 @@ counter.increment()
 | `game.shelter.item.built` | `scene,item` | 营地建造完成原函数之后 |
 
 `game.scavenge.saving`只对应离开搜刮场景时的状态保存调用，不是通用存档钩子，不读取或改写存档数据。包装器始终调用原函数；原函数异常时不会伪造完成事件。
+
+## 原生游戏领域API
+
+`context.game`把本项目已核验的原生Lua绑定封装为有参数校验的领域接口，避免每个模组重复处理场景缺失、对象索引和物品注册边界。它不限制模组调用原版Lua已有的全局API，也不为游戏引擎未提供的操作编造实现。
+
+此门面不代表对全部Liquid Engine原生对象进行扫描、反射或重新实现。游戏已经暴露给Lua的其他函数仍可按原版契约使用，开发者应在调用前检查对象与函数是否存在，并为游戏版本限定行为。加载器只把反复确认过的操作纳入稳定门面；未核验的函数地址、参数签名和调用约定不会被猜测。
+
+| 接口 | 能力 | 约束 |
+| --- | --- | --- |
+| `context.game.phase.current()` | 返回`loading`、`scavenge`、`shelter`或`other` | 来自当前游戏阶段绑定 |
+| `context.game.scene.state()` | 读取天数、可选小时与幸存者数量 | 必须存在活动场景 |
+| `context.game.characters.count()`与`get(index)` | 枚举当前场景幸存者 | 序号从0开始且必须有效 |
+| 角色`get_parameter(name)`与`set_parameter(name,value)` | 读取或修改有限数字状态并重新求解依赖 | 参数必须由当前角色绑定识别 |
+| 角色`add_item(name,amount)`与`consume_item(name)` | 给指定角色添加物品或消耗其可访问的全局物品 | 物品须已注册，数量为1到999的整数 |
+| 角色`can_use_tool(name)` | 检查工具是否可用或已装备 | 物品须已注册 |
+| `context.game.items.get(name)` | 读取公开的物品数值配置 | 不返回原生配置对象 |
+| `context.game.inventory.global_count(name)` | 查询全局物资数 | 只读 |
+| `context.game.inventory.shelter_count(name)` | 查询庇护所公共库存数 | 只读；当前已核验的全局状态绑定没有公共仓库写入方法 |
+| `context.game.story.broadcast(group,event,character_name)` | 广播已核验的场景剧情事件 | 必须存在活动场景 |
+
+```lua
+local phase = context.game.phase.current()
+if phase == "shelter" then
+    local scene = context.game.scene.state()
+    local survivor = context.game.characters.get(0)
+    local food = context.game.inventory.shelter_count("CannedFood")
+    survivor.set_parameter("Tired", math.max(0, survivor.get_parameter("Tired") - 5))
+    context.log("第" .. tostring(scene.day) .. "天，庇护所罐头=" .. tostring(food))
+end
+```
+
+角色`add_item`写入指定角色的原生物资接口，不会声称写入公共仓库。原生`GetShelterItemCount`目前已确认是查询接口；在确认游戏绑定提供何种仓库写入方法前，`context.game.inventory`不提供虚假的`add_to_shelter`。状态API只处理角色对象已有的数字参数，故事广播只覆盖原生Lua场景函数的事件路径。
+
+完整的只读调用示例见[`examples/game-domain-api`](../../examples/game-domain-api)。该示例只在已接入的游戏日事件中输出日志，并没有在实际游戏中验证具体事件触发结果。
 
 ### 按游戏日安排任务
 

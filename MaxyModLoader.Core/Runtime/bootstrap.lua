@@ -5,7 +5,7 @@ local listeners = {}
 local services = {}
 local rules = {}
 local actions = {}
-local api = { name = "MaxyModLoader", version = "@MML_VERSION@", api_version = "1.1.0", loaded = loaded, mods = {}, mod_by_id = {} }
+local api = { name = "MaxyModLoader", version = "@MML_VERSION@", api_version = "1.2.0", loaded = loaded, mods = {}, mod_by_id = {} }
 api.actions = {}
 MaxyModLoader = api
 
@@ -432,6 +432,151 @@ local function context_for(id, dependencies, options)
         table.insert(listeners[name], subscription)
         table.insert(owned_listeners, subscription)
         return function() subscription.active = false end
+    end
+    context.game = {phase = {}, scene = {}, characters = {}, items = {}, inventory = {}, story = {}}
+    --<summary>
+    --取得当前活动场景并在游戏尚未创建场景时明确失败
+    --</summary>
+    local function get_game_scene()
+        --不创建测试对象也不回退到旧全局名称
+        require_condition(gScene ~= nil and type(gScene.GetDwellerCount) == "function", "game scene is unavailable")
+        return gScene
+    end
+    --<summary>
+    --校验原生物品标识并取得已注册物品配置
+    --</summary>
+    local function get_game_item(name)
+        --先限制键格式再访问原生注册表避免任意索引
+        require_condition(type(name) == "string" and #name <= 96 and name:match("^[A-Za-z][A-Za-z0-9_]*$"), "invalid item name")
+        require_condition(gKosovoItemConfig ~= nil and type(gKosovoItemConfig.GetEntryWithName) == "function", "item registry is unavailable")
+        local entry = gKosovoItemConfig:GetEntryWithName(name)
+        require_condition(entry ~= nil, "item is not registered")
+        return entry
+    end
+    --<summary>
+    --返回加载、夜间搜刮、庇护所或其他玩法阶段
+    --</summary>
+    context.game.phase.current = function()
+        --读取已核验的游戏委托与游戏加载状态绑定
+        if gGame and gGame.IsLoadingScreenActive and gGame:IsLoadingScreenActive() then return "loading" end
+        if gGameDelegate and gGameDelegate.IsScavenge and gGameDelegate:IsScavenge() then return "scavenge" end
+        if gGameDelegate and gGameDelegate.IsCoreGameplayPhase and gGameDelegate:IsCoreGameplayPhase() then return "shelter" end
+        return "other"
+    end
+    --<summary>
+    --读取当前场景的天数小时和角色数量
+    --</summary>
+    context.game.scene.state = function()
+        --在场景不可用时由统一校验给出准确错误
+        local scene = get_game_scene()
+        return {day = scene:GetCurrentDay(), hour = scene.GetCurrentHour and scene:GetCurrentHour() or nil,
+            character_count = scene:GetDwellerCount()}
+    end
+    --<summary>
+    --读取当前玩法场景中的幸存者数量
+    --</summary>
+    context.game.characters.count = function()
+        --角色数量由当前场景原生接口返回
+        return get_game_scene():GetDwellerCount()
+    end
+    --<summary>
+    --构造受校验的角色状态和物资操作门面
+    --</summary>
+    local function character_api(dweller)
+        --仅导出已核验的角色查询和物资方法
+        require_condition(dweller ~= nil and type(dweller.GetDwellerName) == "function" and
+            type(dweller.GetParameterValue) == "function" and type(dweller.SetParameterValue) == "function", "character binding is incomplete")
+        local character = {name = dweller:GetDwellerName()}
+        --读取角色存在的数字状态参数
+        character.get_parameter = function(name)
+            require_condition(type(name) == "string" and #name <= 96 and name:match("^[A-Za-z][A-Za-z0-9_]*$"), "invalid parameter name")
+            local value = dweller:GetParameterValue(name)
+            require_condition(type(value) == "number" and value == value and math.abs(value) < math.huge, "parameter is unavailable")
+            return value
+        end
+        --写入角色参数并执行游戏依赖求解
+        character.set_parameter = function(name, value)
+            require_condition(type(name) == "string" and #name <= 96 and name:match("^[A-Za-z][A-Za-z0-9_]*$"), "invalid parameter name")
+            require_condition(type(value) == "number" and value == value and math.abs(value) < math.huge, "parameter value must be finite")
+            local previous = character.get_parameter(name)
+            dweller:SetParameterValue(name, value)
+            if type(dweller.SolveParameterDependency) == "function" then dweller:SolveParameterDependency() end
+            return {previous = previous, current = character.get_parameter(name)}
+        end
+        --向指定角色添加已注册物品并返回全局库存变化
+        character.add_item = function(name, amount)
+            require_condition(type(amount) == "number" and amount == math.floor(amount) and amount >= 1 and amount <= 999, "item amount must be an integer from 1 to 999")
+            get_game_item(name)
+            require_condition(type(dweller.AddItems) == "function", "character item insertion is unavailable")
+            local before = gKosovoGlobalState and gKosovoGlobalState.GetGlobalItemCount and gKosovoGlobalState:GetGlobalItemCount(name) or nil
+            dweller:AddItems(name, amount)
+            local after = gKosovoGlobalState and gKosovoGlobalState.GetGlobalItemCount and gKosovoGlobalState:GetGlobalItemCount(name) or nil
+            return {name = name, amount = amount, global_before = before, global_after = after}
+        end
+        --消耗角色可访问的全局物品并返回原生操作结果
+        character.consume_item = function(name)
+            get_game_item(name)
+            require_condition(type(dweller.ConsumeGlobalItem) == "function", "character item consumption is unavailable")
+            return dweller:ConsumeGlobalItem(name, true)
+        end
+        --查询角色是否可使用指定工具或已携带该工具
+        character.can_use_tool = function(name)
+            get_game_item(name)
+            require_condition(type(dweller.CanEquipTool) == "function" and type(dweller.HasEquippedItemOrTool) == "function", "tool query is unavailable")
+            return dweller:CanEquipTool(name) or dweller:HasEquippedItemOrTool(name)
+        end
+        return character
+    end
+    --<summary>
+    --按零起始序号取得当前场景中的幸存者门面
+    --</summary>
+    context.game.characters.get = function(index)
+        --拒绝越界序号并通过原生场景对象取得角色
+        local scene = get_game_scene()
+        require_condition(type(index) == "number" and index == math.floor(index) and index >= 0 and index < scene:GetDwellerCount(), "character index is out of range")
+        return character_api(scene:GetDweller(index))
+    end
+    --<summary>
+    --查询已注册物品的公开数值配置
+    --</summary>
+    context.game.items.get = function(name)
+        --仅返回已核验的物品字段不泄露原生配置对象
+        local entry = get_game_item(name)
+        local result = {name = name, properties = {}}
+        for _, property in ipairs({"Value", "StackSize", "HP", "BulletsPerShot", "BulletTimeInterval", "CooldownTime",
+            "CombatSinA", "CombatSinB", "CombatSinC", "CombatSinMax", "DamageBoostMultiplier"}) do
+            local value = entry[property]
+            if type(value) == "number" and value == value and math.abs(value) < math.huge then result.properties[property] = value end
+        end
+        return result
+    end
+    --<summary>
+    --读取游戏全局物资数量
+    --</summary>
+    context.game.inventory.global_count = function(name)
+        --通过注册表校验后才查询原生全局库存
+        get_game_item(name)
+        require_condition(gKosovoGlobalState ~= nil and type(gKosovoGlobalState.GetGlobalItemCount) == "function", "global inventory is unavailable")
+        return gKosovoGlobalState:GetGlobalItemCount(name)
+    end
+    --<summary>
+    --读取庇护所公共物资数量
+    --</summary>
+    context.game.inventory.shelter_count = function(name)
+        --公共仓库仅开放已核验的读取方法
+        get_game_item(name)
+        require_condition(gKosovoGlobalState ~= nil and type(gKosovoGlobalState.GetShelterItemCount) == "function", "shelter inventory is unavailable")
+        return gKosovoGlobalState:GetShelterItemCount(name)
+    end
+    --<summary>
+    --通过原生场景事件广播剧情事件
+    --</summary>
+    context.game.story.broadcast = function(group, event, character_name)
+        --校验标识字符串并调用当前场景已确认的剧情入口
+        require_condition(type(group) == "string" and #group <= 128 and type(event) == "string" and #event <= 128, "invalid story event")
+        local scene = get_game_scene()
+        require_condition(type(scene.BroadcastStoryEvent) == "function", "story event binding is unavailable")
+        return scene:BroadcastStoryEvent(group, event, character_name)
     end
     context.schedule = {}
     --<summary>

@@ -10,12 +10,15 @@ MaxyModLoader同时提供离线原生内容构建与游戏内Lua运行时API。�
 | 搜刮与交易 | 按原生配置定义 | 可以为已存在的搜刮生成器和商人货单追加模组物品 |
 | 运行时代码 | 依赖游戏原生Lua脚本入口 | Lua入口可包装已存在的表函数、订阅事件并使用模块化上下文 |
 | 游戏生命周期 | 原生脚本按固定回调运行 | 经本机脚本核验的场景、昼夜、搜刮状态保存、广播和建造回调可发布事件；可按游戏日安排一次或周期任务 |
+| 游戏对象API | 由游戏原生Lua绑定提供 | `context.game`封装阶段、场景、角色参数、物品配置、库存查询、角色物资增减和剧情事件广播 |
 | 多模组协作 | 原生文件通常独立构建 | 可用清单依赖、命名服务和带类型约束的共享规则协作 |
 | 持久状态 | 通常围绕游戏原生存档内容 | 有按模组隔离的持久标量存储，不修改原版存档 |
 | AI与自动化 | 没有加载器通用工具入口 | 可注册有参数模式的MCP动作，供本机可信AI客户端调用 |
 | 诊断 | 以原生游戏行为为主 | 可输出模组日志、共享规则快照和MCP工具状态 |
 
 清单静态配置`settings`会注入Lua上下文，但没有通用的游戏内配置编辑器或跨启动保存功能；需要玩家可调整的持久值时，应设计规则默认值，并把选择保存在`context.storage`，或等待未来设置UI能力。
+
+`context.game`面向已核验且适合稳定封装的游戏操作；它不是对Liquid Engine全部C++对象和Lua全局的自动反射。游戏原有Lua绑定仍可由模组直接调用，领域门面负责参数校验和缩小返回对象。庇护所库存目前只有已确认的数量查询绑定，没有已确认的公共仓库写入接口，因此不能通过`context.game`直接把物品放入仓库。参见[领域API参考](ModdingAPI.md#原生游戏领域api)和[游戏对象API示例](../../examples/game-domain-api)。
 
 ## 玩法修改方式
 
@@ -49,6 +52,7 @@ MaxyModLoader同时提供离线原生内容构建与游戏内Lua运行时API。�
 - [`examples/persistent-storage`](../../examples/persistent-storage)：跨启动键值数据
 - [`examples/mcp-tools`](../../examples/mcp-tools)：MCP结构化工具
 - [`examples/day-scheduler`](../../examples/day-scheduler)：按游戏日安排一次性与周期任务
+- [`examples/game-domain-api`](../../examples/game-domain-api)：访问经核验的场景、角色、物品和库存API
 - [`mods/more-guns`](../../mods/more-guns)、[`mods/field-equipment`](../../mods/field-equipment)：原生物品数据示例
 - [`playtests/mods/survival-camp`](../../playtests/mods/survival-camp)：多模块玩法适配示例
 

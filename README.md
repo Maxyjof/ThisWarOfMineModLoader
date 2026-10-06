@@ -89,7 +89,7 @@ Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存
 
 完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、能力总览、运行时API参考、原生内容与MCP指南。开发者可以从[快速入门](Docs/Developers/GettingStarted.md)开始，并查看[`examples`](examples)中的可运行示例。当前游戏结果见[模组实测矩阵](Docs/Testing/ModTestMatrix.md)。
 
-开发文档：[额外能力总览](Docs/Developers/CapabilityOverview.md)、[运行时API参考](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。除原生内容构建外，加载器API支持Lua内部模块、事件、已存在函数包装、依赖服务、共享规则、按模组隔离的跨启动数据和MCP动作。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
+开发文档：[额外能力总览](Docs/Developers/CapabilityOverview.md)、[运行时API参考](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。除原生内容构建外，加载器API支持Lua内部模块、事件、已存在函数包装、依赖服务、共享规则、按模组隔离的跨启动数据、MCP动作和经核验的`context.game`游戏对象门面；[`游戏对象API示例`](examples/game-domain-api)演示读取玩法阶段、场景和幸存者状态。门面只包装当前已核验的Lua绑定，不能凭空增加引擎操作；庇护所公共库存目前只有读取接口，没有仓库写入API。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
 
 ## 开发者构建
 

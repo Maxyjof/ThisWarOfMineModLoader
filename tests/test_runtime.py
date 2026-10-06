@@ -35,7 +35,7 @@ local function load_test_mod(id, source, dependencies, options)
     options.config, options.modules, options.capabilities = options.config or {}, options.modules or {}, options.capabilities or {}
     return MaxyModLoader.load_mod(id, source, dependencies or {}, options)
 end
-assert(MaxyModLoader.api_version == "1.1.0")
+assert(MaxyModLoader.api_version == "1.2.0")
 MaxyModLoader.register_mod({id="disabled.metadata", name="禁用介绍", enabled=false,
     description_document={{kind="paragraph", runs={{text="中文介绍与Unicode字符保持完整"}}}}, features={"功能一", "功能二"}})
 assert(MaxyModLoader.mod_by_id["disabled.metadata"].status == "disabled")
@@ -80,6 +80,49 @@ assert(load_test_mod("schedule.invalid", [[return {on_load = function(c)
     assert(not pcall(function() c.schedule.every_days(1.5, function() end) end))
     assert(not pcall(function() c.schedule.after_days(1, nil) end))
 end}]], {}))
+
+--验证游戏领域API的阶段场景角色参数物品库存和剧情绑定
+local inventory = {CannedFood = 3}
+local shelter_inventory = {CannedFood = 2}
+local parameters = {Tired = 40}
+local native_character = {GetDwellerName = function() return "幸存者" end,
+    GetParameterValue = function(self, name) return parameters[name] or 0 end,
+    SetParameterValue = function(self, name, value) parameters[name] = value end,
+    SolveParameterDependency = function() end,
+    AddItems = function(self, name, amount) inventory[name] = (inventory[name] or 0) + amount end,
+    ConsumeGlobalItem = function(self, name) if (inventory[name] or 0) == 0 then return false end; inventory[name] = inventory[name] - 1; return true end,
+    CanEquipTool = function() return false end,
+    HasEquippedItemOrTool = function() return true end}
+gKosovoItemConfig = {GetEntryWithName = function(self, name)
+    if name == "CannedFood" then return {Value = 5, StackSize = 10} end
+end}
+gKosovoGlobalState = {GetGlobalItemCount = function(self, name) return inventory[name] or 0 end,
+    GetShelterItemCount = function(self, name) return shelter_inventory[name] or 0 end}
+gScene = {GetCurrentDay = function() return 4 end, GetCurrentHour = function() return 8 end,
+    GetDwellerCount = function() return 1 end, GetDweller = function(self, index) if index == 0 then return native_character end end,
+    BroadcastStoryEvent = function(self, group, event, name) story_broadcast = {group, event, name}; return true end}
+gGame = {IsLoadingScreenActive = function() return false end}
+gGameDelegate = {IsScavenge = function() return false end, IsCoreGameplayPhase = function() return true end}
+game_api = nil
+assert(load_test_mod("game.facade", [[return {on_load = function(c) game_api = c.game end}]], {}))
+assert(game_api.phase.current() == "shelter")
+local game_scene = game_api.scene.state()
+assert(game_scene.day == 4 and game_scene.hour == 8 and game_scene.character_count == 1)
+assert(game_api.characters.count() == 1)
+local character = game_api.characters.get(0)
+assert(character.name == "幸存者" and character.get_parameter("Tired") == 40)
+local changed = character.set_parameter("Tired", 25)
+assert(changed.previous == 40 and changed.current == 25)
+assert(character.add_item("CannedFood", 2).global_after == 5)
+assert(character.consume_item("CannedFood") and game_api.inventory.global_count("CannedFood") == 4)
+assert(game_api.inventory.shelter_count("CannedFood") == 2)
+assert(game_api.items.get("CannedFood").properties.StackSize == 10)
+assert(character.can_use_tool("CannedFood"))
+assert(game_api.story.broadcast("Test", "Started", character.name))
+assert(story_broadcast[1] == "Test" and story_broadcast[2] == "Started" and story_broadcast[3] == "幸存者")
+assert(not pcall(game_api.characters.get, 1))
+assert(not pcall(game_api.inventory.shelter_count, "UnknownItem"))
+assert(not pcall(character.add_item, "CannedFood", 0))
 
 --测试包装顺序、多返回值和失败入口的包装撤销
 target = {value = function(x) return x, nil, "tail" end}

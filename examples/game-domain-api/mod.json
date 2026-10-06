@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "twom.example.game-domain-api",
+  "name": "游戏对象API示例",
+  "version": "1.0.0",
+  "entry": "main.lua",
+  "author": "MaxyModLoader",
+  "description": "展示如何通过context.game读取玩法阶段、场景、幸存者、物品配置和库存。",
+  "features": [
+    "检查当前玩法阶段",
+    "读取场景天数和幸存者状态",
+    "读取已注册物品配置与庇护所库存"
+  ],
+  "compatibility": "需要MaxyModLoader运行时API1.2.0",
+  "license": "未指定",
+  "descriptionFile": "README.md"
+}

@@ -64,7 +64,7 @@ internal static class Program
         //校验清单边界和真实目录发现行为
         Test("版本严格校验", () => { Reject<InvalidDataException>(() => ModVersion.Parse("01.2.3")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0")); Reject<InvalidDataException>(() => ModVersion.Parse("1.0.0-beta")); });
         Test("入口禁止目录逃逸", () => { Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "../outside.lua")); Reject<InvalidDataException>(() => ModCatalog.ResolveEntry(".", "C:/outside.lua")); });
-        Test("实际目录发现全部开发示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 5));
+        Test("实际目录发现全部开发示例", () => Assert(ModCatalog.Discover(Path.Combine(Repository, "examples")).Count == 6));
         Test("模组清单必须明确声明当前规范", () =>
         {
             //缺失规范号不能默认为历史格式当前规范仍验证数值本身
