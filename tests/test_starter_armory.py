@@ -12,10 +12,11 @@ MOD_ROOT = ROOT / "playtests" / "mods" / "starter-armory"
 class StarterArmoryTests(unittest.TestCase):
     def setUp(self):
         self.runtime = LuaRuntime(unpack_returned_tuples=True)
-        self.storage = {}
+        self.storage = {"granted": True}
         self.handlers = {}
         self.added = []
         self.checked = []
+        self.inventory = {}
         self.missing_item = None
 
         def get_entry(name):
@@ -24,6 +25,10 @@ class StarterArmoryTests(unittest.TestCase):
 
         def add_item(_dweller, name, amount):
             self.added.append((name, amount))
+            self.inventory[name] = self.inventory.get(name, 0) + amount
+
+        def global_count(name):
+            return self.inventory.get(name, 0)
 
         self.runtime.globals().get_entry = get_entry
         self.runtime.globals().add_item = add_item
@@ -34,6 +39,9 @@ class StarterArmoryTests(unittest.TestCase):
                 "get": lambda key, default=None: self.storage.get(key, default),
                 "set": lambda key, value: self.storage.__setitem__(key, value),
             }),
+            "game": self.runtime.table_from({
+                "inventory": self.runtime.table_from({"global_count": global_count}),
+            }),
             "events": self.runtime.table_from({
                 "on": lambda name, callback: self.handlers.__setitem__(name, callback),
             }),
@@ -41,11 +49,11 @@ class StarterArmoryTests(unittest.TestCase):
         })
         self.runtime.execute("gKosovoItemConfig = {GetEntryWithName = function(self, name) return get_entry(name) end}")
         self.runtime.execute("dweller = {AddItems = function(self, name, amount) add_item(self, name, amount) end, GetDwellerName = function() return '测试角色' end}")
-        self.runtime.execute("scene = {GetDwellerCount = function() return 1 end, GetDweller = function() return dweller end}")
+        self.runtime.execute("current_day = 1; scene = {GetCurrentDay = function() return current_day end, GetDwellerCount = function() return 1 end, GetDweller = function() return dweller end}")
         entry = chunk()
         entry.on_load(context)
 
-    def test_gives_each_new_item_once_and_thirty_rounds_of_each_ammo_type(self):
+    def test_grants_every_fresh_campaign_once_even_when_old_install_flag_is_set(self):
         self.handlers["game.day.begin"](self.runtime.globals().scene)
         self.assertEqual(len(self.added), 54)
         new_items = [amount for name, amount in self.added if name.startswith("MML_")]
@@ -60,17 +68,33 @@ class StarterArmoryTests(unittest.TestCase):
             ("Ammo", 30),
         ])
         self.assertEqual(len(self.checked), 54)
-        self.assertTrue(self.storage["granted"])
 
         self.handlers["game.day.begin"](self.runtime.globals().scene)
         self.assertEqual(len(self.added), 54)
+
+        #新战役重置库存后同一安装仍会补发全部开局物资
+        self.inventory.clear()
+        self.handlers["game.day.begin"](self.runtime.globals().scene)
+        self.assertEqual(len(self.added), 108)
+
+    def test_only_fills_missing_inventory_and_only_on_day_one(self):
+        self.inventory.update({"MML_AK74": 1, "Ammo": 25})
+        self.handlers["game.day.begin"](self.runtime.globals().scene)
+        self.assertNotIn(("MML_AK74", 1), self.added)
+        self.assertIn(("Ammo", 5), self.added)
+
+        self.runtime.globals().current_day = 2
+        self.inventory.clear()
+        self.added.clear()
+        self.handlers["game.day.begin"](self.runtime.globals().scene)
+        self.assertEqual(self.added, [])
 
     def test_missing_item_prevents_partial_grant(self):
         self.missing_item = "MML_AK74"
         with self.assertRaisesRegex(Exception, "测试物品尚未注册"):
             self.handlers["game.day.begin"](self.runtime.globals().scene)
         self.assertEqual(self.added, [])
-        self.assertNotIn("granted", self.storage)
+        self.assertTrue(self.storage["granted"])
 
     def test_manifest_declares_all_content_dependencies_and_test_scope(self):
         manifest = json.loads((MOD_ROOT / "mod.json").read_text(encoding="utf-8"))

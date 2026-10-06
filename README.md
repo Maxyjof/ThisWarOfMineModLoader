@@ -48,7 +48,7 @@ MaxyModLoader是《这是我的战争》WindowsSteam版的模组加载器与Lua�
 
 运行时模组的设计边界和实测状态见[模组游戏实测矩阵](Docs/Testing/ModTestMatrix.md)。新战术会改变搜刮行动运行时长，轮休会改变角色疲劳，AI工具可以调用有限游戏动作；构建或模拟测试通过不代表本机游戏内行为已通过实测。
 
-把需要的模组ZIP放入`Mods`文件夹；军火交易扩展需要同时启用更多枪械。开局物资实测包会把物品加入庇护所共享物资库存，可在“我们的物品”界面查看；每个加载器安装只发放一次，测试前建议使用新存档。若要在同一安装中重新领取，请退出游戏后删除`MaxyModLoader/storage/twom.play.starter-armory.0.dat`和`MaxyModLoader/storage/twom.play.starter-armory.1.dat`。模组管理界面会显示完整说明、状态和依赖。更多源码示例见[`examples`](examples)；仅用于引擎集成测试的适配器和物资测试源码位于[`playtests/mods`](playtests/mods)。
+把需要的模组ZIP放入`Mods`文件夹；军火交易扩展需要同时启用更多枪械。开局物资实测包会在每个新战役第1天把测试物品补足到庇护所共享库存目标数量，可在“我们的物品”界面查看；重复触发首日事件不会重复堆叠，旧战役的模组持久状态也不会挡住新存档发放。模组管理界面会显示完整说明、状态和依赖。更多源码示例见[`examples`](examples)；仅用于引擎集成测试的适配器和物资测试源码位于[`playtests/mods`](playtests/mods)。
 
 ## 卸载和故障恢复
 

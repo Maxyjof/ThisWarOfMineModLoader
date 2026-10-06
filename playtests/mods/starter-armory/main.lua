@@ -18,19 +18,14 @@ local ammunition = {
 }
 
 --<summary>
---注册新存档庇护所物资发放事件
+--注册每个新战役的庇护所初始物资补足事件
 --</summary>
 local function install(context)
-    --已完成的测试物资发放在后续进程中保持幂等
-    if context.storage.get("granted", false) then
-        context.log("测试物资已发放过，本次跳过")
-        return
-    end
-
-    --等待第1天庇护所事件确保幸存者和原生库存已经初始化
+    --等待第1天庇护所事件确保原生库存和物品注册已经初始化
     context.events.on("game.day.begin", function(scene)
-        if context.storage.get("granted", false) then return end
-        if not scene or scene:GetDwellerCount() == 0 then return end
+        --只处理新战役首日旧战役的持久数据标记不能阻止新存档发放
+        if not scene or scene:GetCurrentDay() ~= 1 then return end
+        if scene:GetDwellerCount() == 0 then return end
 
         --先检查全部物品已注册再开始写入避免依赖未加载导致半套物资
         if not gKosovoItemConfig then error("原生物品配置尚未就绪") end
@@ -41,14 +36,21 @@ local function install(context)
             if not gKosovoItemConfig:GetEntryWithName(item.name) then error("原版弹药尚未注册：" .. item.name) end
         end
 
-        --使用已验证的原生物品接口写入庇护所共享物资库存
+        --按当前全局库存补足目标数量使同一首日事件重复触发也不会累加
         local dweller = scene:GetDweller(0)
-        for _, item in ipairs(items) do dweller:AddItems(item, 1) end
-        for _, item in ipairs(ammunition) do dweller:AddItems(item.name, item.amount) end
+        local function top_up(name, target)
+            --只增加缺少的数量保留玩家已有物资并核验写入结果
+            local current = context.game.inventory.global_count(name)
+            if current < target then dweller:AddItems(name, target - current) end
+            --物资接口执行后立即读取公共库存确认已达到目标
+            local actual = context.game.inventory.global_count(name)
+            if actual < target then error("开局物资写入后数量不足：" .. name .. "，当前=" .. tostring(actual)) end
+        end
+        for _, item in ipairs(items) do top_up(item, 1) end
+        for _, item in ipairs(ammunition) do top_up(item.name, item.amount) end
 
-        --发放成功后写入跨进程标记避免每次启动重复添加
-        context.storage.set("granted", true)
-        context.log("开局物资已发放：模组物品50种各1件，4类弹药各30发，接收者=" .. dweller:GetDwellerName())
+        --记录实测结果便于玩家确认本次新战役收到物资
+        context.log("新战役开局物资已核验：模组物品50种至少各1件，4类弹药至少各30发，接收者=" .. dweller:GetDwellerName())
     end)
 end
 
