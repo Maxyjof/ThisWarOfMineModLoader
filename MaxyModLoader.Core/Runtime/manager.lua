@@ -5,11 +5,11 @@ local manager = {open = false, selection = 1, buttons = {}, pending_states = {},
 api.manager = manager
 local statuses = {loaded = '已加载', failed = '加载失败', skipped = '依赖失败', disabled = '已禁用', pending = '等待加载', loading = '加载中'}
 --<summary>
---确认原版主菜单已经出现以便立即启动同款原生渐入
+--确认主菜单对象已经创建而不等待黑幕渐变完成
 --</summary>
-function manager.menu_visible(menu)
-    --界面可能在模式切换前创建但隐藏时不应提前开始按钮动画
-    return menu ~= nil and menu:IsVisible()
+function manager.menu_available(menu)
+    --游戏在黑幕渐变结束后才报告主菜单可见因此入口必须跟随菜单对象提前创建
+    return menu ~= nil
 end
 
 --<summary>
@@ -654,8 +654,8 @@ function manager.attach()
     end
     if not menu then return end
     if manager.frame then return end
-    --主菜单首次可见时立即创建入口使原生补间与现有菜单项同步开始
-    if not manager.menu_visible(menu) then return end
+    --主菜单对象和原版模板出现时立即创建入口避免等到黑幕渐变结束后才显示
+    if not manager.menu_available(menu) then return end
     --游戏界面以720逻辑高度缩放横坐标根据当前宽高比计算
     manager.menu, manager.screen, manager.buttons = menu, screen, {}
     manager.template = menu:FindElementByName('BUTTON_STARTNEW')

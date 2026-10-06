@@ -28,13 +28,23 @@ dead = setmetatable({}, {__index = function() error('访问已释放的原生控
     lua.execute((ROOT / 'MaxyModLoader.Core/Runtime/manager.lua').read_text(encoding='utf-8'))
     lua.execute('''
 local manager = MaxyModLoader.manager
-    --主菜单可见时立即允许克隆按钮启动原生渐入动画
-local fade_menu = {visible = false, IsVisible = function(self) return self.visible end}
-assert(not manager.menu_visible(fade_menu))
-fade_menu.visible = true
-assert(manager.menu_visible(fade_menu))
-fade_menu.visible = false
-assert(not manager.menu_visible(fade_menu))
+    --渐变期间主菜单虽未报告可见仍应允许提前挂接新入口
+local fade_menu = {IsVisible = function() return false end}
+assert(manager.menu_available(fade_menu))
+assert(not manager.menu_available(nil))
+local template_looked_up = false
+local hidden_menu = {IsVisible = function() error('挂接不能等待渐变结束') end,
+    FindElementByName = function(self, name)
+        if name == 'BUTTON_STARTNEW' then template_looked_up = true end
+        return nil
+    end}
+local early_screen = {FindElementByName = function(self, name)
+    if name == 'ClassicModeMainMenu' then return hidden_menu end
+end}
+gGame.GetPreFSEUIScreen = function() return early_screen end
+manager.attach()
+assert(template_looked_up)
+gGame.GetPreFSEUIScreen = function() return nil end
 manager.screen, manager.menu, manager.frame = dead, dead, dead
 manager.detail, manager.footer = dead, dead
 manager.buttons = {old = {element = dead, handler = function() error('旧按钮被调用') end}}
