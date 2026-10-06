@@ -28,7 +28,7 @@ class StarterArmoryTests(unittest.TestCase):
         self.runtime.globals().get_entry = get_entry
         self.runtime.globals().add_item = add_item
         source = (MOD_ROOT / "main.lua").read_text(encoding="utf-8")
-        chunk = self.runtime.execute("return function(...)\n" + source + "\nend")
+        chunk = self.runtime.execute("return function()\n" + source + "\nend")
         context = self.runtime.table_from({
             "storage": self.runtime.table_from({
                 "get": lambda key, default=None: self.storage.get(key, default),
@@ -42,7 +42,8 @@ class StarterArmoryTests(unittest.TestCase):
         self.runtime.execute("gKosovoItemConfig = {GetEntryWithName = function(self, name) return get_entry(name) end}")
         self.runtime.execute("dweller = {AddItems = function(self, name, amount) add_item(self, name, amount) end, GetDwellerName = function() return '测试角色' end}")
         self.runtime.execute("scene = {GetDwellerCount = function() return 1 end, GetDweller = function() return dweller end}")
-        chunk(context).on_load()
+        entry = chunk()
+        entry.on_load(context)
 
     def test_gives_each_new_item_once_and_thirty_rounds_of_each_ammo_type(self):
         self.handlers["game.day.begin"](self.runtime.globals().scene)
@@ -81,7 +82,7 @@ class StarterArmoryTests(unittest.TestCase):
             "twom.content.more-guns",
             "twom.content.weapon-trading",
         })
-        self.assertIn("携带", manifest["description"])
+        self.assertIn("共享物品栏", manifest["description"])
         self.assertIn("descriptionFile", manifest)
         self.assertTrue((MOD_ROOT / manifest["descriptionFile"]).is_file())
 

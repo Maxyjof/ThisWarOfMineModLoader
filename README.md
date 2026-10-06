@@ -46,7 +46,7 @@ MaxyModLoader是《这是我的战争》WindowsSteam版的模组加载器与Lua�
 | 军火交易扩展 | 为更多枪械模组提供交易内容 | 更多枪械模组 |
 | 开局物资实测包 | 新存档首次进入庇护所时，将40种新增枪械、4种弹药补给物品、6种工具装备各发1件，并将4类原版弹药各发30发 | 游戏事件与测试记录桥、更多枪械、弹药补给、野战工具与防护装备、军火交易扩展 |
 
-把需要的独立ZIP放入`Mods`文件夹；交易扩展需要同时放入并启用枪械模组。开局物资实测包会把物品发给第一名幸存者携带栏，不会直接写入庇护所公共仓库；每个加载器安装只发放一次，测试前建议使用新存档。若要在同一安装中重新领取，请退出游戏后删除`MaxyModLoader/storage/twom.play.starter-armory.0.dat`和`MaxyModLoader/storage/twom.play.starter-armory.1.dat`。安装后可在模组管理界面查看每个模组的完整说明、状态和依赖。示例玩法包会调整游戏平衡，建议先备份存档；它不包含故意报错的测试探针。事件桥只记录它实际接收到的回调，不保证覆盖所有游戏行为。更多源码示例见[`examples`](examples)，小型和组合实装测试见[`playtests/mods`](playtests/mods)。
+把需要的独立ZIP放入`Mods`文件夹；交易扩展需要同时放入并启用枪械模组。开局物资实测包会把物品加入庇护所共享物资库存，可在“我们的物品”界面查看；每个加载器安装只发放一次，测试前建议使用新存档。若要在同一安装中重新领取，请退出游戏后删除`MaxyModLoader/storage/twom.play.starter-armory.0.dat`和`MaxyModLoader/storage/twom.play.starter-armory.1.dat`。安装后可在模组管理界面查看每个模组的完整说明、状态和依赖。示例玩法包会调整游戏平衡，建议先备份存档；它不包含故意报错的测试探针。事件桥只记录它实际接收到的回调，不保证覆盖所有游戏行为。更多源码示例见[`examples`](examples)，小型和组合实装测试见[`playtests/mods`](playtests/mods)。
 
 ## 卸载和故障恢复
 
@@ -89,7 +89,7 @@ Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存
 
 完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、能力总览、运行时API参考、原生内容与MCP指南。开发者可以从[快速入门](Docs/Developers/GettingStarted.md)开始，并查看[`examples`](examples)中的可运行示例。当前游戏结果见[模组实测矩阵](Docs/Testing/ModTestMatrix.md)。
 
-开发文档：[额外能力总览](Docs/Developers/CapabilityOverview.md)、[运行时API参考](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。除原生内容构建外，加载器API支持Lua内部模块、事件、已存在函数包装、依赖服务、共享规则、按模组隔离的跨启动数据、MCP动作和经核验的`context.game`游戏对象门面；[`游戏对象API示例`](examples/game-domain-api)演示读取玩法阶段、场景和幸存者状态。门面只包装当前已核验的Lua绑定，不能凭空增加引擎操作；庇护所公共库存目前只有读取接口，没有仓库写入API。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
+开发文档：[额外能力总览](Docs/Developers/CapabilityOverview.md)、[运行时API参考](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。除原生内容构建外，加载器API支持Lua内部模块、事件、已存在函数包装、依赖服务、共享规则、按模组隔离的跨启动数据、MCP动作和经核验的`context.game`游戏对象门面；[`游戏对象API示例`](examples/game-domain-api)演示读取玩法阶段、场景和幸存者状态。当前契约已核验的`dweller:AddItems`会增加全局可用物资，可通过`context.game.inventory.global_count`检查；模组管理器中的开局物资包使用此路径。`GetShelterItemCount`是独立的只读查询，不作为共享物资写入接口。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
 
 ## 开发者构建
 

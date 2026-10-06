@@ -101,11 +101,11 @@ counter.increment()
 | `context.game.scene.state()` | 读取天数、可选小时与幸存者数量 | 必须存在活动场景 |
 | `context.game.characters.count()`与`get(index)` | 枚举当前场景幸存者 | 序号从0开始且必须有效 |
 | 角色`get_parameter(name)`与`set_parameter(name,value)` | 读取或修改有限数字状态并重新求解依赖 | 参数必须由当前角色绑定识别 |
-| 角色`add_item(name,amount)`与`consume_item(name)` | 给指定角色添加物品或消耗其可访问的全局物品 | 物品须已注册，数量为1到999的整数 |
+| 角色`add_item(name,amount)`与`consume_item(name)` | 通过指定角色调用原生方法增加物资或消耗其可访问的全局物品 | 物品须已注册，数量为1到999的整数 |
 | 角色`can_use_tool(name)` | 检查工具是否可用或已装备 | 物品须已注册 |
 | `context.game.items.get(name)` | 读取公开的物品数值配置 | 不返回原生配置对象 |
 | `context.game.inventory.global_count(name)` | 查询全局物资数 | 只读 |
-| `context.game.inventory.shelter_count(name)` | 查询庇护所公共库存数 | 只读；当前已核验的全局状态绑定没有公共仓库写入方法 |
+| `context.game.inventory.shelter_count(name)` | 调用原生`GetShelterItemCount`查询对应庇护所计数 | 只读；与全局可用物资计数分开 |
 | `context.game.story.broadcast(group,event,character_name)` | 广播已核验的场景剧情事件 | 必须存在活动场景 |
 
 ```lua
@@ -113,13 +113,13 @@ local phase = context.game.phase.current()
 if phase == "shelter" then
     local scene = context.game.scene.state()
     local survivor = context.game.characters.get(0)
-    local food = context.game.inventory.shelter_count("CannedFood")
+    local food = context.game.inventory.global_count("CannedFood")
     survivor.set_parameter("Tired", math.max(0, survivor.get_parameter("Tired") - 5))
     context.log("第" .. tostring(scene.day) .. "天，庇护所罐头=" .. tostring(food))
 end
 ```
 
-角色`add_item`写入指定角色的原生物资接口，不会声称写入公共仓库。原生`GetShelterItemCount`目前已确认是查询接口；在确认游戏绑定提供何种仓库写入方法前，`context.game.inventory`不提供虚假的`add_to_shelter`。状态API只处理角色对象已有的数字参数，故事广播只覆盖原生Lua场景函数的事件路径。
+角色`add_item`调用已核验的`dweller:AddItems`，该原生方法会增加全局可用物资，结果可由`global_count`核对。`GetShelterItemCount`是独立查询，不用于检查这类物资。状态API只处理角色对象已有的数字参数，故事广播只覆盖原生Lua场景函数的事件路径。
 
 完整的只读调用示例见[`examples/game-domain-api`](../../examples/game-domain-api)。该示例只在已接入的游戏日事件中输出日志，并没有在实际游戏中验证具体事件触发结果。
 

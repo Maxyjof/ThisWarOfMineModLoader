@@ -18,7 +18,7 @@ MaxyModLoader同时提供离线原生内容构建与游戏内Lua运行时API。�
 
 清单静态配置`settings`会注入Lua上下文，但没有通用的游戏内配置编辑器或跨启动保存功能；需要玩家可调整的持久值时，应设计规则默认值，并把选择保存在`context.storage`，或等待未来设置UI能力。
 
-`context.game`面向已核验且适合稳定封装的游戏操作；它不是对Liquid Engine全部C++对象和Lua全局的自动反射。游戏原有Lua绑定仍可由模组直接调用，领域门面负责参数校验和缩小返回对象。庇护所库存目前只有已确认的数量查询绑定，没有已确认的公共仓库写入接口，因此不能通过`context.game`直接把物品放入仓库。参见[领域API参考](ModdingAPI.md#原生游戏领域api)和[游戏对象API示例](../../examples/game-domain-api)。
+`context.game`面向已核验且适合稳定封装的游戏操作；它不是对Liquid Engine全部C++对象和Lua全局的自动反射。游戏原有Lua绑定仍可由模组直接调用，领域门面负责参数校验和缩小返回对象。已核验的`dweller:AddItems`会增加全局可用物资，模组可用`context.game.characters.get(index).add_item(name,amount)`执行，并通过`context.game.inventory.global_count(name)`查看数量；`GetShelterItemCount`是另一项只读查询。参见[领域API参考](ModdingAPI.md#原生游戏领域api)和[游戏对象API示例](../../examples/game-domain-api)。
 
 ## 玩法修改方式
 

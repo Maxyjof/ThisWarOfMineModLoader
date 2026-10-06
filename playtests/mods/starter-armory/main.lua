@@ -1,5 +1,3 @@
-local context = ...
-
 local items = {
     "MML_AK74", "MML_M4A1", "MML_FAMAS", "MML_G36", "MML_SCARH", "MML_FNFAL", "MML_AUG", "MML_Galil",
     "MML_SIG550", "MML_AN94", "MML_M16A4", "MML_AKM", "MML_MP5", "MML_Uzi", "MML_PPSh41", "MML_P90",
@@ -22,7 +20,7 @@ local ammunition = {
 --<summary>
 --注册新存档庇护所物资发放事件
 --</summary>
-local function install()
+local function install(context)
     --已完成的测试物资发放在后续进程中保持幂等
     if context.storage.get("granted", false) then
         context.log("测试物资已发放过，本次跳过")
@@ -43,7 +41,7 @@ local function install()
             if not gKosovoItemConfig:GetEntryWithName(item.name) then error("原版弹药尚未注册：" .. item.name) end
         end
 
-        --使用已验证的幸存者物品接口发到第一名角色携带栏
+        --使用已验证的原生物品接口写入庇护所共享物资库存
         local dweller = scene:GetDweller(0)
         for _, item in ipairs(items) do dweller:AddItems(item, 1) end
         for _, item in ipairs(ammunition) do dweller:AddItems(item.name, item.amount) end
@@ -58,7 +56,7 @@ return {
     --<summary>
     --安装开局测试物资发放器
     --</summary>
-    on_load = function()
-        install()
+    on_load = function(context)
+        install(context)
     end
 }
