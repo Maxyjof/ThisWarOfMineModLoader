@@ -15,9 +15,9 @@ public sealed record NativeInstallState(bool ListExisted, string OriginalListSha
 /// </summary>
 public static class NativeContentInstaller
 {
-    private const string Prefix = "MaxyModLoaderNative_";
-    private const string Registry = "MaxyModLoaderNative|MaxyModLoader原生内容|由加载器管理物品配方和掉落请通过加载器恢复|enabled|local|SWG";
-    private static readonly string NormalizedRegistry = Registry[..Registry.LastIndexOf('|')];
+    private const string ModDirectory = "MaxyModLoaderNative";
+    private const string ModName = "MaxyModLoader Native Content";
+    private const string ModDescription = "Native items and recipes supplied by MaxyModLoader";
 
     /// <summary>
     /// 在任何文件写入前核验固定产物与原生列表身份
@@ -29,6 +29,7 @@ public static class NativeContentInstaller
         Validate(native);
         Directory.CreateDirectory(Path.Combine(game, "Mods"));
         if ((File.GetAttributes(Path.Combine(game, "Mods")) & FileAttributes.ReparsePoint) != 0) throw new IOException("游戏Mods目录不能是链接");
+        if (Directory.Exists(ModDirectoryPath(game))) throw new IOException("原生模组目录已存在需要先恢复");
         foreach (var (name, fingerprint) in native.Files)
         {
             if (File.Exists(Target(game, name))) throw new IOException("原生内容目标已存在需要先恢复");
@@ -36,7 +37,7 @@ public static class NativeContentInstaller
         }
         var path = ListPath(game); var original = ReadList(path);
         //不改变其他模组顺序启用状态或描述只有自有登记条目追加到末尾
-        var updated = AppendRegistry(original);
+        var updated = AppendRegistry(original, game);
         return new(File.Exists(path), Hash(original), Hash(updated));
     }
 
@@ -62,13 +63,14 @@ public static class NativeContentInstaller
         Validate(native);
         var original = ReadList(ListPath(game));
         if (Hash(original) != state.OriginalListSha256) throw new IOException("原生模组列表在安装期间发生变化");
+        Directory.CreateDirectory(ModDirectoryPath(game));
         foreach (var (name, fingerprint) in native.Files)
         {
             //同卷临时文件核验完成后才出现目标文件避免中断留下半个容器
             CopyFile(Path.Combine(package, "native", name), Target(game, name), fingerprint);
             if (PackageBuilder.Fingerprint(Target(game, name)) != fingerprint) throw new IOException("原生内容写入复读失败");
         }
-        var updated = AppendRegistry(original);
+        var updated = AppendRegistry(original, game);
         if (Hash(updated) != state.InstalledListSha256) throw new InvalidDataException("原生登记内容与安装日志不符");
         ReplaceList(ListPath(game), updated);
     }
@@ -83,13 +85,22 @@ public static class NativeContentInstaller
         if (native is null || state is null) return;
         Validate(native);
         if ((File.GetAttributes(Path.Combine(game, "Mods")) & FileAttributes.ReparsePoint) != 0) throw new IOException("原生恢复目录不能是链接");
+        var modDirectory = ModDirectoryPath(game);
+        if (Directory.Exists(modDirectory) && (File.GetAttributes(modDirectory) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("原生模组目录不能是链接");
+        if (Directory.Exists(modDirectory))
+        {
+            var expected = native.Files.Keys.Select(name => Path.GetFullPath(Target(game, name))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (Directory.EnumerateFiles(modDirectory).Any(path => !expected.Contains(Path.GetFullPath(path))) || Directory.EnumerateDirectories(modDirectory).Any())
+                throw new InvalidDataException("原生模组目录包含未登记文件停止恢复");
+        }
         foreach (var (name, fingerprint) in native.Files)
             if (File.Exists(Target(game, name)) && PackageBuilder.Fingerprint(Target(game, name)) != fingerprint)
                 throw new InvalidDataException("原生内容已有第三方修改停止恢复");
         var original = File.ReadAllBytes(Path.Combine(backup, "native-Mods.list"));
         if (Hash(original) != state.OriginalListSha256) throw new InvalidDataException("原生登记备份指纹不符");
         var current = ReadList(ListPath(game));
-        if (!IsKnownListState(current, original, state))
+        if (!IsKnownListState(game, current, original, state))
             throw new InvalidDataException("原生模组列表已有其他改动停止恢复");
     }
 
@@ -106,6 +117,8 @@ public static class NativeContentInstaller
         else if (File.Exists(path)) File.Delete(path);
         foreach (var name in native.Files.Keys)
             if (File.Exists(Target(game, name))) File.Delete(Target(game, name));
+        var modDirectory = ModDirectoryPath(game);
+        if (Directory.Exists(modDirectory) && !Directory.EnumerateFileSystemEntries(modDirectory).Any()) Directory.Delete(modDirectory);
     }
 
     /// <summary>
@@ -136,34 +149,34 @@ public static class NativeContentInstaller
     /// <summary>
     /// 保留原字节并追加一条官方格式的自有登记
     /// </summary>
-    private static byte[] AppendRegistry(byte[] original)
+    private static byte[] AppendRegistry(byte[] original, string game)
     {
         //UTF8解码只用于检测重复条目输出仍保留原始字节
         var text = new UTF8Encoding(false, true).GetString(original);
-        if (text.Split('\n').Any(line => line.TrimStart('\ufeff').StartsWith("MaxyModLoaderNative|", StringComparison.Ordinal)))
+        if (text.Split('\n').Any(line => line.TrimStart('\ufeff').StartsWith(ModDirectoryPath(game) + "|", StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("原生登记条目已存在");
         var separator = original.Length > 0 && original[^1] != 10 ? "\r\n" : "";
-        return original.Concat(Encoding.UTF8.GetBytes(separator + Registry + "\r\n")).ToArray();
+        return original.Concat(Encoding.UTF8.GetBytes(separator + RegistryForGame(game) + "\r\n")).ToArray();
     }
 
     /// <summary>
     /// 识别原始登记列表或游戏规范化后的加载器登记列表
     /// </summary>
-    private static bool IsKnownListState(byte[] current, byte[] original, NativeInstallState state)
+    private static bool IsKnownListState(string game, byte[] current, byte[] original, NativeInstallState state)
     {
         //原始列表和加载器安装时生成的逐字节内容优先按指纹识别
         var currentHash = Hash(current);
         if (currentHash == state.OriginalListSha256 || currentHash == state.InstalledListSha256) return true;
 
         //游戏会将登记行末尾的SWG标记去掉并统一换行因此只接受这两种明确规范化
-        var installed = AppendRegistry(original);
+        var installed = AppendRegistry(original, game);
         if (Hash(installed) != state.InstalledListSha256) return false;
         try
         {
             var encoding = new UTF8Encoding(false, true);
             var installedText = NormalizeLineEndings(encoding.GetString(installed));
             var currentText = NormalizeLineEndings(encoding.GetString(current));
-            var normalizedText = NormalizeLineEndings(encoding.GetString(installed).Replace(Registry, NormalizedRegistry, StringComparison.Ordinal));
+            var normalizedText = NormalizeLineEndings(encoding.GetString(installed).Replace(RegistryForGame(game), NormalizedRegistryForGame(game), StringComparison.Ordinal));
             return currentText == installedText || currentText == normalizedText;
         }
         catch (DecoderFallbackException)
@@ -214,8 +227,37 @@ public static class NativeContentInstaller
     /// </summary>
     private static string Target(string game, string name)
     {
-        //名称已经通过固定集合校验不会包含目录分隔符
-        return Path.GetFullPath(Path.Combine(game, "Mods", Prefix + name));
+        //固定资源文件直接放在独立模组目录中供原版清单挂载
+        return Path.GetFullPath(Path.Combine(game, "Mods", ModDirectory, name));
+    }
+
+    /// <summary>
+    /// 返回加载器原生内容模组目录
+    /// </summary>
+    private static string ModDirectoryPath(string game)
+    {
+        //目录身份由固定常量限制不受列表内容控制
+        return Path.GetFullPath(Path.Combine(game, "Mods", ModDirectory));
+    }
+
+    /// <summary>
+    /// 生成原版可解析的本地模组登记行
+    /// </summary>
+    private static string RegistryForGame(string game)
+    {
+        //登记使用实际绝对目录并采用ASCII描述避免原版文本控件误解UTF8中文
+        var directory = ModDirectoryPath(game);
+        return string.Join('|', directory, ModName, ModDescription, "enabled", "local", "SWG");
+    }
+
+    /// <summary>
+    /// 生成游戏规范化清单时保留的登记行
+    /// </summary>
+    private static string NormalizedRegistryForGame(string game)
+    {
+        //游戏会移除行尾SWG标记其余字段必须保持原样
+        var registry = RegistryForGame(game);
+        return registry[..registry.LastIndexOf('|')];
     }
 
     /// <summary>
