@@ -742,26 +742,30 @@ internal static class Program
             PackageInstaller.Install(game, package);
             var installed = File.ReadAllBytes(list);
             var registry = Encoding.UTF8.GetString(installed);
-            var nativeDirectory = Path.Combine(game, "Mods", "MaxyModLoaderNative");
-            Assert(registry.Contains(nativeDirectory + "|MaxyModLoader Native Content|Native items and recipes supplied by MaxyModLoader|enabled|local|SWG", StringComparison.Ordinal));
-            Assert(Directory.GetFiles(nativeDirectory).Length == NativeContentCompiler.FileNames.Length);
+            const string nativeModId = "MaxyModLoaderNative";
+            Assert(registry.Contains(nativeModId + "|MaxyModLoader Native Content|Native items and recipes supplied by MaxyModLoader|enabled|local|SWG", StringComparison.Ordinal));
+            foreach (var name in NativeContentCompiler.FileNames)
+                Assert(File.Exists(Path.Combine(game, "Mods", nativeModId + "_" + name)));
+            Assert(!Directory.Exists(Path.Combine(game, "Mods", nativeModId)));
             File.AppendAllText(list, "third-party");
             Reject<InvalidDataException>(() => PackageInstaller.Restore(game));
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
             //模拟游戏移除SWG标记并统一登记文件换行后的实际写回结果
             var gameNormalized = Encoding.UTF8.GetString(installed)
-                .Replace(nativeDirectory + "|MaxyModLoader Native Content|Native items and recipes supplied by MaxyModLoader|enabled|local|SWG", nativeDirectory + "|MaxyModLoader Native Content|Native items and recipes supplied by MaxyModLoader|enabled|local", StringComparison.Ordinal)
+                .Replace(nativeModId + "|MaxyModLoader Native Content|Native items and recipes supplied by MaxyModLoader|enabled|local|SWG", nativeModId + "|MaxyModLoader Native Content|Native items and recipes supplied by MaxyModLoader|enabled|local", StringComparison.Ordinal)
                 .Replace("\r\n", "\n", StringComparison.Ordinal);
             File.WriteAllText(list, gameNormalized, new UTF8Encoding(false));
             PackageInstaller.Restore(game);
             Assert(File.ReadAllBytes(list).AsSpan().SequenceEqual(original));
-            Assert(!Directory.Exists(nativeDirectory));
+            foreach (var name in NativeContentCompiler.FileNames)
+                Assert(!File.Exists(Path.Combine(game, "Mods", nativeModId + "_" + name)));
             PackageInstaller.Install(game, package);
             //模拟登记尚未完成以及部分自有文件已被恢复的混合中断状态
-            File.WriteAllBytes(list, original); File.Delete(Path.Combine(nativeDirectory, "common.idx"));
+            File.WriteAllBytes(list, original); File.Delete(Path.Combine(game, "Mods", nativeModId + "_common.idx"));
             PackageInstaller.Restore(game);
             Assert(File.ReadAllBytes(list).AsSpan().SequenceEqual(original));
-            Assert(!Directory.Exists(nativeDirectory));
+            foreach (var name in NativeContentCompiler.FileNames)
+                Assert(!File.Exists(Path.Combine(game, "Mods", nativeModId + "_" + name)));
         }));
         Test("官方未压缩容器格式保留资源并拒绝伪造长度", () => InWorkspace(root =>
         {
