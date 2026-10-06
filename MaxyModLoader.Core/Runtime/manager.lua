@@ -13,14 +13,17 @@ function manager.menu_available(menu)
 end
 
 --<summary>
---将入口加入原版按钮容器使主菜单淡入遮罩覆盖它
+--在原版按钮容器中直接创建入口使渲染与黑幕层级从创建时就正确
 --</summary>
-function manager.attach_menu_entry(entry, template)
-    --原版按钮位于FRAME_DOWN而黑幕FADE是主菜单的后置兄弟控件
+function manager.create_menu_entry(template)
+    --跨父节点重挂原生配方控件会保留错误的渲染注册必须在最终父节点创建
     local parent = template and template:GetParent()
     if not parent then error('原版主菜单按钮容器不可用') end
-    parent:AddChild(entry)
-    return parent
+    local entry = parent:CreateElementFromSubRecipe('BUTTON_STARTNEW')
+    if not entry then error('原版主菜单按钮配方不可用') end
+    --配方工厂只负责实例化未自动挂接时才显式加入最终按钮容器
+    if entry:GetParent() ~= parent then parent:AddChild(entry) end
+    return entry, parent
 end
 
 --<summary>
@@ -672,17 +675,16 @@ function manager.attach()
     manager.template = menu:FindElementByName('BUTTON_STARTNEW')
     manager.scroll_template = screen:FindElementByName('WorkshopScenarioSelect')
     if not manager.template or not manager.scroll_template then return end
-    --完整复用原主菜单按钮保留原字体箭头尺寸与状态动画只更改名称和显示文字
-    local entry = menu:CreateElementFromSubRecipe('BUTTON_STARTNEW')
-    if not entry then error('原版主菜单按钮配方不可用') end
+    --从最终父节点创建原版按钮保留字体箭头尺寸和状态动画
+    local entry = manager.create_menu_entry(manager.template)
     entry:SetName('BUTTON_MAXY_MODS')
     entry:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
     entry:SetAnchor(vector(0, 0))
-    entry:SetPosition(vector(720 * gGame:GetScreenAspect() * 0.79 - 330, 466))
+    --FRAME_DOWN有自己的纵向原点按钮需置于可绘制区域内并避开继续按钮
+    entry:SetPosition(vector(720 * gGame:GetScreenAspect() * 0.79 - 330, 205))
     entry:RaiseFlag(UIFLAG_FOCUSABLEWITHMOUSE)
     entry:FindElementByName('BUTTON_NAME'):SetText(unicode('模组管理'))
     entry:Hide()
-    manager.attach_menu_entry(entry, manager.template)
     entry:ShowAndBlendIn()
     manager.buttons.BUTTON_MAXY_MODS = {element = entry, handler = function() manager.show(true) end}
     manager.frame = screen:FindElementByName('MML_MANAGER')
@@ -841,7 +843,7 @@ function manager.layout()
     --统一变换整个面板保持绘制位置和原生命中区域使用同一套坐标
     manager.frame:SetScale(Vector:Instance(scale, scale, 1, 1))
     manager.frame:SetPosition(vector((width - 1100 * scale) / 2, 35))
-    manager.buttons.BUTTON_MAXY_MODS.element:SetPosition(vector(width * 0.79 - 330, 466))
+    manager.buttons.BUTTON_MAXY_MODS.element:SetPosition(vector(width * 0.79 - 330, 205))
     local forest = manager.frame:FindElementByName('MML_NATIVE_FOREST')
     if forest then
         forest:SetPosition(vector(-(width - 1100 * scale) / (2 * scale), -35 / scale))
