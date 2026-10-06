@@ -19,6 +19,24 @@ public static class PackageInstaller
     /// </summary>
     public static InstallState? ReadInstalledState(string gameDirectory)
     {
+        //完整读取用于部署和恢复前验证大型原版备份
+        return ReadInstalledState(gameDirectory, true);
+    }
+
+    /// <summary>
+    /// 读取启动复用部署所需的结构状态而不重复扫描大型原版备份
+    /// </summary>
+    public static InstallState? ReadInstalledStateForLaunch(string gameDirectory)
+    {
+        //启动只读复用不触碰备份文件恢复前仍由完整读取重新校验
+        return ReadInstalledState(gameDirectory, false);
+    }
+
+    /// <summary>
+    /// 按调用阶段选择是否读取并校验大型原版容器备份
+    /// </summary>
+    private static InstallState? ReadInstalledState(string gameDirectory, bool verifyContainerBackups)
+    {
         //没有安装状态表示当前游戏资源仍由游戏本身管理
         gameDirectory = Path.GetFullPath(gameDirectory);
         var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "install-state.json");
@@ -29,10 +47,13 @@ public static class PackageInstaller
             ?? throw new InvalidDataException("安装日志为空");
         var containers = Containers(state.Package);
         var backup = ResolveBackup(gameDirectory, state.BackupDirectory);
-        foreach (var item in containers)
+        if (verifyContainerBackups)
         {
-            Check(Path.Combine(backup, item.Container + ".idx"), item.OriginalIndexSha256);
-            Check(Path.Combine(backup, item.Container + ".dat"), item.OriginalDataSha256);
+            foreach (var item in containers)
+            {
+                Check(Path.Combine(backup, item.Container + ".idx"), item.OriginalIndexSha256);
+                Check(Path.Combine(backup, item.Container + ".dat"), item.OriginalDataSha256);
+            }
         }
         NativeContentInstaller.CheckRestore(gameDirectory, backup, state.Package.Native, state.Native);
         return state;
@@ -47,6 +68,16 @@ public static class PackageInstaller
         gameDirectory = Path.GetFullPath(gameDirectory);
         var state = ReadInstalledState(gameDirectory);
         if (state is null) return false;
+        return IsInstalledPackage(gameDirectory, packageDirectory, state);
+    }
+
+    /// <summary>
+    /// 使用已读取的安装状态比较候选包而避免再次读取原版恢复点
+    /// </summary>
+    public static bool IsInstalledPackage(string gameDirectory, string packageDirectory, InstallState state)
+    {
+        //启动入口传入同一游戏目录的结构状态并只校验当前已部署容器
+        gameDirectory = Path.GetFullPath(gameDirectory);
         var package = JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(Path.Combine(packageDirectory, "package.json")), ModManifest.JsonOptions)
             ?? throw new InvalidDataException("部署包清单为空");
 

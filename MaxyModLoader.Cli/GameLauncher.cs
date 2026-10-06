@@ -41,12 +41,12 @@ internal static class GameLauncher
         while (true)
         {
             //校验并读取活动部署的原版恢复点作为稳定缓存身份
-            var installedState = PackageInstaller.ReadInstalledState(gameDirectory);
+            var installedState = PackageInstaller.ReadInstalledStateForLaunch(gameDirectory);
             var packageKey = ComputePackageKey(modsDirectory, gameDirectory, installedState?.Package);
             var packageDirectory = Path.Combine(cacheDirectory, packageKey);
             TraceStartup(gameDirectory, "检查模组包", packageDirectory);
             var packageInstalled = installedState is not null && Directory.Exists(packageDirectory) &&
-                                   PackageInstaller.IsInstalledPackage(gameDirectory, packageDirectory);
+                                   PackageInstaller.IsInstalledPackage(gameDirectory, packageDirectory, installedState);
 
             //模组组合发生变化时先回到受校验的原版基线再构建新部署包
             if (installedState is not null && !packageInstalled)

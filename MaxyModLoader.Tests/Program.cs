@@ -450,6 +450,8 @@ internal static class Program
             //模拟游戏正常退出后仍保留模组部署和原版恢复点供下次启动复用
             Assert(PackageInstaller.ReadInstalledState(game) is not null);
             Assert(PackageInstaller.IsInstalledPackage(game, package));
+            var launchState = PackageInstaller.ReadInstalledStateForLaunch(game)!;
+            Assert(PackageInstaller.IsInstalledPackage(game, package, launchState));
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.BuiltDataSha256);
             PackageInstaller.Restore(game);
             Assert(PackageBuilder.Fingerprint(source + ".dat") == manifest.Scripts.OriginalDataSha256);
@@ -458,6 +460,20 @@ internal static class Program
             Assert(!Directory.Exists(backup));
             Assert(!Directory.Exists(staleBackup));
             Assert(Directory.Exists(modStorage));
+        }));
+        Test("启动复用跳过大型备份扫描但恢复仍验证备份", () => InWorkspace(root =>
+        {
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
+            var source = CreateFixture(game);
+            var package = Path.Combine(root, "package");
+            PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
+            PackageInstaller.Install(game, package);
+            var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(Path.Combine(game, "MaxyModLoader", "install-state.json")), ModManifest.JsonOptions)!;
+            File.AppendAllText(Path.Combine(game, state.BackupDirectory, "common.dat"), "tampered");
+            var launchState = PackageInstaller.ReadInstalledStateForLaunch(game)!;
+            Assert(PackageInstaller.IsInstalledPackage(game, package, launchState));
+            Reject<InvalidDataException>(() => PackageInstaller.ReadInstalledState(game));
+            Reject<InvalidDataException>(() => PackageInstaller.Restore(game));
         }));
         Test("非当前部署格式在修改游戏前被拒绝", () => InWorkspace(root =>
         {
