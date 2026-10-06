@@ -13,6 +13,17 @@ function manager.menu_available(menu)
 end
 
 --<summary>
+--将入口加入原版按钮容器使主菜单淡入遮罩覆盖它
+--</summary>
+function manager.attach_menu_entry(entry, template)
+    --原版按钮位于FRAME_DOWN而黑幕FADE是主菜单的后置兄弟控件
+    local parent = template and template:GetParent()
+    if not parent then error('原版主菜单按钮容器不可用') end
+    parent:AddChild(entry)
+    return parent
+end
+
+--<summary>
 --将UTF8文本解码为Unicode码点用于换行和原生中文显示
 --</summary>
 local function characters(value)
@@ -671,7 +682,7 @@ function manager.attach()
     entry:RaiseFlag(UIFLAG_FOCUSABLEWITHMOUSE)
     entry:FindElementByName('BUTTON_NAME'):SetText(unicode('模组管理'))
     entry:Hide()
-    menu:AddChild(entry)
+    manager.attach_menu_entry(entry, manager.template)
     entry:ShowAndBlendIn()
     manager.buttons.BUTTON_MAXY_MODS = {element = entry, handler = function() manager.show(true) end}
     manager.frame = screen:FindElementByName('MML_MANAGER')

@@ -32,6 +32,18 @@ local manager = MaxyModLoader.manager
 local fade_menu = {IsVisible = function() return false end}
 assert(manager.menu_available(fade_menu))
 assert(not manager.menu_available(nil))
+--入口必须挂在原版按钮容器内位于主菜单FADE遮罩下方
+local menu_root = {children = {}}
+local fade_children = {}
+local button_layer = {parent = menu_root, AddChild = function(self, entry) entry.parent = self; table.insert(fade_children, entry) end}
+local screen_fade = {name = 'FADE'}
+menu_root.children = {button_layer, screen_fade}
+local original_button = {GetParent = function() return button_layer end}
+local cloned_button = {}
+assert(manager.attach_menu_entry(cloned_button, original_button) == button_layer)
+assert(menu_root.children[1] == button_layer and menu_root.children[2] == screen_fade)
+assert(cloned_button.parent == button_layer and fade_children[1] == cloned_button and fade_children[2] == nil)
+assert(not pcall(manager.attach_menu_entry, cloned_button, {GetParent = function() return nil end}))
 local template_looked_up = false
 local hidden_menu = {IsVisible = function() error('挂接不能等待渐变结束') end,
     FindElementByName = function(self, name)
