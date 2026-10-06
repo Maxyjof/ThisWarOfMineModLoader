@@ -113,4 +113,4 @@ Compress-Archive -Path ".\hello-mod\*" -DestinationPath ".\hello-mod.zip"
 - [原生内容声明](NativeContent.md)：物品、配方、掉落和交易
 - [内置MCP](MCP.md)：工具接入、诊断和权限边界
 
-可运行源码示例位于仓库`examples`目录：`hello`、`diary-observer`、`rule-api`、`persistent-storage`和`mcp-tools`。更多组合案例在`playtests/mods/survival-camp`。项目只维护当前模组API和清单契约；契约修改时同步更新运行库、示例、测试与文档。
+可运行源码示例位于仓库`examples`目录：`hello`、`diary-observer`、`rule-api`、`persistent-storage`和`mcp-tools`。综合内容模组测试包位于`playtests/mods/starter-armory`。项目只维护当前模组API和清单契约；契约修改时同步更新运行库、示例、测试与文档。

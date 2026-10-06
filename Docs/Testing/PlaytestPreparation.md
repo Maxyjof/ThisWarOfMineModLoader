@@ -4,7 +4,7 @@
 
 ## 准备基线包
 
-基线包只包括游戏事件桥、记录模组和MCP诊断控制台，适合观察原版游戏行为：
+基线包只包括MaxyModLoader游戏事件适配器，用于观察已核验的原版游戏回调：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/playtest/prepare-playtest.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -Mode baseline
@@ -12,17 +12,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/playtest/prepare-playt
 
 ## 准备组合测试包
 
-组合包加入玩法调整、营地辅助和故意失败的模组，用于检查依赖失败隔离及功能组合：
+组合包包含事件适配器、四个原生内容模组和开局物资实测包，用于验证正式内容之间的依赖与组合：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/playtest/prepare-playtest.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -Mode combined
 ```
 
-此包含有故意失败的测试入口，不能当作日常游玩的示例包。运行脚本需要开发机已安装.NET10SDK；完成后脚本输出生成的部署包目录。运行游戏和检验具体玩法仍须按[实测矩阵](ModTestMatrix.md)记录实际状态，不要把部署包构建成功当作游戏内功能已通过。
+运行脚本需要开发机已安装.NET10SDK；完成后脚本输出生成的部署包目录。运行游戏和检验具体玩法仍须按[实测矩阵](ModTestMatrix.md)记录实际状态，不要把部署包构建成功当作游戏内功能已通过。
 
 ## 准备内容模组测试包
 
-内容包组合枪械、弹药、野战装备与交易模组，并附带事件桥和生存玩法辅助模组：
+内容包组合枪械、弹药、野战装备与交易模组，并附带事件适配器：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/playtest/prepare-playtest.ps1 -GameDirectory "D:\Steam\steamapps\common\This War of Mine" -Mode content

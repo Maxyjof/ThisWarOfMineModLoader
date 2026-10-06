@@ -54,6 +54,6 @@ MaxyModLoader同时提供离线原生内容构建与游戏内Lua运行时API。�
 - [`examples/day-scheduler`](../../examples/day-scheduler)：按游戏日安排一次性与周期任务
 - [`examples/game-domain-api`](../../examples/game-domain-api)：访问经核验的场景、角色、物品和库存API
 - [`mods/more-guns`](../../mods/more-guns)、[`mods/field-equipment`](../../mods/field-equipment)：原生物品数据示例
-- [`playtests/mods/survival-camp`](../../playtests/mods/survival-camp)：多模块玩法适配示例
+- [`playtests/mods/starter-armory`](../../playtests/mods/starter-armory)：依赖事件适配器与原生物品模组的综合实测包
 
 运行时单元测试、构建通过和游戏内玩法实测是不同证据。对于每个功能，应在[当前模组实测矩阵](../Testing/ModTestMatrix.md)中记录具体游戏版本、场景、输入和结果。

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "twom.play.bridge",
-  "name": "游戏事件与测试记录桥",
+  "name": "MaxyModLoader游戏事件适配器",
   "version": "0.3.0",
   "entry": "main.lua",
   "modules": {
@@ -14,16 +14,16 @@
     "event_limit": 1000
   },
   "author": "MaxyModLoader",
-  "description": "为其他模组提供事件订阅、跨模组服务和受限的运行记录。它通过包装已核验的场景初始化、昼夜、搜刮状态保存、广播、建造、角色、搜刮与制作回调发布事件，并读取真实场景快照。",
+  "description": "MaxyModLoader官方游戏事件适配器，为玩法模组提供经核验的场景、昼夜、角色、搜刮、制作、广播与建造事件，以及跨模组服务和受限的运行记录。",
   "features": [
-    "为九类已核验场景生命周期回调发布事件",
+    "为已核验的游戏生命周期回调发布事件",
     "区分搜刮状态保存与游戏通用存档",
     "三个源码模块分别负责记录、场景和动作",
     "读取原生角色对象的实际状态",
     "为其他模组提供事件与遥测服务",
     "测试日志保存在加载器目录"
   ],
-  "compatibility": "测试包针对Steam BuildID22193501，具体实装结果见项目验证记录",
+  "compatibility": "针对Steam BuildID22193501，具体实装结果见项目验证记录",
   "license": "未指定",
   "descriptionFile": "README.md"
 }

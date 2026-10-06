@@ -19,22 +19,15 @@ New-Item -ItemType Directory -Path $taskModRoot | Out-Null
 
 #按测试目的选择互相隔离的模组集合
 $taskNames = switch ($Mode) {
-    'baseline' { @('bridge', 'chronicle', 'console') }
-    'combined' { @('bridge', 'chronicle', 'console', 'fast-scavenge', 'stamina', 'wellbeing', 'survival-camp', 'failure', 'failure-dependent') }
-    'content' { @('bridge', 'chronicle', 'fast-scavenge', 'stamina', 'survival-camp', 'more-guns', 'ammunition-supply', 'field-equipment', 'weapon-trading') }
+    'baseline' { @('bridge') }
+    'combined' { @('bridge', 'starter-armory', 'more-guns', 'ammunition-supply', 'field-equipment', 'weapon-trading') }
+    'content' { @('bridge', 'more-guns', 'ammunition-supply', 'field-equipment', 'weapon-trading') }
 }
 
 #由清单目录映射确保内容模组与测试模组都复制进同一隔离目录
 $taskSources = @{
     'bridge' = 'playtests\mods\bridge'
-    'chronicle' = 'playtests\mods\chronicle'
-    'console' = 'playtests\mods\console'
-    'fast-scavenge' = 'playtests\mods\fast-scavenge'
-    'stamina' = 'playtests\mods\stamina'
-    'wellbeing' = 'playtests\mods\wellbeing'
-    'survival-camp' = 'playtests\mods\survival-camp'
-    'failure' = 'playtests\mods\failure'
-    'failure-dependent' = 'playtests\mods\failure-dependent'
+    'starter-armory' = 'playtests\mods\starter-armory'
     'more-guns' = 'mods\more-guns'
     'ammunition-supply' = 'mods\ammunition-supply'
     'field-equipment' = 'mods\field-equipment'

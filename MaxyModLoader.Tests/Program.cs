@@ -741,11 +741,11 @@ internal static class Program
             Assert(bundle.Contains($"version = \"{currentVersion}\"", StringComparison.Ordinal));
             File.WriteAllBytes(Path.Combine(output, "bundle.lua"), Encoding.UTF8.GetBytes(bundle));
             Reject<InvalidDataException>(() => LuaBundle.Compile([0x1b, 0x4c], plan));
-            //额外导出实际多模组包供独立解释器执行每个内部模块
-            //开局物资模组依赖内容目录内的物品模组由独立测试验证避免混入九模组脚本组合
+            //额外导出官方事件适配器供独立解释器验证已核验的游戏回调包装
+            //开局物资模组及原生内容模组由各自测试验证避免把无关玩法混入适配器测试
             var playtestMods = ModCatalog.Discover(Path.Combine(Repository, "playtests", "mods"))
                 .Where(mod => mod.Manifest.Id != "twom.play.starter-armory").ToArray();
-            Assert(playtestMods.Length == 9);
+            Assert(playtestMods.Length == 1);
             var playtestPlan = LoadPlanner.Create(playtestMods);
             Assert(playtestPlan.IsValid);
             File.WriteAllBytes(Path.Combine(output, "playtest-bundle.lua"), LuaBundle.Compile(Encoding.UTF8.GetBytes("return true"), playtestPlan));

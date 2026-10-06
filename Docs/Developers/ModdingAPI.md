@@ -269,6 +269,6 @@ end)
 - [`examples/persistent-storage`](../../examples/persistent-storage)：跨启动持久数据
 - [`examples/mcp-tools`](../../examples/mcp-tools)：MCP结构化动作
 - [`examples/day-scheduler`](../../examples/day-scheduler)：基于游戏日回调的一次性和周期任务
-- [`playtests/mods/survival-camp`](../../playtests/mods/survival-camp)：多模块组合及经过核验的玩法适配示例
+- [`playtests/mods/starter-armory`](../../playtests/mods/starter-armory)：事件、物品模组依赖和持久化的综合实测包
 
 示例源码经过Lua5.1运行时测试的范围见[游戏实测矩阵](../Testing/ModTestMatrix.md)。协议测试或模组加载成功不等同于武器射击、地图掉落、制作和交易等玩法已通过实机验证。

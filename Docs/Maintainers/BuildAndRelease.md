@@ -25,7 +25,7 @@ python -X utf8 tests/test_display.py
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -Version "<主版本.次版本.修订号>"
 ```
 
-输出位于忽略的`artifacts/release`，包含加载器ZIP、示例模组总ZIP及SHA256SUMS。不要提交EXE、DLL、解包资源、日志、本机配置或发行ZIP。安装脚本和安装说明来自当前源码；说明路径变动时同步调整打包脚本。
+输出位于忽略的`artifacts/release`，包含加载器ZIP、只收录正式内容的`Mods`模组总ZIP及SHA256SUMS。模组包包含枪械、弹药、野战装备、交易、开局物资实测包和必要的游戏事件适配器，不收录玩法演示或故意失败探针。不要提交EXE、DLL、解包资源、日志、本机配置或发行ZIP。安装脚本和安装说明来自当前源码；说明路径变动时同步调整打包脚本。
 
 手动安装构建时，先按[安装指南](../Players/Installation.md)完整卸载非当前契约，再将发布目录传给`tools/install-loader.ps1`的`PublishDirectory`和`BootstrapDirectory`参数。不要编写旧记录迁移或放宽指纹来调试。
 

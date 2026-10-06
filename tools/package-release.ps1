@@ -51,9 +51,9 @@ foreach ($binary in @(
 
 #发行加载器ZIP只收纳启动程序、安装器、说明和许可
 $loaderZip = Join-Path $output "MaxyModLoader-$versionNumber-Windows-x64.zip"
-$sampleZip = Join-Path $output "MaxyModLoader-$versionNumber-SampleMods.zip"
+$modsZip = Join-Path $output "MaxyModLoader-$versionNumber-Mods.zip"
 if (Test-Path -LiteralPath $loaderZip) { throw "该版本发行包已存在：$loaderZip" }
-if (Test-Path -LiteralPath $sampleZip) { throw "该版本示例模组包已存在：$sampleZip" }
+if (Test-Path -LiteralPath $modsZip) { throw "该版本模组包已存在：$modsZip" }
 $loaderArchive = [IO.Compression.ZipFile]::Open($loaderZip, [IO.Compression.ZipArchiveMode]::Create)
 try {
     Add-ReleaseFile $loaderArchive (Join-Path $repository 'tools\install-loader.ps1') 'install-loader.ps1'
@@ -72,26 +72,23 @@ try {
     $loaderArchive.Dispose()
 }
 
-#示例包包含玩法模组和原创物品内容模组
-$sampleMods = @(
-    @{ Name = '游戏事件与测试记录桥'; Source = 'playtests\mods\bridge' },
-    @{ Name = '搜刮提速'; Source = 'playtests\mods\fast-scavenge' },
-    @{ Name = '节省移动体力'; Source = 'playtests\mods\stamina' },
-    @{ Name = '生存营地辅助包'; Source = 'playtests\mods\survival-camp' },
+#官方模组包只包含用户要求的内容模组和必要的事件适配器
+$officialMods = @(
+    @{ Name = 'MaxyModLoader游戏事件适配器'; Source = 'playtests\mods\bridge' },
     @{ Name = '更多枪械模组'; Source = 'mods\more-guns' },
     @{ Name = '弹药补给模组'; Source = 'mods\ammunition-supply' },
     @{ Name = '野战工具与防护装备'; Source = 'mods\field-equipment' },
     @{ Name = '军火交易扩展'; Source = 'mods\weapon-trading' },
     @{ Name = '开局物资实测包'; Source = 'playtests\mods\starter-armory' }
 )
-$samplesArchive = [IO.Compression.ZipFile]::Open($sampleZip, [IO.Compression.ZipArchiveMode]::Create)
+$modsArchive = [IO.Compression.ZipFile]::Open($modsZip, [IO.Compression.ZipArchiveMode]::Create)
 try {
-    foreach ($mod in $sampleMods) {
+    foreach ($mod in $officialMods) {
         #每个嵌套ZIP根目录直接包含清单和模组入口
         $source = Join-Path $repository $mod.Source
-        if (!(Test-Path -LiteralPath (Join-Path $source 'mod.json'))) { throw "示例模组清单缺失：$($mod.Name)" }
+        if (!(Test-Path -LiteralPath (Join-Path $source 'mod.json'))) { throw "官方模组清单缺失：$($mod.Name)" }
         $zipName = [regex]::Replace($mod.Name, '[\\/:*?"<>|]', '_') + '.zip'
-        $nestedEntry = $samplesArchive.CreateEntry($zipName, [IO.Compression.CompressionLevel]::Optimal)
+        $nestedEntry = $modsArchive.CreateEntry($zipName, [IO.Compression.CompressionLevel]::Optimal)
         $nestedStream = $nestedEntry.Open()
         $modArchive = [IO.Compression.ZipArchive]::new($nestedStream, [IO.Compression.ZipArchiveMode]::Create, $true)
         try {
@@ -107,12 +104,12 @@ try {
         }
     }
 } finally {
-    $samplesArchive.Dispose()
+    $modsArchive.Dispose()
 }
 
 #为本次版本的两个可下载文件生成SHA256校验清单
-$hashes = Get-FileHash -Algorithm SHA256 -LiteralPath @($loaderZip, $sampleZip)
+$hashes = Get-FileHash -Algorithm SHA256 -LiteralPath @($loaderZip, $modsZip)
 $hashes | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), [IO.Path]::GetFileName($_.Path) } |
     Set-Content -LiteralPath (Join-Path $output 'SHA256SUMS.txt') -Encoding utf8
 Write-Output "已生成Windows加载器包：$loaderZip"
-Write-Output "已生成示例模组包：$sampleZip"
+Write-Output "已生成官方模组包：$modsZip"
