@@ -28,30 +28,13 @@ dead = setmetatable({}, {__index = function() error('访问已释放的原生控
     lua.execute((ROOT / 'MaxyModLoader.Core/Runtime/manager.lua').read_text(encoding='utf-8'))
     lua.execute('''
 local manager = MaxyModLoader.manager
---主菜单新场景按秒等待渐入不同界面重新开始计时
-assert(not manager.menu_fade_complete(100))
-assert(not manager.menu_fade_complete(102.49))
-assert(manager.menu_fade_complete(102.5))
---界面代理身份变化时仍持续计时不让入口永久隐藏
-assert(manager.menu_fade_complete(106.1))
-assert(manager.menu_fade_complete(106.9))
-assert(manager.menu_fade_complete(112))
-manager.fade_start = nil
-assert(not manager.menu_fade_complete(200))
-assert(manager.menu_fade_complete(202.5))
---模式选择期间隐藏的菜单实例不能提前耗尽渐入等待
+    --主菜单可见时立即允许克隆按钮启动原生渐入动画
 local fade_menu = {visible = false, IsVisible = function(self) return self.visible end}
-manager.fade_owner, manager.fade_start = nil, nil
-assert(not manager.menu_fade_ready(fade_menu, 300))
-assert(not manager.menu_fade_ready(fade_menu, 360))
+assert(not manager.menu_visible(fade_menu))
 fade_menu.visible = true
-assert(not manager.menu_fade_ready(fade_menu, 400))
-assert(not manager.menu_fade_ready(fade_menu, 402.49))
-assert(manager.menu_fade_ready(fade_menu, 402.5))
+assert(manager.menu_visible(fade_menu))
 fade_menu.visible = false
-assert(not manager.menu_fade_ready(fade_menu, 403))
-fade_menu.visible = true
-assert(not manager.menu_fade_ready(fade_menu, 500))
+assert(not manager.menu_visible(fade_menu))
 manager.screen, manager.menu, manager.frame = dead, dead, dead
 manager.detail, manager.footer = dead, dead
 manager.buttons = {old = {element = dead, handler = function() error('旧按钮被调用') end}}

@@ -4,30 +4,12 @@ if not LuaGameDelegate or not UIButton or not UITextBox or not Vector then retur
 local manager = {open = false, selection = 1, buttons = {}, pending_states = {}, confirm_open = false}
 api.manager = manager
 local statuses = {loaded = '已加载', failed = '加载失败', skipped = '依赖失败', disabled = '已禁用', pending = '等待加载', loading = '加载中'}
-local fade_wait_seconds = 2.5
-
 --<summary>
---等待原版菜单首轮淡入结束后再创建加载器入口
+--确认原版主菜单已经出现以便立即启动同款原生渐入
 --</summary>
-function manager.menu_fade_complete(now)
-    --首次看到原版菜单时记录高分辨率计时避免不同帧率改变等待时长
-    if not manager.fade_start then
-        manager.fade_start = now
-        return false
-    end
-    --等待覆盖实测原版菜单淡入时长避免入口提前以完整亮度出现
-    return now - manager.fade_start >= fade_wait_seconds
-end
-
---<summary>
---只在原版菜单真正可见后开始计算渐入等待
---</summary>
-function manager.menu_fade_ready(menu, now)
-    --隐藏菜单可能在模式选择期间提前创建不能把隐藏时长算作渐入
-    if manager.fade_owner ~= menu then manager.fade_owner, manager.fade_start = menu, nil end
-    if not menu:IsVisible() then manager.fade_start = nil; return false end
-    --菜单进入可见状态后等待渐入后段再使用原生按钮补间
-    return manager.menu_fade_complete(now)
+function manager.menu_visible(menu)
+    --界面可能在模式切换前创建但隐藏时不应提前开始按钮动画
+    return menu ~= nil and menu:IsVisible()
 end
 
 --<summary>
@@ -670,10 +652,10 @@ function manager.attach()
         manager.layout_width = nil
         manager.screen, manager.open, manager.pressed = screen, false, nil
     end
-    if not menu then manager.fade_start, manager.fade_owner = nil, nil; return end
+    if not menu then return end
     if manager.frame then return end
-    --隐藏的经典菜单可能先于模式切换建立仅在真实显示后等待渐入
-    if not manager.menu_fade_ready(menu, os.clock()) then return end
+    --主菜单首次可见时立即创建入口使原生补间与现有菜单项同步开始
+    if not manager.menu_visible(menu) then return end
     --游戏界面以720逻辑高度缩放横坐标根据当前宽高比计算
     manager.menu, manager.screen, manager.buttons = menu, screen, {}
     manager.template = menu:FindElementByName('BUTTON_STARTNEW')
