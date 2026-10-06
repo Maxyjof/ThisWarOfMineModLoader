@@ -680,8 +680,8 @@ function manager.attach()
     entry:SetName('BUTTON_MAXY_MODS')
     entry:SetWindowAlignment(UIWINDOWALIGNMENT_NONE)
     entry:SetAnchor(vector(0, 0))
-    --FRAME_DOWN有自己的纵向原点按钮需置于可绘制区域内并避开继续按钮
-    entry:SetPosition(vector(720 * gGame:GetScreenAspect() * 0.79 - 330, 205))
+    --把入口放在原版菜单最后一项下方避免遮挡并沿用原版父容器坐标
+    entry:SetPosition(vector(720 * gGame:GetScreenAspect() * 0.79 - 330, 150))
     entry:RaiseFlag(UIFLAG_FOCUSABLEWITHMOUSE)
     entry:FindElementByName('BUTTON_NAME'):SetText(unicode('模组管理'))
     entry:Hide()
@@ -843,7 +843,8 @@ function manager.layout()
     --统一变换整个面板保持绘制位置和原生命中区域使用同一套坐标
     manager.frame:SetScale(Vector:Instance(scale, scale, 1, 1))
     manager.frame:SetPosition(vector((width - 1100 * scale) / 2, 35))
-    manager.buttons.BUTTON_MAXY_MODS.element:SetPosition(vector(width * 0.79 - 330, 205))
+    --保持入口位于原版菜单末尾下方且适配不同屏幕宽高比
+    manager.buttons.BUTTON_MAXY_MODS.element:SetPosition(vector(width * 0.79 - 330, 150))
     local forest = manager.frame:FindElementByName('MML_NATIVE_FOREST')
     if forest then
         forest:SetPosition(vector(-(width - 1100 * scale) / (2 * scale), -35 / scale))

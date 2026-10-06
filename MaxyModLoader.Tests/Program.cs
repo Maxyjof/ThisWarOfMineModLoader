@@ -38,6 +38,12 @@ internal static class Program
         });
 
         //校验依赖顺序与完整计划的失败行为
+        Test("内嵌运行库指纹稳定且非空", () =>
+        {
+            //固定运行库资源每次计算都应返回相同SHA256指纹
+            var first = LuaBundle.GetRuntimeFingerprint();
+            Assert(first.Length == 64 && first == LuaBundle.GetRuntimeFingerprint());
+        });
         Test("依赖排序与输入顺序无关", () =>
         {
             var a = Mod("a", new() { ["z"] = "1.0.0" }); var z = Mod("z");

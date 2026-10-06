@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using MaxyModLoader.Deployment;
 using MaxyModLoader.Mods;
+using MaxyModLoader.Runtime;
 using MaxyModLoader.Windowing;
 
 namespace MaxyModLoader.Cli;
@@ -45,9 +46,7 @@ internal static class GameLauncher
             var installedState = PackageInstaller.ReadInstalledStateForLaunch(gameDirectory);
             var packageKey = ComputePackageKey(modsDirectory, gameDirectory, installedState?.Package);
             var packageDirectory = Path.Combine(cacheDirectory, packageKey);
-            //纯加载器代码更新不改变包内容时沿用当前安装对应的既有缓存目录
-            if (!Directory.Exists(packageDirectory) && installedState is not null)
-                packageDirectory = FindInstalledCache(cacheDirectory, installedState.Package) ?? packageDirectory;
+            //只在完整内容键一致时复用缓存运行库变化必须重建游戏容器
             TraceStartup(gameDirectory, "检查模组包", packageDirectory);
             var packageInstalled = installedState is not null && Directory.Exists(packageDirectory) &&
                                    PackageInstaller.IsInstalledPackage(gameDirectory, packageDirectory, installedState);
@@ -147,6 +146,8 @@ internal static class GameLauncher
         //哈希输入包含当前契约版本和游戏容器内容
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(Encoding.UTF8.GetBytes("MaxyModLoaderModPackageV2\0"));
+        //运行库界面或API改变时重新生成游戏入口而加载器工具更新仍复用已构建模组包
+        hash.AppendData(Encoding.ASCII.GetBytes(LuaBundle.GetRuntimeFingerprint()));
         //持久部署期间游戏容器是模组版本哈希必须改用恢复点中的原版指纹
         var originalContainers = installedPackage is null
             ? null
@@ -216,29 +217,6 @@ internal static class GameLauncher
             hash.AppendData(File.ReadAllBytes(statePath));
         }
         return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
-    }
-
-    /// <summary>
-    /// 查找与当前持久部署清单完全相同的已构建缓存
-    /// </summary>
-    private static string? FindInstalledCache(string cacheDirectory, PackageManifest installedPackage)
-    {
-        //扫描仅限加载器缓存根目录内的内容包不读取大型资源文件
-        var installedManifest = JsonSerializer.Serialize(installedPackage, ModManifest.JsonOptions);
-        foreach (var directory in Directory.EnumerateDirectories(cacheDirectory))
-        {
-            var name = Path.GetFileName(directory);
-            if (name.Length != 64 || !name.All(char.IsAsciiHexDigit) ||
-                (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) continue;
-            var manifestPath = Path.Combine(directory, "package.json");
-            if (!File.Exists(manifestPath)) continue;
-
-            //只复用描述与当前安装完全相同的包由后续容器指纹检查确认运行状态
-            var candidate = JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(manifestPath), ModManifest.JsonOptions);
-            if (candidate is not null && JsonSerializer.Serialize(candidate, ModManifest.JsonOptions) == installedManifest)
-                return directory;
-        }
-        return null;
     }
 
     /// <summary>

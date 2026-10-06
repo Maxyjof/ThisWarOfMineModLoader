@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using MaxyModLoader;
@@ -12,6 +13,34 @@ namespace MaxyModLoader.Runtime;
 public static class LuaBundle
 {
     private static readonly UTF8Encoding Utf8 = new(false, true);
+
+    /// <summary>
+    /// 计算会影响已生成游戏脚本的内嵌运行库指纹
+    /// </summary>
+    public static string GetRuntimeFingerprint()
+    {
+        //按资源名称排序保证相同运行库在不同进程中得到相同指纹
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var assembly = Assembly.GetExecutingAssembly();
+        var resources = assembly.GetManifestResourceNames()
+            .Where(name => name.StartsWith("MaxyModLoader.Runtime.", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal);
+        var buffer = new byte[81920];
+        foreach (var name in resources)
+        {
+            //资源名也参与指纹避免同一内容换名后错误复用缓存
+            hash.AppendData(Utf8.GetBytes(name));
+            hash.AppendData([0]);
+            using var stream = assembly.GetManifestResourceStream(name)
+                ?? throw new InvalidDataException($"无法读取内嵌运行库资源{name}");
+            int read;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                hash.AppendData(buffer.AsSpan(0, read));
+            hash.AppendData([0]);
+        }
+        //输出固定大写十六进制便于并入模组包缓存键
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
 
     /// <summary>
     /// 编译可在游戏既有Lua虚拟机中执行的引导源码
