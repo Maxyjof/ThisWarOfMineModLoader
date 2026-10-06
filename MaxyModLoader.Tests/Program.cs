@@ -111,19 +111,26 @@ internal static class Program
             File.WriteAllText(request, "MMLR1\n", new UTF8Encoding(false));
             Assert(ModStartupState.ConsumeRestartRequest(root) && !ModStartupState.ConsumeRestartRequest(root));
         }));
-        Test("模组ZIP支持根目录和一级目录布局", () => InWorkspace(root =>
+        Test("模组ZIP与解压目录均可导入", () => InWorkspace(root =>
         {
-            //每个压缩包代表一个模组且包内文件会被展开到独立目录
+            //混合模组来源会导入为独立目录并通过同一清单解析器
             var archives = Path.Combine(root, "Mods"); Directory.CreateDirectory(archives);
             CreateModZip(Path.Combine(archives, "root.zip"), "", "zip.root");
             CreateModZip(Path.Combine(archives, "wrapped.zip"), "Wrapped/", "zip.wrapped");
+            var unpacked = Path.Combine(archives, "unpacked-mod"); Directory.CreateDirectory(Path.Combine(unpacked, "modules"));
+            File.WriteAllText(Path.Combine(unpacked, "mod.json"), "{\"schemaVersion\":1,\"id\":\"folder.mod\",\"name\":\"解压模组\",\"version\":\"1.0.0\"}");
+            File.WriteAllText(Path.Combine(unpacked, "main.lua"), "return {on_load=function() end}");
+            File.WriteAllText(Path.Combine(unpacked, "modules", "feature.lua"), "return true");
+            Directory.CreateDirectory(Path.Combine(archives, "unrelated-folder"));
+            File.WriteAllText(Path.Combine(archives, "unrelated-folder", "notes.txt"), "不作为模组导入");
             var staging = Path.Combine(root, "staging");
-            var imported = ModZipImporter.ExtractAll(archives, staging);
+            var imported = ModPackageImporter.ImportAll(archives, staging);
             var plan = LoadPlanner.Create(ModCatalog.Discover(staging));
-            Assert(imported.Count == 2 && plan.IsValid && plan.Ordered.Count == 2);
-            Assert(File.Exists(Path.Combine(imported[0], "main.lua")) && File.Exists(Path.Combine(imported[1], "mod.json")));
+            Assert(imported.Count == 3 && plan.IsValid && plan.Ordered.Count == 3);
+            Assert(plan.Ordered.Any(mod => mod.Manifest.Id == "folder.mod"));
+            Assert(imported.Any(path => File.Exists(Path.Combine(path, "modules", "feature.lua"))));
         }));
-        Test("模组ZIP拒绝目录穿越和混合模组", () => InWorkspace(root =>
+        Test("模组ZIP仍拒绝目录穿越和混合模组", () => InWorkspace(root =>
         {
             //恶意路径在任何文件写入前被拒绝且不会创建目标目录之外的文件
             var archives = Path.Combine(root, "Mods"); Directory.CreateDirectory(archives);
@@ -137,7 +144,7 @@ internal static class Program
                 using (var escape = new StreamWriter(archive.CreateEntry("../escape.lua").Open()))
                     escape.Write("return {}");
             }
-            Reject<InvalidDataException>(() => ModZipImporter.ExtractAll(archives, Path.Combine(root, "staging")));
+            Reject<InvalidDataException>(() => ModPackageImporter.ImportAll(archives, Path.Combine(root, "staging")));
             Assert(!File.Exists(Path.Combine(root, "escape.lua")));
         }));
         Test("管理目录保留禁用模组且不加载入口", () => InWorkspace(root =>

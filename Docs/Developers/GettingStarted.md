@@ -91,7 +91,7 @@ context.storage.set("launch_count", count + 1)
 
 ## 5. 打包安装
 
-ZIP根目录必须直接包含`mod.json`、入口及资源，不能额外套一层模组目录。PowerShell打包示例：
+ZIP根目录必须直接包含`mod.json`、入口及资源，不能额外套一层模组目录。玩家也可以将模组解压到`Mods\模组文件夹`，并确保文件夹根目录直接包含`mod.json`。PowerShell打包示例：
 
 ```powershell
 Compress-Archive -Path ".\hello-mod\*" -DestinationPath ".\hello-mod.zip"

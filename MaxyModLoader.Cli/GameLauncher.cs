@@ -101,7 +101,7 @@ internal static class GameLauncher
     }
 
     /// <summary>
-    /// 从ZIP模组构建未安装的离线部署包
+    /// 从ZIP模组和解压目录构建未安装的离线部署包
     /// </summary>
     private static void BuildPackage(string gameDirectory, string modsDirectory, string workDirectory, string packageDirectory)
     {
@@ -109,7 +109,7 @@ internal static class GameLauncher
         var stagingDirectory = Path.Combine(workDirectory, Guid.NewGuid().ToString("N"));
         try
         {
-            _ = ModZipImporter.ExtractAll(modsDirectory, stagingDirectory);
+            _ = ModPackageImporter.ImportAll(modsDirectory, stagingDirectory);
             //状态文件覆盖模组清单默认值已移除模组的标识不参与当前加载
             var states = ModStartupState.Read(Path.Combine(gameDirectory, "MaxyModLoader", "mod-state.txt"));
             var plan = LoadPlanner.Create(ModCatalog.Discover(stagingDirectory, states));
@@ -136,13 +136,13 @@ internal static class GameLauncher
     }
 
     /// <summary>
-    /// 根据压缩包内容和游戏容器指纹生成缓存键
+    /// 根据模组来源内容和游戏容器指纹生成缓存键
     /// </summary>
     private static string ComputePackageKey(string modsDirectory, string gameDirectory, PackageManifest? installedPackage)
     {
-        //哈希输入包含规范版本、游戏容器和按名称排序的所有ZIP字节
+        //哈希输入包含当前契约版本和游戏容器内容
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        hash.AppendData(Encoding.UTF8.GetBytes("MaxyModLoaderZipPackageV1\0"));
+        hash.AppendData(Encoding.UTF8.GetBytes("MaxyModLoaderModPackageV2\0"));
         hash.AppendData(typeof(Program).Assembly.ManifestModule.ModuleVersionId.ToByteArray());
         hash.AppendData(typeof(PackageBuilder).Assembly.ManifestModule.ModuleVersionId.ToByteArray());
         //持久部署期间游戏容器是模组版本哈希必须改用恢复点中的原版指纹
@@ -168,6 +168,43 @@ internal static class GameLauncher
             var buffer = new byte[1024 * 1024];
             int read;
             while ((read = input.Read(buffer, 0, buffer.Length)) > 0) hash.AppendData(buffer.AsSpan(0, read));
+        }
+        //解压模组按目录名相对路径和文件字节参与缓存键确保编辑后重新部署
+        foreach (var directory in Directory.EnumerateDirectories(modsDirectory, "*", SearchOption.TopDirectoryOnly).Order(StringComparer.OrdinalIgnoreCase))
+        {
+            if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("Mods子目录不能是符号链接");
+            if (!File.Exists(Path.Combine(directory, "mod.json"))) continue;
+            hash.AppendData(Encoding.UTF8.GetBytes(Path.GetFileName(directory) + "\0folder\0"));
+            var pending = new Stack<string>();
+            var files = new List<string>();
+            long totalSize = 0;
+            pending.Push(directory);
+            while (pending.TryPop(out var current))
+            {
+                foreach (var entry in Directory.EnumerateFileSystemEntries(current).Order(StringComparer.OrdinalIgnoreCase))
+                {
+                    var attributes = File.GetAttributes(entry);
+                    if ((attributes & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("解压模组不能包含符号链接");
+                    if ((attributes & FileAttributes.Directory) != 0) pending.Push(entry);
+                    else
+                    {
+                        var length = new FileInfo(entry).Length;
+                        totalSize += length;
+                        if (files.Count >= 10000 || length > 128L * 1024 * 1024 || totalSize > 512L * 1024 * 1024)
+                            throw new InvalidDataException("解压模组文件数量或体积超过上限");
+                        files.Add(entry);
+                    }
+                }
+            }
+            foreach (var path in files.Order(StringComparer.OrdinalIgnoreCase))
+            {
+                //相对路径参与哈希以区分重命名和不同目录结构
+                hash.AppendData(Encoding.UTF8.GetBytes(Path.GetRelativePath(directory, path).Replace('\\', '/') + "\0"));
+                using var input = File.OpenRead(path);
+                var buffer = new byte[1024 * 1024];
+                int read;
+                while ((read = input.Read(buffer, 0, buffer.Length)) > 0) hash.AppendData(buffer.AsSpan(0, read));
+            }
         }
         //启停状态加入缓存键值避免复用旧模组入口
         var statePath = Path.Combine(gameDirectory, "MaxyModLoader", "mod-state.txt");
