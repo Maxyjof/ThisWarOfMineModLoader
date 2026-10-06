@@ -94,7 +94,7 @@ public static class Program
                 //游戏入口没有控制台时将启动错误写入游戏目录便于排查
                 var log = Path.Combine(bootstrapGameRoot, "MaxyModLoader", "startup.log");
                 Directory.CreateDirectory(Path.GetDirectoryName(log)!);
-                File.AppendAllText(log, $"{DateTime.UtcNow:O} PID={Environment.ProcessId} EXE={Environment.ProcessPath} {exception.Message}{Environment.NewLine}", Encoding.UTF8);
+                File.AppendAllText(log, $"{DateTime.UtcNow:O} PID={Environment.ProcessId} EXE={Environment.ProcessPath} 异常类型={exception.GetType().FullName}{Environment.NewLine}{exception}{Environment.NewLine}", Encoding.UTF8);
             }
             else Console.Error.WriteLine($"错误：{exception.Message}");
             return 2;

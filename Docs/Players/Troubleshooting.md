@@ -10,6 +10,8 @@
 
 确认独立ZIP根目录有`mod.json`，`schemaVersion`为1，`entry`路径存在。菜单中的启用修改需要“重启并应用”。检查模组状态与`runtime.log`，入口报错时其依赖方会被跳过。描述中声明的功能不代表已经验证，参考[实测矩阵](../Testing/ModTestMatrix.md)。
 
+如果游戏崩溃，请同时查看`MaxyModLoader/startup.log`和`MaxyModLoader/crash-report.json`。崩溃报告会标出原版进程退出码、PID、运行时长、模组ID和部署指纹；需要原生转储时参考[崩溃诊断说明](CrashDiagnostics.md)。
+
 原生内容还需要游戏目录中匹配的官方ModTools。若安装目录缺少工具或指纹不匹配，构建会明确失败；不要从未知网站下载替代游戏资源。更新后使用同一Release对应的模组和文档。
 
 ## 窗口模式异常

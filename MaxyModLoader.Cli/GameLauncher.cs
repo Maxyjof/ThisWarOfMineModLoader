@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -74,14 +75,25 @@ internal static class GameLauncher
                 DisplayHost.Install(gameDirectory, Path.Combine(gameDirectory, "MaxyModLoader", "app"));
                 displayHostInstalled = true;
                 var start = CreateGameStartInfo(executable, gameDirectory, forwardedArguments, executableBootstrap);
-                TraceStartup(gameDirectory, "启动原版程序", start.FileName);
+                var gameStartedAt = DateTimeOffset.UtcNow;
+                var timer = Stopwatch.StartNew();
+                var executableHash = FingerprintFile(executable);
+                TraceStartup(gameDirectory, "启动原版程序", $"EXE={start.FileName} 原版SHA256={executableHash} 部署={packageKey}");
                 Console.WriteLine(packageInstalled
                     ? "MaxyModLoader已复用持久模组部署正在启动游戏"
                     : "MaxyModLoader模组部署完成正在启动游戏并保留部署结果");
                 using var process = Process.Start(start) ?? throw new IOException("无法启动游戏进程");
-                TraceStartup(gameDirectory, "原版进程已启动", "PID=" + process.Id + " EXE=" + start.FileName);
+                TraceStartup(gameDirectory, "原版进程已启动", $"PID={process.Id} EXE={start.FileName} 部署={packageKey}");
                 await process.WaitForExitAsync();
                 exitCode = process.ExitCode;
+                timer.Stop();
+                GameRunDiagnostics.Write(gameDirectory, new GameRunReport(1,
+                    Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown", executable,
+                    executableHash, process.Id, gameStartedAt, DateTimeOffset.UtcNow, timer.ElapsedMilliseconds,
+                    exitCode, $"0x{unchecked((uint)exitCode):X8}", packageKey,
+                    ReadPackageMods(packageDirectory), forwardedArguments.Length));
+                var exitCodeHex = $"0x{unchecked((uint)exitCode):X8}";
+                TraceStartup(gameDirectory, "原版进程已退出", $"PID={process.Id} 退出码={exitCode}({exitCodeHex}) 运行毫秒={timer.ElapsedMilliseconds}");
             }
             finally
             {
@@ -314,4 +326,29 @@ internal static class GameLauncher
         var path = Path.Combine(gameDirectory, "MaxyModLoader", "startup.log");
         File.AppendAllText(path, $"{DateTime.UtcNow:O} PID={Environment.ProcessId} 阶段={stage} {detail}{Environment.NewLine}", Encoding.UTF8);
     }
+
+    /// <summary>
+    /// 计算目标文件的SHA256指纹
+    /// </summary>
+    private static string FingerprintFile(string path)
+    {
+        //使用流式读取避免把大型游戏程序整体载入内存
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// 读取本次部署包中的模组标识
+    /// </summary>
+    private static string[] ReadPackageMods(string packageDirectory)
+    {
+        //部署清单缺失时返回空集合并由启动阶段日志保留实际错误
+        var path = Path.Combine(packageDirectory, "package.json");
+        if (!File.Exists(path)) return [];
+        using var document = JsonDocument.Parse(File.ReadAllBytes(path));
+        return document.RootElement.TryGetProperty("Mods", out var mods) && mods.ValueKind == JsonValueKind.Array
+            ? mods.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!).ToArray()
+            : [];
+    }
+
 }

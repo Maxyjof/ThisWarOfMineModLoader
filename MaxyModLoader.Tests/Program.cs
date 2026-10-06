@@ -117,6 +117,24 @@ internal static class Program
             File.WriteAllText(request, "MMLR1\n", new UTF8Encoding(false));
             Assert(ModStartupState.ConsumeRestartRequest(root) && !ModStartupState.ConsumeRestartRequest(root));
         }));
+        Test("游戏运行摘要区分正常退出与崩溃退出", () => InWorkspace(root =>
+        {
+            //正常退出写入最近运行现场但不生成崩溃摘要
+            var started = DateTimeOffset.UtcNow.AddSeconds(-5);
+            var report = new GameRunReport(1, "1.0.0", "game.exe", new string('a', 64), 123,
+                started, DateTimeOffset.UtcNow, 5000, 0, "0x00000000", new string('b', 64), ["test.mod"], 0);
+            GameRunDiagnostics.Write(root, report);
+            var directory = Path.Combine(root, "MaxyModLoader");
+            Assert(File.Exists(Path.Combine(directory, "last-run.json")));
+            Assert(!File.Exists(Path.Combine(directory, "crash-report.json")));
+
+            //非零退出码将十六进制现场复制为便于分享的崩溃摘要
+            GameRunDiagnostics.Write(root, report with { ExitCode = unchecked((int)0xC0000005), ExitCodeHex = "0xC0000005" });
+            using var crash = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "crash-report.json")));
+            Assert(crash.RootElement.GetProperty("gameProcessId").GetInt32() == 123);
+            Assert(crash.RootElement.GetProperty("exitCodeHex").GetString() == "0xC0000005");
+            Assert(crash.RootElement.GetProperty("mods")[0].GetString() == "test.mod");
+        }));
         Test("模组ZIP与解压目录均可导入", () => InWorkspace(root =>
         {
             //混合模组来源会导入为独立目录并通过同一清单解析器
