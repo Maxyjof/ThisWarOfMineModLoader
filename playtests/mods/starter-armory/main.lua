@@ -17,26 +17,21 @@ local ammunition = {
     {name = "Ammo", amount = 30}
 }
 
+local pending_campaign = false
+
 --<summary>
 --注册每个新战役的庇护所初始物资补足事件
 --</summary>
 local function install(context)
-    --等待第1天庇护所事件确保原生库存和物品注册已经初始化
-    context.events.on("game.day.begin", function(scene)
-        --只处理新战役首日旧战役的持久数据标记不能阻止新存档发放
-        if not scene or scene:GetCurrentDay() ~= 1 then return end
-        if scene:GetDwellerCount() == 0 then return end
-
-        --先检查全部物品已注册再开始写入避免依赖未加载导致半套物资
-        if not gKosovoItemConfig then error("原生物品配置尚未就绪") end
-        for _, item in ipairs(items) do
-            if not gKosovoItemConfig:GetEntryWithName(item) then error("测试物品尚未注册：" .. item) end
-        end
-        for _, item in ipairs(ammunition) do
-            if not gKosovoItemConfig:GetEntryWithName(item.name) then error("原版弹药尚未注册：" .. item.name) end
+    --在昼夜事件和新战役场景就绪后重复尝试直到整套物资完成
+    local function try_grant(scene)
+        if not pending_campaign or not scene or scene:GetDwellerCount() == 0 then return end
+        if not gKosovoItemConfig or type(gKosovoItemConfig.GetEntryWithName) ~= "function" then
+            context.log("开局物资等待原生物品配置就绪，将在后续昼夜事件重试")
+            return
         end
 
-        --按当前全局库存补足目标数量使同一首日事件重复触发也不会累加
+        --按当前全局库存补足目标数量重复执行也不会累加
         local dweller = scene:GetDweller(0)
         local function top_up(name, target)
             --只增加缺少的数量保留玩家已有物资并核验写入结果
@@ -46,11 +41,40 @@ local function install(context)
             local actual = context.game.inventory.global_count(name)
             if actual < target then error("开局物资写入后数量不足：" .. name .. "，当前=" .. tostring(actual)) end
         end
-        for _, item in ipairs(items) do top_up(item, 1) end
-        for _, item in ipairs(ammunition) do top_up(item.name, item.amount) end
 
-        --记录实测结果便于玩家确认本次新战役收到物资
+        --逐项处理已注册内容缺失项保留待办并输出有限诊断样本
+        local missing = {}
+        local function grant_if_registered(name, amount)
+            if gKosovoItemConfig:GetEntryWithName(name) then
+                top_up(name, amount)
+            else
+                missing[#missing + 1] = name
+            end
+        end
+        for _, item in ipairs(items) do grant_if_registered(item, 1) end
+        for _, item in ipairs(ammunition) do grant_if_registered(item.name, item.amount) end
+        if #missing > 0 then
+            local sample = {}
+            for index = 1, math.min(#missing, 8) do sample[index] = missing[index] end
+            context.log("开局物资仍有未注册项，已补齐可用物品并等待重试：缺少" .. #missing .. "项，示例=" .. table.concat(sample, ","))
+            return
+        end
+
+        --全部内容核验完成后停止本战役重试新战役会重新开启
         context.log("新战役开局物资已核验：模组物品50种至少各1件，4类弹药至少各30发，接收者=" .. dweller:GetDwellerName())
+        pending_campaign = false
+    end
+
+    --首日事件只开启新战役待办并尝试立即发放
+    context.events.on("game.day.begin", function(scene)
+        if scene and scene:GetCurrentDay() == 1 then pending_campaign = true end
+        try_grant(scene)
+    end)
+
+    --场景初始化参数确认新战役时提前开启待办避免漏过初始化顺序
+    context.events.on("game.scene.ready", function(scene, first_time)
+        if first_time then pending_campaign = true end
+        try_grant(scene)
     end)
 end
 

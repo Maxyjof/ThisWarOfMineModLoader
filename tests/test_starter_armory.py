@@ -14,6 +14,7 @@ class StarterArmoryTests(unittest.TestCase):
         self.runtime = LuaRuntime(unpack_returned_tuples=True)
         self.storage = {"granted": True}
         self.handlers = {}
+        self.logs = []
         self.added = []
         self.checked = []
         self.inventory = {}
@@ -45,7 +46,7 @@ class StarterArmoryTests(unittest.TestCase):
             "events": self.runtime.table_from({
                 "on": lambda name, callback: self.handlers.__setitem__(name, callback),
             }),
-            "log": lambda _message: None,
+            "log": lambda message: self.logs.append(message),
         })
         self.runtime.execute("gKosovoItemConfig = {GetEntryWithName = function(self, name) return get_entry(name) end}")
         self.runtime.execute("dweller = {AddItems = function(self, name, amount) add_item(self, name, amount) end, GetDwellerName = function() return '测试角色' end}")
@@ -89,12 +90,30 @@ class StarterArmoryTests(unittest.TestCase):
         self.handlers["game.day.begin"](self.runtime.globals().scene)
         self.assertEqual(self.added, [])
 
-    def test_missing_item_prevents_partial_grant(self):
+    def test_missing_item_is_reported_and_retried_without_losing_other_grants(self):
         self.missing_item = "MML_AK74"
-        with self.assertRaisesRegex(Exception, "测试物品尚未注册"):
-            self.handlers["game.day.begin"](self.runtime.globals().scene)
+        self.handlers["game.day.begin"](self.runtime.globals().scene)
+        self.assertEqual(len(self.added), 53)
+        self.assertEqual(self.inventory.get("MML_AK74", 0), 0)
+        self.assertTrue(any("缺少1项" in message and "MML_AK74" in message for message in self.logs))
+
+        #物品注册稍晚时后续昼夜事件重试缺项且库存已有项不重复添加
+        self.runtime.globals().current_day = 2
+        self.missing_item = None
+        self.handlers["game.day.begin"](self.runtime.globals().scene)
+        self.assertEqual(self.inventory.get("MML_AK74", 0), 1)
+        self.assertEqual(len(self.added), 54)
+        self.assertTrue(any("新战役开局物资已核验" in message for message in self.logs))
+
+    def test_new_campaign_scene_ready_starts_grant_attempt(self):
+        self.handlers["game.scene.ready"](self.runtime.globals().scene, True)
+        self.assertEqual(len(self.added), 54)
+
+    def test_unready_registry_waits_without_throwing(self):
+        self.runtime.execute("gKosovoItemConfig = nil")
+        self.handlers["game.day.begin"](self.runtime.globals().scene)
         self.assertEqual(self.added, [])
-        self.assertTrue(self.storage["granted"])
+        self.assertTrue(any("等待原生物品配置就绪" in message for message in self.logs))
 
     def test_manifest_declares_all_content_dependencies_and_test_scope(self):
         manifest = json.loads((MOD_ROOT / "mod.json").read_text(encoding="utf-8"))
