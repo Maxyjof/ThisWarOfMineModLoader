@@ -433,7 +433,7 @@ local function context_for(id, dependencies, options)
         table.insert(owned_listeners, subscription)
         return function() subscription.active = false end
     end
-    context.game = {phase = {}, scene = {}, characters = {}, items = {}, inventory = {}, story = {}}
+    context.game = {phase = {}, scene = {}, campaign = {}, characters = {}, items = {}, inventory = {}, story = {}}
     --<summary>
     --取得当前活动场景并在游戏尚未创建场景时明确失败
     --</summary>
@@ -471,6 +471,12 @@ local function context_for(id, dependencies, options)
         local scene = get_game_scene()
         return {day = scene:GetCurrentDay(), hour = scene.GetCurrentHour and scene:GetCurrentHour() or nil,
             character_count = scene:GetDwellerCount()}
+    end
+    --读取已核验的原生存档载入标记避免新战役事件在读档时重放
+    context.game.campaign.is_loading_saved_game = function()
+        --原生接口不可用时明确报错不猜测当前战役状态
+        require_condition(gKosovoGlobalState ~= nil and type(gKosovoGlobalState.IsJustLoadedGame) == "function", "campaign load state is unavailable")
+        return gKosovoGlobalState:IsJustLoadedGame()
     end
     --<summary>
     --读取当前玩法场景中的幸存者数量

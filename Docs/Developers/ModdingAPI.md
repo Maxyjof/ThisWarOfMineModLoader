@@ -99,6 +99,7 @@ counter.increment()
 | --- | --- | --- |
 | `context.game.phase.current()` | 返回`loading`、`scavenge`、`shelter`或`other` | 来自当前游戏阶段绑定 |
 | `context.game.scene.state()` | 读取天数、可选小时与幸存者数量 | 必须存在活动场景 |
+| `context.game.campaign.is_loading_saved_game()` | 查询已核验的原生存档载入标记 | 必须存在当前版本的`gKosovoGlobalState:IsJustLoadedGame()`绑定 |
 | `context.game.characters.count()`与`get(index)` | 枚举当前场景幸存者 | 序号从0开始且必须有效 |
 | 角色`get_parameter(name)`与`set_parameter(name,value)` | 读取或修改有限数字状态并重新求解依赖 | 参数必须由当前角色绑定识别 |
 | 角色`add_item(name,amount)`与`consume_item(name)` | 通过指定角色调用原生方法增加物资或消耗其可访问的全局物品 | 物品须已注册，数量为1到999的整数 |
@@ -120,6 +121,8 @@ end
 ```
 
 角色`add_item`调用已核验的`dweller:AddItems`，该原生方法会增加全局可用物资，结果可由`global_count`核对。`GetShelterItemCount`是独立查询，不用于检查这类物资。状态API只处理角色对象已有的数字参数，故事广播只覆盖原生Lua场景函数的事件路径。
+
+`is_loading_saved_game()`直接读取`gKosovoGlobalState:IsJustLoadedGame()`，不推测存档槽或尝试修改游戏存档。可在`game.scene.ready`事件中判断是否应执行只适用于新战役的初始化逻辑；`game.day.begin`会在继续游戏时再次触发，不可单独作为新战役标记。
 
 完整的只读调用示例见[`examples/game-domain-api`](../../examples/game-domain-api)。该示例只在已接入的游戏日事件中输出日志，并没有在实际游戏中验证具体事件触发结果。
 

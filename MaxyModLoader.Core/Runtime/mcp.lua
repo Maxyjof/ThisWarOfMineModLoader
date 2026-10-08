@@ -109,6 +109,10 @@ function module.state()
         paused = gGame:IsPaused(), gameplay_paused = gGame:IsGameplayPaused(), characters = module.array(),
         core_gameplay = gGameDelegate:IsCoreGameplayPhase(), interactive_prologue = gGameDelegate:IsDuringInteractivePrologue(),
         loading = gGame:IsLoadingScreenActive(), active = gGame:IsActive()}
+    --公开原生刚读档标记辅助诊断存档载入与新战役初始化
+    if gKosovoGlobalState and type(gKosovoGlobalState.IsJustLoadedGame) == 'function' then
+        result.loading_saved_game = gKosovoGlobalState:IsJustLoadedGame()
+    end
     --帧计时绑定可能返回原生计时对象只返回数字值或类型避免泄露地址
     result.timing = {}
     for _, name in ipairs({'GetCurrentFrame', 'GetGameTime', 'GetGameplayTime'}) do
