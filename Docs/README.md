@@ -15,12 +15,10 @@
 - [清单字段](Developers/Manifest.md)：身份、依赖、模块、配置、Markdown和能力
 - [运行时API参考](Developers/ModdingAPI.md)：事件、服务、函数包装、共享规则、持久存储和MCP动作
 - [原生内容](Developers/NativeContent.md)：物品、配方、掉落和交易声明
-- [内置MCP](Developers/MCP.md)：客户端配置、工具、测试方式及权限边界
+- [内置MCP](Developers/MCP.md)：客户端配置、工具和权限边界
 - [可运行示例](../examples)：入口、游戏函数观察、共享规则、持久数据和MCP动作
 
-## 维护与测试
+## 维护
 
-- [构建和发行](Maintainers/BuildAndRelease.md)：回归、玩家包与GitHub工作流
-- [游戏实测矩阵](Testing/ModTestMatrix.md)：当前模组的实际验证结果和未完成项
-- [历史验证记录](Testing/ValidationHistory.md)：先前阶段的证据；不能替代当前构建的测试
-- [实机测试准备](Testing/PlaytestPreparation.md)：构建隔离的基线与组合测试部署包
+- [构建和发行](Maintainers/BuildAndRelease.md)：构建、玩家包与GitHub工作流
+- [历史运行记录](Testing/ValidationHistory.md)：先前游戏版本和源码阶段的记录，不代表当前版本已验证

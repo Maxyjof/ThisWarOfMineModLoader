@@ -8,7 +8,7 @@
 
 ## 模组不生效
 
-确认独立ZIP根目录有`mod.json`，`schemaVersion`为1，`entry`路径存在。菜单中的启用修改需要“重启并应用”。检查模组状态与`runtime.log`，入口报错时其依赖方会被跳过。描述中声明的功能不代表已经验证，参考[实测矩阵](../Testing/ModTestMatrix.md)。
+确认独立ZIP根目录有`mod.json`，`schemaVersion`为1，`entry`路径存在。菜单中的启用修改需要“重启并应用”。检查模组状态与`runtime.log`，入口报错时其依赖方会被跳过。模组描述只说明预期功能，不代表游戏内效果已验证。
 
 如果游戏崩溃，请同时查看`MaxyModLoader/startup.log`和`MaxyModLoader/crash-report.json`。崩溃报告会标出原版进程退出码、PID、运行时长、模组ID和部署指纹；需要原生转储时参考[崩溃诊断说明](CrashDiagnostics.md)。
 

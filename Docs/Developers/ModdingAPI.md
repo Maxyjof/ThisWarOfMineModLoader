@@ -130,7 +130,7 @@ end
 
 ### 按游戏日安排任务
 
-`context.schedule.after_days(days, callback)`在后续第`days`次`game.day.begin`时调用一次，`context.schedule.every_days(interval, callback)`按给定游戏日间隔重复调用。两者都接收事件的`scene`和`was_scavenging`参数，并返回可取消函数。运行时必须有事件桥广播`game.day.begin`，本项目测试桥已提供该事件。
+`context.schedule.after_days(days, callback)`在后续第`days`次`game.day.begin`时调用一次，`context.schedule.every_days(interval, callback)`按给定游戏日间隔重复调用。两者都接收事件的`scene`和`was_scavenging`参数，并返回可取消函数。运行时必须有事件桥广播`game.day.begin`，本项目事件桥提供该事件。
 
 ```lua
 context.schedule.after_days(2, function(scene, was_scavenging)
@@ -276,4 +276,4 @@ end)
 - [`examples/day-scheduler`](../../examples/day-scheduler)：基于游戏日回调的一次性和周期任务
 - [`playtests/mods/starter-armory`](../../playtests/mods/starter-armory)：事件、物品模组依赖和持久化的综合实测包
 
-示例源码经过Lua5.1运行时测试的范围见[游戏实测矩阵](../Testing/ModTestMatrix.md)。协议测试或模组加载成功不等同于武器射击、地图掉落、制作和交易等玩法已通过实机验证。
+示例模组展示API的预期用法，不等同于武器射击、地图掉落、制作和交易等玩法已通过游戏内验证。

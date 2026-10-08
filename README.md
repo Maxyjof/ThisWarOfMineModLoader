@@ -46,9 +46,9 @@ MaxyModLoader是《这是我的战争》WindowsSteam版的模组加载器与Lua�
 | 军火交易扩展 | 为更多枪械模组提供交易内容 | 更多枪械模组 |
 | 开局物资实测包 | 新存档首次进入庇护所时，将40种新增枪械、4种弹药补给物品、6种工具装备各发1件，并将4类原版弹药各发30发 | MaxyModLoader游戏事件适配器、更多枪械、弹药补给、野战工具与防护装备、军火交易扩展 |
 
-运行时模组的设计边界和实测状态见[模组游戏实测矩阵](Docs/Testing/ModTestMatrix.md)。新战术会改变搜刮行动运行时长，轮休会改变角色疲劳，AI工具可以调用有限游戏动作；构建或模拟测试通过不代表本机游戏内行为已通过实测。
+运行时模组的能力边界和已核验范围见[能力总览](Docs/Developers/CapabilityOverview.md)。新战术会改变搜刮行动运行时长，轮休会改变角色疲劳，AI工具可以调用有限游戏动作；实际游戏效果仍需在目标游戏版本中逐项确认。
 
-把需要的模组ZIP放入`Mods`文件夹；军火交易扩展需要同时启用更多枪械。开局物资实测包会在每个新战役第1天把测试物品补足到庇护所共享库存目标数量，可在“我们的物品”界面查看；重复触发首日事件不会重复堆叠，旧战役的模组持久状态也不会挡住新存档发放。模组管理界面会显示完整说明、状态和依赖。更多源码示例见[`examples`](examples)；仅用于引擎集成测试的适配器和物资测试源码位于[`playtests/mods`](playtests/mods)。
+把需要的模组ZIP放入`Mods`文件夹；军火交易扩展需要同时启用更多枪械。开局物资实测包会在每个新战役第1天把测试物品补足到庇护所共享库存目标数量，可在“我们的物品”界面查看；重复触发首日事件不会重复堆叠，旧战役的模组持久状态也不会挡住新存档发放。模组管理界面会显示完整说明、状态和依赖。更多源码示例见[`examples`](examples)；物资模组源码位于[`playtests/mods/starter-armory`](playtests/mods/starter-armory)。
 
 ## 卸载和故障恢复
 
@@ -89,23 +89,16 @@ Steam验证或重新安装会恢复官方游戏文件，但不会替你备份存
 }
 ```
 
-完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、能力总览、运行时API参考、原生内容与MCP指南。开发者可以从[快速入门](Docs/Developers/GettingStarted.md)开始，并查看[`examples`](examples)中的可运行示例。当前游戏结果见[模组实测矩阵](Docs/Testing/ModTestMatrix.md)。
+完整分类文档见[Docs文档导航](Docs/README.md)，包括玩家使用、故障排查、开发入门、能力总览、运行时API参考、原生内容与MCP指南。开发者可以从[快速入门](Docs/Developers/GettingStarted.md)开始，并查看[`examples`](examples)中的可运行示例。
 
 开发文档：[额外能力总览](Docs/Developers/CapabilityOverview.md)、[运行时API参考](Docs/Developers/ModdingAPI.md)、[游戏MCP桥](Docs/Developers/MCP.md)、[游戏版本与实测范围](Docs/Testing/ValidationHistory.md)。除原生内容构建外，加载器API支持Lua内部模块、事件、已存在函数包装、依赖服务、共享规则、按模组隔离的跨启动数据、MCP动作和经核验的`context.game`游戏对象门面；[`游戏对象API示例`](examples/game-domain-api)演示读取玩法阶段、场景和幸存者状态。当前契约已核验的`dweller:AddItems`会增加全局可用物资，可通过`context.game.inventory.global_count`检查；模组管理器中的开局物资包使用此路径。`GetShelterItemCount`是独立的只读查询，不作为共享物资写入接口。Lua模组与原生游戏脚本权限相同，只安装可信模组。原生物品内容仍需使用本机官方ModTools构建；当前模组资源不包含游戏原版二进制或原版资源。
 
 ## 开发者构建
 
-需要.NET10SDK、Python3.12和Lua5.1测试依赖。Windows玩家包由Release工作流自动构建，也可在仓库根目录运行：
+需要.NET10SDK。Windows玩家包由Release工作流自动构建，也可在仓库根目录运行：
 
 ```powershell
 dotnet build -c Release
-dotnet run --project MaxyModLoader.Tests -c Release --no-build
-python -m pip install -r tests/requirements.txt
-python -X utf8 tests/test_runtime.py
-python -X utf8 tests/test_modpack.py
-python -X utf8 tests/test_manager.py
-python -X utf8 tests/test_mcp.py
-python -X utf8 tests/test_display.py
 ```
 
 构建、玩家包打包和GitHubRelease工作流见[构建和发行指南](Docs/Maintainers/BuildAndRelease.md)。使用未发布的新版本号，不覆盖已有标签。源码文档可能领先于最新Release，玩家以同一Release附带的说明和模组为准。

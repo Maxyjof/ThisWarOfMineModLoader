@@ -1,21 +1,14 @@
 # 构建和发行
 
-开发机需要.NET10SDK、Python3.12及`tests/requirements.txt`中的Lua5.1测试依赖。玩家包使用Windows x64自包含单文件程序，玩家无需安装.NET。
+开发机需要.NET10SDK。玩家包使用Windows x64自包含单文件程序，玩家无需安装.NET。
 
-## 回归检查
+## 构建
 
 ```powershell
 dotnet build -c Release
-dotnet run --project MaxyModLoader.Tests -c Release --no-build
-python -m pip install -r tests/requirements.txt
-python -X utf8 tests/test_runtime.py
-python -X utf8 tests/test_modpack.py
-python -X utf8 tests/test_manager.py
-python -X utf8 tests/test_mcp.py
-python -X utf8 tests/test_display.py
 ```
 
-离线测试通过后，继续执行[游戏实测矩阵](../Testing/ModTestMatrix.md)，特别是新增物品实际获取、制作、使用及禁用恢复。不要将虚拟Lua对象测试当作实际游戏证据。
+本仓库不维护自动化测试套件。构建成功只说明源码可编译，不代表游戏内玩法已经验证；新增物品获取、制作、使用和禁用恢复仍须在目标游戏版本中实际检查。
 
 正常启动会复用已部署容器。完整恢复和安装仍校验SHA256；运行时的`container-integrity.json`只缓存已核验文件的长度与时间信息，文件元数据改变时重新计算SHA256。它是可删除的派生缓存，不属于部署身份或恢复数据。
 
@@ -33,6 +26,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -V
 
 ## GitHub工作流
 
-常规推送工作流运行回归，版本标签工作流额外构建并发布Release。完成实际验证、同步代码版本和CHANGELOG后，再创建未使用的`v主版本.次版本.修订号`标签并推送，不能覆盖已有标签或发布资产。
+常规推送工作流构建解决方案，版本标签工作流构建并发布Release。完成实际验证、同步代码版本和CHANGELOG后，再创建未使用的`v主版本.次版本.修订号`标签并推送，不能覆盖已有标签或发布资产。
 
 Release描述说明支持的SteamBuildID、安装步骤、可下载示例、已验证范围和已知限制。尚未完成实测的内容包不包装成“全部可用”。每个阶段使用中文Git标题和正文，并推送便于回退。

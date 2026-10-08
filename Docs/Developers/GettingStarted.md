@@ -103,7 +103,7 @@ Compress-Archive -Path ".\hello-mod\*" -DestinationPath ".\hello-mod.zip"
 
 先在安全的新存档检查入口日志和模组状态。需要改动角色、物品、搜刮、制作或交易时，找出已核验的原生Lua回调或内容字段，以动作前后状态验证实际效果。内置MCP可检查角色参数、物品注册、实际库存、界面和截图；`debug_give_item`只用于诊断存档，不代表自然获取或武器射击有效。
 
-将结果写入[游戏实测矩阵](../Testing/ModTestMatrix.md)，明确区分Lua测试、数据注册成功和完整玩法验证。真实函数签名、场景边界或字段没有核实时，不要根据类似版本猜测。
+记录目标游戏BuildID、场景、实际观察到的结果和运行日志，明确区分资源注册成功与完整玩法验证。真实函数签名、场景边界或字段没有核实时，不要根据类似版本猜测。
 
 ## 下一步
 
@@ -113,4 +113,4 @@ Compress-Archive -Path ".\hello-mod\*" -DestinationPath ".\hello-mod.zip"
 - [原生内容声明](NativeContent.md)：物品、配方、掉落和交易
 - [内置MCP](MCP.md)：工具接入、诊断和权限边界
 
-可运行源码示例位于仓库`examples`目录：`hello`、`diary-observer`、`rule-api`、`persistent-storage`和`mcp-tools`。综合内容模组测试包位于`playtests/mods/starter-armory`。项目只维护当前模组API和清单契约；契约修改时同步更新运行库、示例、测试与文档。
+可运行源码示例位于仓库`examples`目录：`hello`、`diary-observer`、`rule-api`、`persistent-storage`和`mcp-tools`。开局物资模组源码位于`playtests/mods/starter-armory`。项目只维护当前模组API和清单契约；契约修改时同步更新运行库、示例、文档和工作流。

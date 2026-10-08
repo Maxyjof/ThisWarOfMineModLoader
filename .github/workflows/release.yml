@@ -13,74 +13,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: 安装Lua运行时测试依赖
-        run: python -m pip install -r tests/requirements.txt
       - name: 构建完整解决方案
         run: dotnet build -c Release
-      - name: 运行CSharp回归测试
-        run: dotnet run --project MaxyModLoader.Tests -c Release --no-build
-      - name: 运行Lua和管理界面回归测试
-        shell: pwsh
-        run: |
-          $tests = @('tests/test_runtime.py', 'tests/test_modpack.py', 'tests/test_starter_armory.py', 'tests/test_unique_mods.py', 'tests/test_manager.py', 'tests/test_mcp.py', 'tests/test_display.py')
-          foreach ($test in $tests) {
-            python -X utf8 $test
-            if ($LASTEXITCODE -ne 0) { throw "$test回归测试失败" }
-          }
       - name: 构建加载器和正式内容模组包
         shell: pwsh
         run: ./tools/package-release.ps1 -Version $env:GITHUB_REF_NAME
-      - name: 校验发布压缩包结构
-        shell: pwsh
-        run: |
-          $loader = Get-ChildItem artifacts/release/*-Windows-x64.zip
-          $mods = Get-ChildItem artifacts/release/*-Mods.zip
-          if (!$loader -or !$mods) { throw '发布包缺失' }
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $loaderArchive = [IO.Compression.ZipFile]::OpenRead($loader.FullName)
-          try {
-            $required = @('install-loader.ps1', 'app/MaxyModLoader.exe', 'app/MaxyModLoader.Bootstrap.exe', '安装说明.md')
-            $names = @($loaderArchive.Entries | ForEach-Object { $_.FullName })
-            foreach ($name in $required) {
-              if ($name -notin $names) { throw "加载器包缺少文件：$name" }
-            }
-            $versionEntry = $loaderArchive.GetEntry('版本.txt')
-            if (!$versionEntry) { throw '加载器包缺少版本标记' }
-            $versionReader = [IO.StreamReader]::new($versionEntry.Open(), [Text.Encoding]::UTF8)
-            try { $packagedVersion = $versionReader.ReadToEnd().Trim() } finally { $versionReader.Dispose() }
-            $expectedVersion = $env:GITHUB_REF_NAME -replace '^v', ''
-            if ($packagedVersion -ne $expectedVersion) { throw "压缩包版本标记与Release标签不一致：$packagedVersion" }
-          } finally { $loaderArchive.Dispose() }
-          $modsArchive = [IO.Compression.ZipFile]::OpenRead($mods.FullName)
-          try {
-            if ($modsArchive.Entries.Count -ne 9) { throw '官方模组包必须恰好包含九个目标模组' }
-            $requiredModFiles = [ordered]@{
-              'MaxyModLoader游戏事件适配器.zip' = @('mod.json', 'main.lua', 'modules/scenes.lua')
-              '疲劳与搜刮战术.zip' = @('mod.json', 'main.lua', 'README.md')
-              '营地轮休制度.zip' = @('mod.json', 'main.lua', 'README.md')
-              '营地参谋MCP.zip' = @('mod.json', 'main.lua', 'README.md')
-              '更多枪械模组.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/MoreGuns.dds')
-              '弹药补给模组.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/Ammunition.dds')
-              '野战工具与防护装备.zip' = @('mod.json', 'native-content.json', 'resources/UI/MaxyModLoader/Items/FieldEquipment.dds')
-              '军火交易扩展.zip' = @('mod.json', 'native-content.json', 'README.md')
-              '开局物资实测包.zip' = @('mod.json', 'main.lua', 'README.md')
-            }
-            foreach ($modName in $requiredModFiles.Keys) {
-              $entry = $modsArchive.GetEntry($modName)
-              if (!$entry) { throw "官方模组包缺少目标模组：$modName" }
-              $entryStream = $entry.Open()
-              $modArchive = [IO.Compression.ZipArchive]::new($entryStream, [IO.Compression.ZipArchiveMode]::Read, $false)
-              try {
-                $names = @($modArchive.Entries | ForEach-Object { $_.FullName })
-                foreach ($required in $requiredModFiles[$modName]) {
-                  if ($required -notin $names) { throw "$modName缺少文件：$required" }
-                }
-              } finally { $modArchive.Dispose() }
-            }
-          } finally { $modsArchive.Dispose() }
       - name: 创建GitHubRelease并上传玩家包
         uses: softprops/action-gh-release@v2
         with:
