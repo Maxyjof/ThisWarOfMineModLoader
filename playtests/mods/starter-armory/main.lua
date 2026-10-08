@@ -26,12 +26,6 @@ local function install(context)
     --在昼夜事件和新战役场景就绪后重复尝试直到整套物资完成
     local function try_grant(scene)
         if not pending_campaign or not scene or scene:GetDwellerCount() == 0 then return end
-        --读取原生存档标记防止首日载入旧存档时再次发放已带走的枪械
-        if context.game.campaign.is_loading_saved_game() then
-            pending_campaign = false
-            context.log("检测到载入已有存档，跳过新战役开局物资发放")
-            return
-        end
         if not gKosovoItemConfig or type(gKosovoItemConfig.GetEntryWithName) ~= "function" then
             context.log("开局物资等待原生物品配置就绪，将在后续昼夜事件重试")
             return

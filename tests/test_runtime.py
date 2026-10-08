@@ -97,6 +97,7 @@ gKosovoItemConfig = {GetEntryWithName = function(self, name)
     if name == "CannedFood" then return {Value = 5, StackSize = 10} end
 end}
 gKosovoGlobalState = {GetGlobalItemCount = function(self, name) return inventory[name] or 0 end,
+    IsJustLoadedGame = function() return true end,
     GetShelterItemCount = function(self, name) return shelter_inventory[name] or 0 end}
 gScene = {GetCurrentDay = function() return 4 end, GetCurrentHour = function() return 8 end,
     GetDwellerCount = function() return 1 end, GetDweller = function(self, index) if index == 0 then return native_character end end,
@@ -106,6 +107,7 @@ gGameDelegate = {IsScavenge = function() return false end, IsCoreGameplayPhase =
 game_api = nil
 assert(load_test_mod("game.facade", [[return {on_load = function(c) game_api = c.game end}]], {}))
 assert(game_api.phase.current() == "shelter")
+assert(game_api.campaign.is_just_loaded_game())
 local game_scene = game_api.scene.state()
 assert(game_scene.day == 4 and game_scene.hour == 8 and game_scene.character_count == 1)
 assert(game_api.characters.count() == 1)

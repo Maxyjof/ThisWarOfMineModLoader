@@ -19,7 +19,7 @@ class StarterArmoryTests(unittest.TestCase):
         self.checked = []
         self.inventory = {}
         self.missing_item = None
-        self.loading_saved_game = False
+        self.just_loaded_game = False
 
         def get_entry(name):
             self.checked.append(name)
@@ -42,7 +42,7 @@ class StarterArmoryTests(unittest.TestCase):
                 "set": lambda key, value: self.storage.__setitem__(key, value),
             }),
             "game": self.runtime.table_from({
-                "campaign": self.runtime.table_from({"is_loading_saved_game": lambda: self.loading_saved_game}),
+                "campaign": self.runtime.table_from({"is_just_loaded_game": lambda: self.just_loaded_game}),
                 "inventory": self.runtime.table_from({"global_count": global_count}),
             }),
             "events": self.runtime.table_from({
@@ -84,12 +84,12 @@ class StarterArmoryTests(unittest.TestCase):
         self.handlers["game.scene.ready"](self.runtime.globals().scene, True)
         self.assertEqual(len(self.added), 108)
 
-    def test_loaded_day_one_save_never_reissues_armory(self):
-        self.loading_saved_game = True
+    def test_fresh_campaign_grants_even_when_native_just_loaded_flag_is_true(self):
+        #原生刚载入标记在新战役中也为真不能据此跳过物资
+        self.just_loaded_game = True
         self.handlers["game.scene.ready"](self.runtime.globals().scene, True)
         self.handlers["game.day.begin"](self.runtime.globals().scene)
-        self.assertEqual(self.added, [])
-        self.assertTrue(any("跳过新战役开局物资" in message for message in self.logs))
+        self.assertEqual(len(self.added), 54)
 
     def test_only_fills_missing_inventory_and_only_on_day_one(self):
         self.inventory.update({"MML_AK74": 1, "Ammo": 25})

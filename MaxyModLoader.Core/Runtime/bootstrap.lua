@@ -472,10 +472,10 @@ local function context_for(id, dependencies, options)
         return {day = scene:GetCurrentDay(), hour = scene.GetCurrentHour and scene:GetCurrentHour() or nil,
             character_count = scene:GetDwellerCount()}
     end
-    --读取已核验的原生存档载入标记避免新战役事件在读档时重放
-    context.game.campaign.is_loading_saved_game = function()
-        --原生接口不可用时明确报错不猜测当前战役状态
-        require_condition(gKosovoGlobalState ~= nil and type(gKosovoGlobalState.IsJustLoadedGame) == "function", "campaign load state is unavailable")
+    --读取原生刚载入标记但不将其当作新战役与读档的区分信号
+    context.game.campaign.is_just_loaded_game = function()
+        --原生接口不可用时明确报错不推测状态
+        require_condition(gKosovoGlobalState ~= nil and type(gKosovoGlobalState.IsJustLoadedGame) == "function", "game load state is unavailable")
         return gKosovoGlobalState:IsJustLoadedGame()
     end
     --<summary>
