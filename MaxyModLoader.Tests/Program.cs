@@ -493,6 +493,7 @@ internal static class Program
             var package = Path.Combine(root, "package");
             PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
             PackageInstaller.Install(game, package);
+            Assert(File.Exists(Path.Combine(game, "MaxyModLoader", "container-integrity.json")));
             var state = JsonSerializer.Deserialize<InstallState>(File.ReadAllText(Path.Combine(game, "MaxyModLoader", "install-state.json")), ModManifest.JsonOptions)!;
             File.AppendAllText(Path.Combine(game, state.BackupDirectory, "common.dat"), "tampered");
             var launchState = PackageInstaller.ReadInstalledStateForLaunch(game)!;

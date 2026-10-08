@@ -61,7 +61,8 @@ try {
     Add-ReleaseFile $loaderArchive (Join-Path $repository 'LICENSE') 'LICENSE'
     Add-ReleaseFile $loaderArchive (Join-Path $cliOutput 'MaxyModLoader.exe') 'app/MaxyModLoader.exe'
     Add-ReleaseFile $loaderArchive (Join-Path $bootstrapOutput 'MaxyModLoader.Bootstrap.exe') 'app/MaxyModLoader.Bootstrap.exe'
-    Add-ReleaseFile $loaderArchive (Join-Path $cliOutput 'ThirdPartyNotices.txt') 'app/ThirdPartyNotices.txt'
+    #依赖许可源文件随仓库维护避免单文件发布省略复制型内容资源
+    Add-ReleaseFile $loaderArchive (Join-Path $repository 'third-party\markdig-license.txt') 'app/ThirdPartyNotices.txt'
     $versionEntry = $loaderArchive.CreateEntry('版本.txt', [IO.Compression.CompressionLevel]::Optimal)
     $versionStream = $versionEntry.Open()
     try {

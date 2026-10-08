@@ -122,18 +122,7 @@ public static class PackageInstaller
         if (!info.Exists) return false;
 
         //缓存属于可重建索引格式损坏时丢弃并回到完整SHA256校验
-        var loaderDirectory = Path.Combine(gameDirectory, "MaxyModLoader");
-        var cachePath = Path.Combine(loaderDirectory, "container-integrity.json");
-        InstalledFileIntegrity? cache = null;
-        try
-        {
-            if (File.Exists(cachePath))
-                cache = JsonSerializer.Deserialize<InstalledFileIntegrity>(File.ReadAllText(cachePath), ModManifest.JsonOptions);
-        }
-        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
-        {
-            cache = null;
-        }
+        var cache = ReadIntegrityCache(gameDirectory);
 
         //相同版本和文件元数据表示上次已核验的内容仍然有效
         InstalledFileFingerprint? previous = null;
@@ -143,19 +132,68 @@ public static class PackageInstaller
             return true;
 
         //元数据变化或缓存缺失时重算完整指纹拒绝未经授权的容器修改
+        return VerifyAndCacheInstalledFile(gameDirectory, fileName, expected);
+    }
+
+    /// <summary>
+    /// 完整哈希核验安装容器并缓存核验完成后的稳定元数据
+    /// </summary>
+    private static bool VerifyAndCacheInstalledFile(string gameDirectory, string fileName, string expected)
+    {
+        //只校验固定游戏资源名并读取哈希前后的文件身份元数据
+        var path = Path.Combine(gameDirectory, fileName);
+        var info = new FileInfo(path);
+        if (!info.Exists) return false;
+        var before = new InstalledFileFingerprint(info.Length, info.LastWriteTimeUtc.Ticks, info.CreationTimeUtc.Ticks, expected);
         if (PackageBuilder.Fingerprint(path) != expected) return false;
-        var files = cacheValid ? new Dictionary<string, InstalledFileFingerprint>(cache!.Files!, StringComparer.Ordinal) : new(StringComparer.Ordinal);
-        files[fileName] = new InstalledFileFingerprint(info.Length, info.LastWriteTimeUtc.Ticks, info.CreationTimeUtc.Ticks, expected);
+        info.Refresh();
+        if (!info.Exists || before.Length != info.Length || before.LastWriteUtcTicks != info.LastWriteTimeUtc.Ticks ||
+            before.CreationUtcTicks != info.CreationTimeUtc.Ticks) return false;
+
+        //同一安装完成后的验证结果和缓存写入复用一份哈希无需再次读大容器
+        var cache = ReadIntegrityCache(gameDirectory);
+        var files = cache is { SchemaVersion: 1, Files: not null }
+            ? new Dictionary<string, InstalledFileFingerprint>(cache.Files, StringComparer.Ordinal)
+            : new(StringComparer.Ordinal);
+        files[fileName] = before;
+        WriteIntegrityCache(gameDirectory, files);
+        return true;
+    }
+
+    /// <summary>
+    /// 读取可丢弃的当前格式容器完整性缓存
+    /// </summary>
+    private static InstalledFileIntegrity? ReadIntegrityCache(string gameDirectory)
+    {
+        //损坏或旧架构缓存直接忽略真实容器仍会完整计算SHA256
+        var path = Path.Combine(gameDirectory, "MaxyModLoader", "container-integrity.json");
         try
         {
-            //缓存写入失败不影响本次完整哈希已通过的安全判断只会导致下次重新哈希
-            var temporary = cachePath + ".tmp";
+            if (!File.Exists(path)) return null;
+            var cache = JsonSerializer.Deserialize<InstalledFileIntegrity>(File.ReadAllText(path), ModManifest.JsonOptions);
+            return cache is { SchemaVersion: 1, Files: not null } ? cache : null;
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 原子写入容器元数据缓存并忽略缓存文件权限错误
+    /// </summary>
+    private static void WriteIntegrityCache(string gameDirectory, Dictionary<string, InstalledFileFingerprint> files)
+    {
+        //缓存只在加载器目录下写入属于可重建状态不参与安装恢复决策
+        var path = Path.Combine(gameDirectory, "MaxyModLoader", "container-integrity.json");
+        var temporary = path + ".tmp";
+        try
+        {
             File.WriteAllText(temporary, JsonSerializer.Serialize(new InstalledFileIntegrity(1, files), ModManifest.JsonOptions));
-            File.Move(temporary, cachePath, overwrite: true);
+            File.Move(temporary, path, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            var temporary = cachePath + ".tmp";
             try
             {
                 //清理失败仅留下可重建的索引临时文件不会影响已验证容器
@@ -166,7 +204,6 @@ public static class PackageInstaller
                 //下次启动会忽略临时文件并重新核验真实容器
             }
         }
-        return true;
     }
 
     /// <summary>
@@ -224,8 +261,9 @@ public static class PackageInstaller
             var built = Path.Combine(packageDirectory, item.Container);
             Replace(built + ".dat", target + ".dat");
             Replace(built + ".idx", target + ".idx");
-            Check(target + ".dat", item.BuiltDataSha256);
-            Check(target + ".idx", item.BuiltIndexSha256);
+            if (!VerifyAndCacheInstalledFile(gameDirectory, item.Container + ".dat", item.BuiltDataSha256) ||
+                !VerifyAndCacheInstalledFile(gameDirectory, item.Container + ".idx", item.BuiltIndexSha256))
+                throw new InvalidDataException($"安装后的容器指纹不匹配：{item.Container}");
         }
         NativeContentInstaller.Install(gameDirectory, packageDirectory, package.Native, nativeState);
     }
