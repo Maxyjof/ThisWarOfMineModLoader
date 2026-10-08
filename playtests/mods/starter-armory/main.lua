@@ -18,6 +18,8 @@ local ammunition = {
 }
 
 local pending_campaign = false
+local completed_campaign = false
+local last_attempt_day = nil
 
 --<summary>
 --注册每个新战役的庇护所初始物资补足事件
@@ -26,6 +28,10 @@ local function install(context)
     --在昼夜事件和新战役场景就绪后重复尝试直到整套物资完成
     local function try_grant(scene)
         if not pending_campaign or not scene or scene:GetDwellerCount() == 0 then return end
+        --同一游戏日只尝试一次避免首日昼夜事件和场景就绪事件重复发放
+        local current_day = scene:GetCurrentDay()
+        if last_attempt_day == current_day then return end
+        last_attempt_day = current_day
         if not gKosovoItemConfig or type(gKosovoItemConfig.GetEntryWithName) ~= "function" then
             context.log("开局物资等待原生物品配置就绪，将在后续昼夜事件重试")
             return
@@ -44,25 +50,35 @@ local function install(context)
 
         --逐项处理已注册内容缺失项保留待办并输出有限诊断样本
         local missing = {}
+        local failed = {}
         local function grant_if_registered(name, amount)
             if gKosovoItemConfig:GetEntryWithName(name) then
-                top_up(name, amount)
+                --单项失败不阻断其余物资发放后续游戏日会重试失败项
+                local ok, failure = pcall(top_up, name, amount)
+                if not ok then failed[#failed + 1] = {name = name, reason = tostring(failure)} end
             else
                 missing[#missing + 1] = name
             end
         end
         for _, item in ipairs(items) do grant_if_registered(item, 1) end
         for _, item in ipairs(ammunition) do grant_if_registered(item.name, item.amount) end
-        if #missing > 0 then
+        if #missing > 0 or #failed > 0 then
             local sample = {}
             for index = 1, math.min(#missing, 8) do sample[index] = missing[index] end
-            context.log("开局物资仍有未注册项，已补齐可用物品并等待重试：缺少" .. #missing .. "项，示例=" .. table.concat(sample, ","))
+            local failure_sample = {}
+            for index = 1, math.min(#failed, 4) do
+                failure_sample[index] = failed[index].name .. "=" .. failed[index].reason
+            end
+            context.log("开局物资未全部核验，已继续处理其他项目并等待下个游戏日重试：未注册=" .. #missing ..
+                "项，写入失败=" .. #failed .. "项，未注册示例=" .. table.concat(sample, ",") ..
+                "，失败示例=" .. table.concat(failure_sample, " | "))
             return
         end
 
         --全部内容核验完成后停止本战役重试新战役会重新开启
         context.log("新战役开局物资已核验：模组物品50种至少各1件，4类弹药至少各30发，接收者=" .. dweller:GetDwellerName())
         pending_campaign = false
+        completed_campaign = true
     end
 
     --昼夜事件只重试新战役待办不把读档首日误判成新战役
@@ -72,7 +88,8 @@ local function install(context)
 
     --仅场景首次就绪事件开启新战役待办避免与首日事件重复发放
     context.events.on("game.scene.ready", function(scene, first_time)
-        if first_time and scene and scene:GetCurrentDay() == 1 then pending_campaign = true end
+        --已成功发放的当前战役不会被同一首日的迟到场景事件重新开启
+        if first_time and scene and scene:GetCurrentDay() == 1 and not completed_campaign then pending_campaign = true end
         try_grant(scene)
     end)
 end

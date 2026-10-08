@@ -484,6 +484,7 @@ internal static class Program
             Assert(!Directory.Exists(backup));
             Assert(!Directory.Exists(staleBackup));
             Assert(Directory.Exists(modStorage));
+            Assert(!File.Exists(Path.Combine(game, "MaxyModLoader", "container-integrity.json")));
         }));
         Test("启动复用跳过大型备份扫描但恢复仍验证备份", () => InWorkspace(root =>
         {
@@ -498,6 +499,27 @@ internal static class Program
             Assert(PackageInstaller.IsInstalledPackage(game, package, launchState));
             Reject<InvalidDataException>(() => PackageInstaller.ReadInstalledState(game));
             Reject<InvalidDataException>(() => PackageInstaller.Restore(game));
+        }));
+        Test("启动容器完整性缓存识别文件变化并复用未变指纹", () => InWorkspace(root =>
+        {
+            //首次启动复用进行完整哈希并生成元数据缓存后续相同文件不需重读容器
+            var game = Path.Combine(root, "game"); Directory.CreateDirectory(game);
+            var source = CreateFixture(game);
+            var package = Path.Combine(root, "package");
+            PackageBuilder.Build(source, MainHash, Path.Combine(Repository, "examples"), package);
+            PackageInstaller.Install(game, package);
+            var state = PackageInstaller.ReadInstalledStateForLaunch(game)!;
+            Assert(PackageInstaller.IsInstalledPackage(game, package, state));
+            var cachePath = Path.Combine(game, "MaxyModLoader", "container-integrity.json");
+            Assert(File.Exists(cachePath));
+            Assert(PackageInstaller.IsInstalledPackage(game, package, state));
+
+            //即便修改后仍保持文件长度时间戳变化也必须重新哈希并拒绝复用
+            var target = source + ".dat";
+            var bytes = File.ReadAllBytes(target);
+            bytes[0] ^= 0x01;
+            File.WriteAllBytes(target, bytes);
+            Assert(!PackageInstaller.IsInstalledPackage(game, package, state));
         }));
         Test("非当前部署格式在修改游戏前被拒绝", () => InWorkspace(root =>
         {

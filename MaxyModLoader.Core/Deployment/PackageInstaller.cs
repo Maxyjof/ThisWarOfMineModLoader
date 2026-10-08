@@ -10,6 +10,16 @@ namespace MaxyModLoader.Deployment;
 public sealed record InstallState(PackageManifest Package, string BackupDirectory, NativeInstallState? Native = null);
 
 /// <summary>
+/// 保存已部署容器的快速完整性检查元数据
+/// </summary>
+public sealed record InstalledFileIntegrity(int SchemaVersion, Dictionary<string, InstalledFileFingerprint> Files);
+
+/// <summary>
+/// 保存容器文件大小时间戳和已核验SHA256
+/// </summary>
+public sealed record InstalledFileFingerprint(long Length, long LastWriteUtcTicks, long CreationUtcTicks, string Sha256);
+
+/// <summary>
 /// 安装离线Lua加载器容器并保留可核验的原文件备份
 /// </summary>
 public static class PackageInstaller
@@ -93,12 +103,70 @@ public static class PackageInstaller
                 current.BuiltDataSha256 != candidate.BuiltDataSha256) return false;
             var target = Path.Combine(gameDirectory, current.Container);
             //不完整安装返回不匹配交由恢复流程识别原版与已生成的中断状态
-            if (PackageBuilder.Fingerprint(target + ".idx") != current.BuiltIndexSha256 ||
-                PackageBuilder.Fingerprint(target + ".dat") != current.BuiltDataSha256) return false;
+            if (!MatchesInstalledFile(gameDirectory, current.Container + ".idx", current.BuiltIndexSha256) ||
+                !MatchesInstalledFile(gameDirectory, current.Container + ".dat", current.BuiltDataSha256)) return false;
         }
         if (!state.Package.Mods.SequenceEqual(package.Mods, StringComparer.Ordinal)) return false;
         return JsonSerializer.Serialize(state.Package.Native, ModManifest.JsonOptions) ==
                JsonSerializer.Serialize(package.Native, ModManifest.JsonOptions);
+    }
+
+    /// <summary>
+    /// 使用文件元数据复用上次通过SHA256核验的结果
+    /// </summary>
+    private static bool MatchesInstalledFile(string gameDirectory, string fileName, string expected)
+    {
+        //完整路径固定在已安装容器根目录下不读取任意缓存路径
+        var path = Path.Combine(gameDirectory, fileName);
+        var info = new FileInfo(path);
+        if (!info.Exists) return false;
+
+        //缓存属于可重建索引格式损坏时丢弃并回到完整SHA256校验
+        var loaderDirectory = Path.Combine(gameDirectory, "MaxyModLoader");
+        var cachePath = Path.Combine(loaderDirectory, "container-integrity.json");
+        InstalledFileIntegrity? cache = null;
+        try
+        {
+            if (File.Exists(cachePath))
+                cache = JsonSerializer.Deserialize<InstalledFileIntegrity>(File.ReadAllText(cachePath), ModManifest.JsonOptions);
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            cache = null;
+        }
+
+        //相同版本和文件元数据表示上次已核验的内容仍然有效
+        InstalledFileFingerprint? previous = null;
+        var cacheValid = cache is { SchemaVersion: 1, Files: not null } && cache.Files.TryGetValue(fileName, out previous);
+        if (cacheValid && previous!.Sha256 == expected && previous.Length == info.Length &&
+            previous.LastWriteUtcTicks == info.LastWriteTimeUtc.Ticks && previous.CreationUtcTicks == info.CreationTimeUtc.Ticks)
+            return true;
+
+        //元数据变化或缓存缺失时重算完整指纹拒绝未经授权的容器修改
+        if (PackageBuilder.Fingerprint(path) != expected) return false;
+        var files = cacheValid ? new Dictionary<string, InstalledFileFingerprint>(cache!.Files!, StringComparer.Ordinal) : new(StringComparer.Ordinal);
+        files[fileName] = new InstalledFileFingerprint(info.Length, info.LastWriteTimeUtc.Ticks, info.CreationTimeUtc.Ticks, expected);
+        try
+        {
+            //缓存写入失败不影响本次完整哈希已通过的安全判断只会导致下次重新哈希
+            var temporary = cachePath + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(new InstalledFileIntegrity(1, files), ModManifest.JsonOptions));
+            File.Move(temporary, cachePath, overwrite: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            var temporary = cachePath + ".tmp";
+            try
+            {
+                //清理失败仅留下可重建的索引临时文件不会影响已验证容器
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
+            catch (Exception cleanupException) when (cleanupException is IOException or UnauthorizedAccessException)
+            {
+                //下次启动会忽略临时文件并重新核验真实容器
+            }
+        }
+        return true;
     }
 
     /// <summary>
@@ -200,6 +268,9 @@ public static class PackageInstaller
         File.Delete(statePath);
         try
         {
+            //恢复到原版后快速核验缓存不再关联活动部署直接删除
+            var integrityCache = Path.Combine(Path.GetDirectoryName(statePath)!, "container-integrity.json");
+            if (File.Exists(integrityCache)) File.Delete(integrityCache);
             DeleteRestoredBackup(backup, backupRoot);
             PruneOrphanedBackups(backupRoot);
         }
