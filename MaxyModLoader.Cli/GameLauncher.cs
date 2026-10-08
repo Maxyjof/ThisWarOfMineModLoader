@@ -133,7 +133,8 @@ internal static class GameLauncher
             //仅从已核验的原始Main资源创建缓存部署包
             try
             {
-                PackageBuilder.Build(Path.Combine(gameDirectory, "common"), 0x5faa28a2, stagingDirectory, packageDirectory);
+                PackageBuilder.Build(Path.Combine(gameDirectory, "common"), 0x5faa28a2, stagingDirectory, packageDirectory,
+                    enabledOverrides: states);
             }
             catch
             {

@@ -26,10 +26,10 @@ public static class PackageBuilder
     /// 在新目录内创建完整容器和指纹清单
     /// </summary>
     public static PackageManifest Build(string sourceBase, uint mainHash, string modDirectory, string outputDirectory,
-        string? resourceDirectory = null)
+        string? resourceDirectory = null, IReadOnlyDictionary<string, bool>? enabledOverrides = null)
     {
         //先验证计划和源容器输出目录必须不存在
-        var plan = LoadPlanner.Create(ModCatalog.Discover(modDirectory));
+        var plan = LoadPlanner.Create(ModCatalog.Discover(modDirectory, enabledOverrides));
         if (!plan.IsValid) throw new InvalidDataException(string.Join(Environment.NewLine, plan.Errors));
         var source = LiquidArchive.Open(sourceBase);
         if (Directory.Exists(outputDirectory) || File.Exists(outputDirectory)) throw new IOException("部署包目录已存在请使用新的路径。");

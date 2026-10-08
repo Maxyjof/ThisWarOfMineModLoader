@@ -211,10 +211,21 @@ public static class DisplayHost
             var preference = Path.Combine(root, "display-mode.txt");
             if (File.Exists(preference))
             {
-                var mode = File.ReadAllText(preference).Trim();
-                if (!IsMode(mode)) throw new InvalidDataException("已保存的显示模式无效");
-                await GameDisplay.ApplyAsync(game, mode);
+                //偏好应用失败不能终止内置设置服务实际模式仍由后续读取确认
+                try
+                {
+                    var mode = File.ReadAllText(preference).Trim();
+                    if (!IsMode(mode)) throw new InvalidDataException("已保存的显示模式无效");
+                    await GameDisplay.ApplyAsync(game, mode);
+                }
+                catch (Exception exception) when (exception is IOException or ArgumentException or TimeoutException or
+                    InvalidOperationException or JsonException or UnauthorizedAccessException)
+                {
+                    File.AppendAllText(Path.Combine(root, "display-host.log"),
+                        DateTime.UtcNow.ToString("O") + " 启动显示偏好应用失败继续使用实际窗口模式：" + exception.Message + "\n");
+                }
             }
+            //即使启动偏好应用失败也通知界面服务就绪允许玩家重新选择模式
             await NotifyAsync(bridge, await GameDisplay.ReadAsync(game));
             while (!process.HasExited)
             {
