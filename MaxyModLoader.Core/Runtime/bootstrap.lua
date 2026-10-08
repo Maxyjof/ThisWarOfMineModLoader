@@ -566,6 +566,28 @@ local function context_for(id, dependencies, options)
         return gKosovoGlobalState:GetGlobalItemCount(name)
     end
     --<summary>
+    --批量读取最多128种已注册物品的全局数量
+    --</summary>
+    context.game.inventory.global_counts = function(names)
+        --只接受稠密数组并限制单次主线程工作量
+        require_condition(type(names) == "table" and #names >= 1 and #names <= 128, "names must contain 1 to 128 items")
+        local size = #names
+        local seen, result, entries = {}, {}, 0
+        for key in pairs(names) do
+            require_condition(type(key) == "number" and key == math.floor(key) and key >= 1 and key <= size, "names must be a dense array")
+            entries = entries + 1
+        end
+        require_condition(entries == size, "names must be a dense array")
+        for index = 1, size do
+            local name = names[index]
+            require_condition(type(name) == "string" and #name <= 96 and name:match("^[A-Za-z][A-Za-z0-9_]*$"), "item name is invalid")
+            require_condition(not seen[name], "item names must be unique")
+            seen[name] = true
+            result[name] = context.game.inventory.global_count(name)
+        end
+        return result
+    end
+    --<summary>
     --读取庇护所公共物资数量
     --</summary>
     context.game.inventory.shelter_count = function(name)

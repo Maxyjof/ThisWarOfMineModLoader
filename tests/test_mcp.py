@@ -30,7 +30,10 @@ def serve_files(directory, stop, received, discovery_fault=None):
             result = {'actions': [{'id': 'twom.demo:greet', 'owner': 'twom.demo', 'name': 'greet',
                 'description': '结构化问候工具', 'inputSchema': {'type': 'object',
                     'properties': {'name': {'type': 'string'}, 'count': {'type': 'integer'}},
-                    'required': ['name'], 'additionalProperties': False}, 'readOnly': False, 'destructive': False}]}
+                    'required': ['name'], 'additionalProperties': False}, 'readOnly': False, 'destructive': False},
+                {'id': 'twom.demo:report', 'owner': 'twom.demo', 'name': 'report', 'description': '只读报告',
+                    'inputSchema': {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False},
+                    'readOnly': True, 'destructive': False}]}
         elif lines[2] == 'mod_action_call':
             result = {'result': {'called': True}}
         else:
@@ -70,6 +73,7 @@ def main():
             {'jsonrpc': '2.0', 'id': 6, 'method': 'tools/call', 'params': {'name': 'ui_click', 'arguments': {'name': 'x', 'unknown': True}}},
             {'jsonrpc': '2.0', 'id': 7, 'method': 'tools/call', 'params': {'name': 'missing'}},
             {'jsonrpc': '2.0', 'id': 8, 'method': 'tools/call', 'params': {'name': 'game_state', 'arguments': {}}},
+            {'jsonrpc': '2.0', 'id': 13, 'method': 'tools/call', 'params': {'name': 'inventory_batch', 'arguments': {'items': 'MML_AK74,Ammo'}}},
             {'jsonrpc': '2.0', 'id': 9, 'method': 'tools/call', 'params': {'name': 'mod_twom_demo_greet_' + __import__('hashlib').sha256(b'twom.demo:greet').hexdigest()[:12],
                 'arguments': {'name': '\u4f60\u597d\n\u5e78\u5b58\u8005', 'count': 2}}},
             {'jsonrpc': '2.0', 'id': 10, 'method': 'tools/call', 'params': {'name': 'mod_twom_demo_greet_' + __import__('hashlib').sha256(b'twom.demo:greet').hexdigest()[:12],
@@ -92,12 +96,15 @@ def main():
         assert by_id[1]['error']['code'] == -32002
         assert by_id[2]['result']['serverInfo']['name'] == 'MaxyModLoader'
         tools = by_id[3]['result']['tools']
-        assert len(tools) == 22 and len({tool['name'] for tool in tools}) == 22
+        assert len(tools) == 24 and len({tool['name'] for tool in tools}) == 24
         assert next(tool for tool in tools if tool['name'] == 'inventory_item')['annotations']['readOnlyHint']
+        assert next(tool for tool in tools if tool['name'] == 'inventory_batch')['annotations']['readOnlyHint']
         assert not next(tool for tool in tools if tool['name'] == 'debug_give_item')['annotations']['readOnlyHint']
         assert next(tool for tool in tools if tool['name'] == 'rule_list')['annotations']['readOnlyHint']
         mod_tool = next(tool for tool in tools if tool['name'].startswith('mod_twom_demo_greet_'))
         assert mod_tool['inputSchema']['required'] == ['name'] and not mod_tool['annotations']['readOnlyHint']
+        empty_schema_tool = next(tool for tool in tools if tool['name'].startswith('mod_twom_demo_report_'))
+        assert empty_schema_tool['inputSchema']['required'] == [] and empty_schema_tool['inputSchema']['properties'] == {}
         assert next(tool for tool in tools if tool['name'] == 'item_config')['annotations']['readOnlyHint']
         assert next(tool for tool in tools if tool['name'] == 'settings_state')['annotations']['readOnlyHint']
         display = next(tool for tool in tools if tool['name'] == 'display_mode')
@@ -106,9 +113,10 @@ def main():
         assert not by_id[4]['result']['isError']
         assert by_id[5]['result']['isError'] and by_id[6]['result']['isError']
         assert by_id[7]['error']['code'] == -32602
-        assert not by_id[8]['result']['isError'] and not by_id[9]['result']['isError']
+        assert not by_id[8]['result']['isError'] and not by_id[13]['result']['isError'] and not by_id[9]['result']['isError']
         assert by_id[10]['result']['isError'] and by_id[11]['result'] == {} and by_id[12]['result'] == {}
         assert received == [('mod_actions_list', ''), ('ui_click', '中文按钮'), ('mod_actions_list', ''), ('game_state', ''),
+            ('inventory_batch', 'MML_AK74,Ammo'),
             ('mod_actions_list', ''), ('mod_action_call', 'twom.demo:greet\n636f756e74|n|32\n6e616d65|s|e4bda0e5a5bd0ae5b9b8e5ad98e88085\n'),
             ('mod_actions_list', '')]
         assert {reply['error']['code'] for reply in replies if reply['id'] is None} == {-32700, -32600}

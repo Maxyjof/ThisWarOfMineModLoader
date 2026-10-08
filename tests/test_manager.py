@@ -434,6 +434,11 @@ gGameDelegate.IsScavenge = function() return scavenge end
 gGame.IsLoadingScreenActive = function() return loading end
 hidden.FindElementByName = function() return nil end
 assert(bridge.dispatch('inventory_item', 'MML_Test').count == 0 and grants == 0)
+local inventory_batch = bridge.dispatch('inventory_batch', 'MML_Test')
+assert(inventory_batch.count == 1 and inventory_batch.items[1].name == 'MML_Test' and inventory_batch.items[1].count == 0)
+for _, argument in ipairs({'', 'MML_Test,MML_Test', 'MML_Test,../bad'}) do
+    assert(not pcall(bridge.dispatch, 'inventory_batch', argument))
+end
 for _, argument in ipairs({'MML_Test|0|0', 'MML_Test|21|0', 'MML_Test|1|16', 'MML_Test|1|1',
     'Missing|1|0', '../MML_Test|1|0', 'MML_Test|1.5|0', 'MML_Test|1|0|extra'}) do
     assert(not pcall(bridge.dispatch, 'give_item', argument) and grants == 0)

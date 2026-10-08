@@ -228,6 +228,25 @@ function module.inventory_item(name)
 end
 
 --<summary>
+--单次游戏主线程请求读取最多128种物品的共享库存
+--</summary>
+function module.inventory_batch(argument)
+    --批量诊断限制输入长度避免占用游戏帧回调
+    if type(argument) ~= 'string' or #argument > 4096 then error('物品清单过长') end
+    if argument == '' then error('物品清单不能为空') end
+    local items, seen = module.array(), {}
+    for name in (argument .. ','):gmatch('(.-),') do
+        --复用单物品查询边界并拒绝重复项和无效名称
+        if #items >= 128 then error('单次最多查询128种物品') end
+        if seen[name] then error('物品清单包含重复名称：' .. name) end
+        seen[name] = true
+        table.insert(items, module.inventory_item(name))
+    end
+    if #items == 0 then error('物品清单不能为空') end
+    return {items = items, count = #items}
+end
+
+--<summary>
 --向当前庇护所测试存档注入有界物资并返回原生库存前后值
 --</summary>
 function module.give_item(argument)
@@ -254,7 +273,12 @@ end
 --分发白名单命令所有游戏操作均在主线程执行
 --</summary>
 function module.dispatch(command, argument)
-    if command == 'mod_actions_list' then return {actions = api.actions.list()} end
+    if command == 'mod_actions_list' then
+        --显式标记两个集合字段保证空动作列表和无必填参数遵循JSON数组契约
+        local actions = module.array(api.actions.list())
+        for _, action in ipairs(actions) do action.inputSchema.required = module.array(action.inputSchema.required) end
+        return {actions = actions}
+    end
     if command == 'mod_action_call' then
         --桥接只传递十六进制标量字段避免分隔符和换行改变参数边界
         local action_id, encoded = (argument or ''):match('^([a-z0-9_.-]+:[a-z][a-z0-9_]*)\n(.*)$')
@@ -344,6 +368,7 @@ function module.dispatch(command, argument)
     if command == "inspect_type" then return module.inspect(argument) end
     if command == 'item_config' then return module.item_config(argument) end
     if command == 'inventory_item' then return module.inventory_item(argument) end
+    if command == 'inventory_batch' then return module.inventory_batch(argument) end
     if command == 'give_item' then return module.give_item(argument) end
     if command == 'ui_hit_test' then local element, result = module.hit_test(argument); return result end
     if command == 'ui_click_point' then

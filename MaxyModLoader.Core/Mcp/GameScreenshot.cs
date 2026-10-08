@@ -34,7 +34,7 @@ public static class GameScreenshot
         var height = rectangle.Bottom - rectangle.Top;
         if (width <= 0 || height <= 0 || (long)width * height > 16777216) throw new IOException("游戏窗口尺寸不适合截图");
         var source = GetDC(window);
-        nint target = 0, bitmap = 0, original = 0;
+        nint target = 0, bitmap = 0, original = 0, desktop = 0;
         try
         {
             //部分分配失败也进入统一释放分支避免泄漏GDI句柄
@@ -44,21 +44,25 @@ public static class GameScreenshot
             if (target == 0 || bitmap == 0) throw new IOException("无法创建窗口截图缓冲区");
             original = SelectObject(target, bitmap);
             if (original == 0 || original == -1) throw new IOException("无法选择窗口截图位图");
-            //前台游戏直接读取自己的绘图上下文避免独占全屏的PrintWindow返回黑帧
-            if (GetForegroundWindow() == window)
-            {
-                if (!BitBlt(target, 0, 0, width, height, source, 0, 0, 0x00CC0020))
-                    throw new IOException("无法读取前台游戏画面");
-            }
-            else if (!PrintWindow(window, target, 3)) throw new IOException("游戏未提供后台画面截图失败");
+            //先请求目标窗口自行绘制兼容后台窗口但部分Liquid Engine渲染器会返回黑帧
+            _ = PrintWindow(window, target, 2);
             SelectObject(target, original);
             var header = new BitmapHeader { Size = 40, Width = width, Height = -height, Planes = 1, BitCount = 32 };
             var pixels = new byte[checked(width * height * 4)];
-            if (GetDIBits(target, bitmap, 0, (uint)height, pixels, ref header, 0) != height)
-                throw new IOException("无法读取截图像素");
-            //黑帧不伪装成有效画面也不截取其他前台应用
-            if (!pixels.Where((value, index) => index % 4 != 3).Any(value => value > 8))
-                throw new IOException("截图为黑帧当前渲染模式不支持后台捕获");
+            //后台绘制无效时只在游戏确为前台窗口的情况下读取可见桌面合成画面
+            if (!ReadPixels(target, bitmap, height, pixels, ref header) || IsBlackFrame(pixels))
+            {
+                if (GetForegroundWindow() != window)
+                    throw new IOException("游戏渲染器未提供后台画面且游戏当前不在前台；请将游戏窗口置于前台后重试截图");
+                if (!GetClientScreenPoint(window, out var point)) throw new IOException("无法读取游戏客户区屏幕坐标");
+                desktop = GetDC(0);
+                var selected = SelectObject(target, bitmap);
+                var copied = desktop != 0 && selected != 0 && selected != -1 &&
+                             BitBlt(target, 0, 0, width, height, desktop, point.X, point.Y, 0x00CC0020);
+                if (selected != 0 && selected != -1) SelectObject(target, selected);
+                if (!copied || !ReadPixels(target, bitmap, height, pixels, ref header) || IsBlackFrame(pixels))
+                    throw new IOException("窗口绘制和前台桌面捕获均返回黑帧；当前全屏渲染器不支持此截图路径");
+            }
             var directory = Path.Combine(Path.GetFullPath(gameDirectory), "MaxyModLoader", "mcp", "screenshots");
             Directory.CreateDirectory(directory);
             var path = Path.Combine(directory, DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + "-" + Guid.NewGuid().ToString("N") + ".png");
@@ -71,8 +75,42 @@ public static class GameScreenshot
             if (original != 0 && original != -1) SelectObject(target, original);
             if (bitmap != 0) DeleteObject(bitmap);
             if (target != 0) DeleteDC(target);
+            if (desktop != 0) ReleaseDC(0, desktop);
             if (source != 0) ReleaseDC(window, source);
         }
+    }
+
+    /// <summary>
+    /// 从未选入内存DC的位图读取BGRA像素
+    /// </summary>
+    private static bool ReadPixels(nint target, nint bitmap, int height, byte[] pixels, ref BitmapHeader header)
+    {
+        //GDI要求待读取位图先从设备上下文中解除选择
+        var original = SelectObject(target, bitmap);
+        if (original == 0 || original == -1) return false;
+        SelectObject(target, original);
+        return GetDIBits(target, bitmap, 0, (uint)height, pixels, ref header, 0) == height;
+    }
+
+    /// <summary>
+    /// 判断截图是否只有黑色像素
+    /// </summary>
+    private static bool IsBlackFrame(byte[] pixels)
+    {
+        //忽略透明度通道避免全黑帧被不透明alpha误判为有效画面
+        for (var index = 0; index < pixels.Length; index += 4)
+            if (pixels[index] > 8 || pixels[index + 1] > 8 || pixels[index + 2] > 8) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// 取得游戏客户区左上角的屏幕坐标
+    /// </summary>
+    private static bool GetClientScreenPoint(nint window, out ScreenPoint point)
+    {
+        //客户区截图排除窗口边框且坐标已适配真实DPI
+        point = default;
+        return ClientToScreen(window, ref point);
     }
 
     /// <summary>
@@ -135,6 +173,12 @@ public static class GameScreenshot
     private struct WindowRectangle { public int Left, Top, Right, Bottom; }
 
     /// <summary>
+    /// 描述屏幕像素坐标
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScreenPoint { public int X, Y; }
+
+    /// <summary>
     /// 描述无压缩位图的像素排列
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
@@ -148,6 +192,10 @@ public static class GameScreenshot
     /// 读取指定游戏窗口客户区边界
     /// </summary>
     [DllImport("user32.dll")] private static extern bool GetClientRect(nint window, out WindowRectangle rectangle);
+    /// <summary>
+    /// 转换客户区原点到屏幕像素坐标
+    /// </summary>
+    [DllImport("user32.dll")] private static extern bool ClientToScreen(nint window, ref ScreenPoint point);
     /// <summary>
     /// 判断目标游戏窗口是否已最小化
     /// </summary>

@@ -106,6 +106,7 @@ counter.increment()
 | 角色`can_use_tool(name)` | 检查工具是否可用或已装备 | 物品须已注册 |
 | `context.game.items.get(name)` | 读取公开的物品数值配置 | 不返回原生配置对象 |
 | `context.game.inventory.global_count(name)` | 查询全局物资数 | 只读 |
+| `context.game.inventory.global_counts(names)` | 一次查询1到128种已注册物品的全局数量并按名称返回 | 只接受无重复的稠密数组；超出上限或未注册物品会明确报错 |
 | `context.game.inventory.shelter_count(name)` | 调用原生`GetShelterItemCount`查询对应庇护所计数 | 只读；与全局可用物资计数分开 |
 | `context.game.story.broadcast(group,event,character_name)` | 广播已核验的场景剧情事件 | 必须存在活动场景 |
 
@@ -115,8 +116,9 @@ if phase == "shelter" then
     local scene = context.game.scene.state()
     local survivor = context.game.characters.get(0)
     local food = context.game.inventory.global_count("CannedFood")
+    local stock = context.game.inventory.global_counts({"CannedFood", "Ammo"})
     survivor.set_parameter("Tired", math.max(0, survivor.get_parameter("Tired") - 5))
-    context.log("第" .. tostring(scene.day) .. "天，庇护所罐头=" .. tostring(food))
+    context.log("第" .. tostring(scene.day) .. "天，罐头=" .. tostring(food) .. "，弹药=" .. tostring(stock.Ammo or 0))
 end
 ```
 

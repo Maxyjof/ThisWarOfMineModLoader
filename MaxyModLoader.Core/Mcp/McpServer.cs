@@ -33,6 +33,7 @@ public sealed class McpServer(GameBridgeClient bridge)
         new("inspect_type", "inspect_type", "列出公开Lua类型的绑定方法仅用于接口诊断不执行任意源码", "name"),
         new("item_config", "item_config", "读取原生物品注册状态及已公开的价值堆叠和枪械参数不生成物资", "name"),
         new("inventory_item", "inventory_item", "读取已注册物品的真实全局库存用于检查物品是否实际获取", "name"),
+        new("inventory_batch", "inventory_batch", "单次读取最多128种已注册物品的真实全局库存用于批量验证模组物品", "items"),
         new("debug_give_item", "give_item", "向庇护所测试存档注入物资并读取库存前后值格式为物品名|1到20数量|0到15角色序号，会改变存档物资，不代表自然获取或制作验证", "item", ReadOnly: false),
         new("mods_list", "mods_list", "列出MaxyModLoader发现的模组及详细介绍和真实加载状态"),
         new("mod_manager", "mod_manager", "读取独立模组管理面板的可见状态当前选择滚动窗口偏移和鼠标滚轮记录"),
